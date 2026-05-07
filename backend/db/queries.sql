@@ -1,0 +1,1359 @@
+-- name: GetHerde :one
+SELECT *
+FROM HERDEN
+WHERE ID = ?;
+
+-- name: ListHerden :many
+SELECT H.*,
+       COALESCE(S.BEZEICHNUNG, '') AS STALL_BEZEICHNUNG,
+       COALESCE(S.STALLNUMMER, 0)  AS STALLNUMMER
+FROM HERDEN H
+         LEFT JOIN STALL S ON H.ID_STALL = S.ID;
+
+-- name: GetSilo :one
+SELECT *
+FROM SILO
+WHERE ID = ?;
+
+-- name: ListSilos :many
+SELECT ID,
+       SILONUMMER,
+       PERSONENNUMMER,
+       ID_LIEFERANT,
+       COALESCE(BEZEICHNUNG, '') AS BEZEICHNUNG, 
+       COALESCE(INVENTURDATUMALT, '0001-01-01') AS INVENTURDATUMALT, 
+       COALESCE(INVENTURDATUMNEU, '0001-01-01') AS INVENTURDATUMNEU, 
+       MAXFUELLMENGE, MINFUELLMENGE, INVENTURFUELLMENGE, AW
+FROM SILO;
+
+-- name: ListEilager :many
+SELECT ID, LAGERNUMMER, KZ, 
+       COALESCE(BEZEICHNUNG, '') AS BEZEICHNUNG, 
+       COALESCE(LETZTE_BUCHUNG, '0001-01-01') AS LETZTE_BUCHUNG, 
+       JUMBOS, XL, LARGE, MEDIUM, SMALL, VOLLEIKG, AW, KLASSE6, KLASSE7
+FROM EILAGER;
+
+-- name: GetPerson :one
+SELECT *
+FROM PERSON
+WHERE ID = ?;
+
+-- name: ListPersonen :many
+SELECT *
+FROM PERSON
+WHERE (KZ IS NULL OR (KZ != 'A' AND KZ != 'F'));
+
+-- name: ListZuechter :many
+SELECT *
+FROM PERSON
+WHERE KZ = 'Z';
+
+-- name: ListLieferanten :many
+SELECT *
+FROM PERSON
+WHERE KZ = 'L';
+
+-- name: GetCompanyPerson :one
+SELECT *
+FROM PERSON
+WHERE KZ = 'F'
+LIMIT 1;
+
+-- name: GetGlobalFirmenparameter :one
+SELECT *
+FROM FIRMENPARAMETER
+WHERE ID_HERDEN = -1
+LIMIT 1;
+
+-- name: GetFirmenparameterByHerde :one
+SELECT *
+FROM FIRMENPARAMETER
+WHERE ID_HERDEN = ? OR ID_HERDEN = -1
+ORDER BY ID_HERDEN DESC
+LIMIT 1;
+
+-- name: CreatePerson :one
+INSERT INTO PERSON (ID_TEXTE, ID_ANREDE, PERSONENNUMMER, KZ, POSTFACH, NAME, FIRMA, STRASSE, PLZ, ORT, TELEFON,
+                    MOBILTELEPHON, EMAIL, EMAIL2, FOTO, HOMEPAGE)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdatePerson :one
+UPDATE PERSON
+SET ID_TEXTE = ?,
+    ID_ANREDE      = ?,
+    PERSONENNUMMER = ?,
+    KZ             = ?,
+    POSTFACH       = ?,
+    NAME           = ?,
+    FIRMA          = ?,
+    STRASSE        = ?,
+    PLZ            = ?,
+    ORT            = ?,
+    TELEFON        = ?,
+    MOBILTELEPHON  = ?,
+    EMAIL          = ?,
+    EMAIL2         = ?,
+    FOTO           = ?,
+    HOMEPAGE       = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeletePerson :exec
+DELETE
+FROM PERSON
+WHERE ID = ?;
+
+-- name: GetMwst :one
+SELECT *
+FROM MWST
+WHERE ID = ?;
+
+-- name: ListMwst :many
+SELECT *
+FROM MWST;
+
+-- name: CreateMwst :one
+INSERT INTO MWST (MWSTKZ, PROZENT, KONTO)
+VALUES (?, ?, ?) RETURNING *;
+
+-- name: UpdateMwst :one
+UPDATE MWST
+SET MWSTKZ = ?, PROZENT = ?, KONTO = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteMwst :exec
+DELETE
+FROM MWST
+WHERE ID = ?;
+
+-- name: GetRasse :one
+SELECT *
+FROM RASSE
+WHERE ID = ?;
+
+-- name: ListRassen :many
+SELECT *
+FROM RASSE;
+
+-- name: CreateRasse :one
+INSERT INTO RASSE (RASSE)
+VALUES (?) RETURNING *;
+
+-- name: UpdateRasse :one
+UPDATE RASSE
+SET RASSE = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteRasse :exec
+DELETE
+FROM RASSE
+WHERE ID = ?;
+
+-- name: GetStall :one
+SELECT *
+FROM STALL
+WHERE ID = ?;
+
+-- name: ListStaelle :many
+SELECT *
+FROM STALL;
+
+-- name: CreateStall :one
+INSERT INTO STALL (STALLNUMMER, BEZEICHNUNG) 
+VALUES (?, ?) RETURNING *;
+
+-- name: UpdateStall :one
+UPDATE STALL 
+SET STALLNUMMER = ?, BEZEICHNUNG = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteStall :exec
+DELETE
+FROM STALL
+WHERE ID = ?;
+
+-- name: CreateHerde :one
+INSERT INTO HERDEN (HERDENNUMMER, BEZEICHNUNG, ID_RASSE, ID_ZUECHTER, ID_EILAGER, ANFANGSBESTAND, EINSTALLDATUM,
+                    LEGEDATUM, EINSTALLKOSTEN, ID_SILO, ID_STALL, AKTIV, ALLEBUCHUNGENMITDATUM)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: ListHerdenLookup :many
+SELECT ID, HERDENNUMMER, COALESCE(BEZEICHNUNG, '') AS BEZEICHNUNG, 
+       COALESCE(LEGEDATUM, '0001-01-01') AS LEGEDATUM, 
+       ANFANGSBESTAND, ID_EILAGER, AKTIV
+FROM HERDEN
+ORDER BY HERDENNUMMER;
+
+-- name: UpdateHerde :one
+UPDATE HERDEN
+SET HERDENNUMMER = ?,
+    BEZEICHNUNG = ?,
+    ID_RASSE = ?,
+    ID_ZUECHTER = ?,
+    ID_EILAGER = ?,
+    ANFANGSBESTAND = ?,
+    EINSTALLDATUM = ?,
+    LEGEDATUM = ?,
+    EINSTALLKOSTEN = ?,
+    ID_SILO = ?,
+    ID_STALL = ?,
+    AKTIV = ?,
+    ALLEBUCHUNGENMITDATUM = ?
+WHERE ID = ? RETURNING *;
+
+-- name: UpdateHerdeStock :exec
+UPDATE HERDEN
+SET ANFANGSBESTAND = ANFANGSBESTAND - ?
+WHERE ID = ?;
+
+-- name: AdjustHerdeStock :exec
+UPDATE HERDEN
+SET ANFANGSBESTAND = ANFANGSBESTAND + ?
+WHERE ID = ?;
+
+-- name: IncreaseHerdeStockAndCosts :exec
+UPDATE HERDEN
+SET ANFANGSBESTAND = ANFANGSBESTAND + ?,
+    EINSTALLKOSTEN = EINSTALLKOSTEN + ?
+WHERE HERDENNUMMER = ?;
+
+-- name: UpdateBuchungStock :exec
+UPDATE BUCHUNG
+SET TIERBESTAND = TIERBESTAND + ?
+WHERE HERDENNUMMER = ?
+  AND BUCHUNGSDATUM = ?;
+
+-- name: UpdateBuchungStockById :exec
+UPDATE BUCHUNG
+SET TIERBESTAND = TIERBESTAND + ?
+WHERE ID = ?;
+
+-- name: IncreaseHerdeStockById :exec
+UPDATE HERDEN
+SET ANFANGSBESTAND = ANFANGSBESTAND + ?
+WHERE ID = ?;
+
+-- name: ListBuchungenWithHerde :many
+SELECT B.ID,
+       B.ID_HERDEN,
+       B.HERDENNUMMER,
+       B.BUCHUNGSDATUM,
+       B.TIERBESTAND,
+       H.BEZEICHNUNG AS HERDEN_BEZEICHNUNG
+FROM BUCHUNG B
+         JOIN HERDEN H ON B.ID_HERDEN = H.ID
+ORDER BY B.BUCHUNGSDATUM DESC;
+
+-- name: ListHerdenDetailed :many
+SELECT H.ID, H.ID_SILO, H.ID_STALL, H.ID_EILAGER, H.ID_GEWICHTTAB, H.ID_ZUECHTER, H.ID_RASSE, 
+       H.HERDENNUMMER, COALESCE(H.BEZEICHNUNG, '') AS BEZEICHNUNG, H.ANFANGSKOSTEN, H.ANFANGSBESTAND, 
+       COALESCE(H.EINSTALLDATUM, '0001-01-01') AS EINSTALLDATUM, 
+       COALESCE(H.LEGEDATUM, '0001-01-01') AS LEGEDATUM, 
+       H.EINSTALLKOSTEN, 
+       COALESCE(H.DATUM, '0001-01-01') AS DATUM, 
+       COALESCE(H.ZEITSTEMPEL, '') AS ZEITSTEMPEL, 
+       H.AKTIV, H.AW, H.ALLEBUCHUNGENMITDATUM,
+       COALESCE(E.BEZEICHNUNG, '') AS LAGERNAME,
+       COALESCE(S.BEZEICHNUNG, '') AS STALL_BEZEICHNUNG,
+       COALESCE(S.STALLNUMMER, 0)  AS STALLNUMMER
+FROM HERDEN H
+         LEFT JOIN EILAGER E ON H.ID_EILAGER = E.ID
+         LEFT JOIN STALL S ON H.ID_STALL = S.ID;
+
+-- name: CreateHerdeChecked :one
+INSERT INTO HERDEN (
+    HERDENNUMMER, BEZEICHNUNG, ID_RASSE, ID_ZUECHTER, ID_EILAGER, ANFANGSBESTAND,
+    EINSTALLDATUM, LEGEDATUM, EINSTALLKOSTEN, ID_SILO, ID_STALL, AKTIV, ALLEBUCHUNGENMITDATUM
+) 
+SELECT SQLC.ARG(HERDENNUMMER),
+       SQLC.ARG(BEZEICHNUNG),
+       SQLC.ARG(ID_RASSE),
+       SQLC.ARG(ID_ZUECHTER),
+       SQLC.ARG(ID_EILAGER),
+       SQLC.ARG(ANFANGSBESTAND),
+       SQLC.ARG(EINSTALLDATUM),
+       SQLC.ARG(LEGEDATUM),
+       SQLC.ARG(EINSTALLKOSTEN),
+       SQLC.ARG(ID_SILO),
+       SQLC.ARG(ID_STALL),
+       SQLC.ARG(AKTIV),
+       SQLC.ARG(ALLEBUCHUNGENMITDATUM) WHERE EXISTS (SELECT 1 FROM EILAGER WHERE ID = SQLC.ARG(ID_EILAGER))
+RETURNING ID, ID_SILO, ID_STALL, ID_EILAGER, ID_GEWICHTTAB, ID_ZUECHTER, ID_RASSE, HERDENNUMMER, BEZEICHNUNG, ANFANGSKOSTEN, ANFANGSBESTAND, EINSTALLDATUM, LEGEDATUM, EINSTALLKOSTEN, DATUM, ZEITSTEMPEL, AKTIV, AW, ALLEBUCHUNGENMITDATUM;
+
+-- name: CreateSilo :one
+INSERT INTO SILO (SILONUMMER, PERSONENNUMMER, BEZEICHNUNG, INVENTURDATUMALT, INVENTURDATUMNEU, MAXFUELLMENGE,
+                  MINFUELLMENGE,
+                  INVENTURFUELLMENGE, ID_LIEFERANT)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateSilo :one
+UPDATE SILO 
+SET SILONUMMER = ?,
+    PERSONENNUMMER = ?,
+    BEZEICHNUNG = ?,
+    INVENTURDATUMALT = ?,
+    INVENTURDATUMNEU = ?,
+    MAXFUELLMENGE = ?,
+    MINFUELLMENGE = ?,
+    INVENTURFUELLMENGE = ?,
+    ID_LIEFERANT   = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteHerde :exec
+DELETE
+FROM HERDEN
+WHERE ID = ?;
+
+-- name: DeleteSilo :exec
+DELETE
+FROM SILO
+WHERE ID = ?;
+
+-- name: CreateFirmenparameter :one
+INSERT INTO FIRMENPARAMETER (
+    ID_HERDEN, KZ, JUMBOS, KLASSENERFASSEN, KLASSEAERFASSEN, KLASSEAERRECHNEN, KLASSEAVERMITTELN,
+    ERFASSESCHMUTZEI, ERFASSEKNICKEI, ERFASSEBRUCHEI, ERFASSEVOLLEI, MASSVOLLEI,
+    AUFTEILUNGGEWICHT, KONTROLLWIEGUNG, ANZAHLKONTROLLW, VERPACKUNGKG, AUFTEILUNGALTER,
+    ERFASSEVOLLEIKG, LAUFZEITWOCHEN, ZEITSTEMPEL, SCHLACHTERLOESHENNE, PRODUKTIONSDAUER,
+    ID_TABELLEGEWICHT, ID_TABELLEALTER, LEGEBEGINN_LW, VERLUSTEBEIBUCHUNG, LAGERBUCHUNGBEIBUCHUNG,
+    MAXTAGEVERMITTELN, CHARGEJUMBOS, CHARGEXL, CHARGEMEDIUM, CHARGESMALL, CHARGELARGE, CHARGEVOLLEI,
+    CHARGEPREFIXFIRMA, CHARGEPREFIXHERDENNUMMER, CHARGEDATUM, CHARGELAGERNUMMER, CHARGETRENNUNG,
+    BEIVERMITTELNDATUMAKTUELL, PSEUDOLAGER, BIO, HALTUNGSTYP, BIOAUFSCHLAG)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateFirmenparameter :one
+UPDATE FIRMENPARAMETER
+SET KZ = ?, JUMBOS = ?, KLASSENERFASSEN = ?, KLASSEAERFASSEN = ?, KLASSEAERRECHNEN = ?, KLASSEAVERMITTELN = ?,
+    ERFASSESCHMUTZEI = ?, ERFASSEKNICKEI = ?, ERFASSEBRUCHEI = ?, ERFASSEVOLLEI = ?, MASSVOLLEI = ?,
+    AUFTEILUNGGEWICHT = ?, KONTROLLWIEGUNG = ?, ANZAHLKONTROLLW = ?, VERPACKUNGKG = ?, AUFTEILUNGALTER = ?,
+    ERFASSEVOLLEIKG = ?, LAUFZEITWOCHEN = ?, ZEITSTEMPEL = ?, SCHLACHTERLOESHENNE = ?, PRODUKTIONSDAUER = ?,
+    ID_TABELLEGEWICHT         = ?,
+    ID_TABELLEALTER           = ?,
+    LEGEBEGINN_LW             = ?,
+    VERLUSTEBEIBUCHUNG        = ?,
+    LAGERBUCHUNGBEIBUCHUNG    = ?,
+    MAXTAGEVERMITTELN         = ?,
+    CHARGEJUMBOS              = ?,
+    CHARGEXL                  = ?,
+    CHARGEMEDIUM              = ?,
+    CHARGESMALL               = ?,
+    CHARGELARGE               = ?,
+    CHARGEVOLLEI              = ?,
+    CHARGEPREFIXFIRMA         = ?,
+    CHARGEPREFIXHERDENNUMMER  = ?,
+    CHARGEDATUM               = ?,
+    CHARGELAGERNUMMER         = ?,
+    CHARGETRENNUNG            = ?,
+    BEIVERMITTELNDATUMAKTUELL = ?,
+    PSEUDOLAGER  = ?,
+    BIO          = ?,
+    HALTUNGSTYP  = ?,
+    BIOAUFSCHLAG = ?
+WHERE ID_HERDEN = ? RETURNING *;
+
+-- name: DeleteFirmenparameter :exec
+DELETE
+FROM FIRMENPARAMETER
+WHERE ID_HERDEN = ?;
+
+-- name: GetEggStatsByHerde :one
+SELECT COALESCE(SUM(KLASSEA), 0)                                                               AS SUM_KLASSE_A,
+       COALESCE(SUM(SMALL), 0)                                                                 AS SUM_SMALL,
+       COALESCE(SUM(MEDIUM), 0)                                                                AS SUM_MEDIUM,
+       COALESCE(SUM(LARGE), 0)                                                                 AS SUM_LARGE,
+       COALESCE(SUM(XL), 0)                                                                    AS SUM_XL,
+       COALESCE(SUM(VERLUSTE), 0) +
+       COALESCE((SELECT SUM(T.BEWEGUNGEN)
+                 FROM TIERBEWEGUNGEN T
+                          JOIN HERDEN H ON T.HERDENNUMMER = H.HERDENNUMMER
+                 WHERE H.ID = ?), 0) AS SUM_VERLUSTE
+FROM BUCHUNG
+WHERE BUCHUNG.ID_HERDEN = ?
+  AND VERMITTELT IN ('N', 'V');
+
+-- name: GetEggStatsByHerdeFiltered :one
+SELECT COALESCE(SUM(KLASSEA), 0)  AS SUM_KLASSE_A,
+       COALESCE(SUM(SMALL), 0)    AS SUM_SMALL,
+       COALESCE(SUM(MEDIUM), 0)   AS SUM_MEDIUM,
+       COALESCE(SUM(LARGE), 0)    AS SUM_LARGE,
+       COALESCE(SUM(XL), 0)       AS SUM_XL,
+       COALESCE(SUM(VERLUSTE), 0) AS SUM_VERLUSTE
+FROM BUCHUNG
+WHERE (sqlc.arg(id_herden) = -1 OR BUCHUNG.ID_HERDEN = sqlc.arg(id_herden))
+  AND (sqlc.arg(only_active) = 0 OR EXISTS (SELECT 1 FROM HERDEN H WHERE H.ID = BUCHUNG.ID_HERDEN AND H.AKTIV = 1))
+  AND (sqlc.arg(year) = '' OR strftime('%Y', BUCHUNGSDATUM) = sqlc.arg(year))
+  AND (sqlc.arg(quarter) = 0 OR (CAST(strftime('%m', BUCHUNGSDATUM) AS INTEGER) + 2) / 3 = sqlc.arg(quarter))
+  AND (sqlc.arg(month) = 0 OR CAST(strftime('%m', BUCHUNGSDATUM) AS INTEGER) = sqlc.arg(month))
+  AND VERMITTELT IN ('N', 'V');
+
+-- name: GetEggBookingYears :many
+SELECT DISTINCT strftime('%Y', BUCHUNGSDATUM) as year
+FROM BUCHUNG
+WHERE (sqlc.arg(id_herden) = -1
+   OR ID_HERDEN = sqlc.arg(id_herden))
+  AND (sqlc.arg(only_active) = 0
+   OR EXISTS (SELECT 1 FROM HERDEN H WHERE H.ID = BUCHUNG.ID_HERDEN
+  AND H.AKTIV = 1))
+ORDER BY year DESC;
+
+-- name: GetEggStatsWeeklyByHerde :many
+SELECT LW                         AS LEBENSWOCHE,
+       MAX(BUCHUNGSDATUM)         AS LETZTES_DATUM,
+       COALESCE(SUM(KLASSEA), 0)  AS SUM_KLASSE_A,
+       COALESCE(SUM(SMALL), 0)    AS SUM_SMALL,
+       COALESCE(SUM(MEDIUM), 0)   AS SUM_MEDIUM,
+       COALESCE(SUM(LARGE), 0)    AS SUM_LARGE,
+       COALESCE(SUM(XL), 0)       AS SUM_XL,
+       COALESCE(SUM(VERLUSTE), 0) AS SUM_VERLUSTE
+FROM BUCHUNG
+WHERE ID_HERDEN = ?
+  AND VERMITTELT IN ('N', 'V')
+GROUP BY LW
+ORDER BY LEBENSWOCHE DESC;
+
+-- name: GetBuchung :one
+SELECT *
+FROM BUCHUNG
+WHERE ID = ?;
+
+-- name: ListBuchungen :many
+SELECT B.ID,
+       B.ID_HERDEN,
+       B.LW,
+       B.HERDENNUMMER,
+       B.BUCHUNGSDATUM,
+       B.GEWICHTPROBE,
+       B.KONTROLLGEWICHT,
+       B.KLASSEA,
+       B.VERLUSTE,
+       B.EIMASSE,
+       B.SCHMUTZ,
+       B.KNICKEIER,
+       B.VOLLEI,
+       B.BRUCHEIER,
+       B.TIERBESTAND,
+       B.ID_EITABELLE,
+       B.ID_DGEWICHTTAB,
+       B.FUTTERKTAG,
+       B.SILONR,
+       B.KL6,
+       B.VERMITTELTAM,
+       B.SMALL,
+       B.LARGE,
+       B.MEDIUM,
+       B.XL,
+       B.ZEITSTEMPEL,
+       B.DGEWICHTEI,
+       B.AW,
+       B.VERMITTELT,
+       H.HERDENNUMMER AS HERDEN_NUMMER_REL,
+       H.BEZEICHNUNG AS HERDEN_BEZEICHNUNG_REL,
+       H.ID_EILAGER   AS HERDEN_ID_EILAGER,
+       H.AKTIV        AS HERDEN_AKTIV_REL
+FROM BUCHUNG B
+         LEFT JOIN HERDEN H ON B.ID_HERDEN = H.ID
+WHERE B.VERMITTELT != 'S'
+ORDER BY B.BUCHUNGSDATUM DESC;
+
+-- name: CreateBuchung :one
+INSERT INTO BUCHUNG (
+    ID_HERDEN, LW, HERDENNUMMER, BUCHUNGSDATUM, GEWICHTPROBE, KONTROLLGEWICHT,
+    KLASSEA, VERLUSTE, EIMASSE, SCHMUTZ, KNICKEIER, VOLLEI, BRUCHEIER,
+    TIERBESTAND, ID_EITABELLE, ID_DGEWICHTTAB, FUTTERKTAG, SILONR,
+    KL6, VERMITTELTAM, SMALL, LARGE, MEDIUM, XL, DGEWICHTEI, ZEITSTEMPEL, AW, VERMITTELT)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: UpdateBuchung :one
+UPDATE BUCHUNG
+SET ID_HERDEN = ?, LW = ?, HERDENNUMMER = ?, BUCHUNGSDATUM = ?, GEWICHTPROBE = ?,
+    KONTROLLGEWICHT = ?, KLASSEA = ?, VERLUSTE = ?, EIMASSE = ?, SCHMUTZ = ?,
+    KNICKEIER = ?, VOLLEI = ?, BRUCHEIER = ?, TIERBESTAND = ?, ID_EITABELLE = ?,
+    ID_DGEWICHTTAB = ?, FUTTERKTAG = ?, SILONR = ?, KL6 = ?, VERMITTELTAM = ?,
+    SMALL       = ?,
+    LARGE       = ?,
+    MEDIUM      = ?,
+    XL          = ?,
+    DGEWICHTEI  = ?,
+    ZEITSTEMPEL = ?,
+    AW          = ?,
+    VERMITTELT  = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteBuchung :exec
+DELETE
+FROM BUCHUNG
+WHERE ID = ?;
+
+-- name: GetLatestBookingByHerde :one
+SELECT ID, BUCHUNGSDATUM, TIERBESTAND, VERLUSTE
+FROM BUCHUNG
+WHERE ID_HERDEN = ?
+ORDER BY BUCHUNGSDATUM DESC
+LIMIT 1;
+
+-- name: ListFutterBuchungen :many
+SELECT F.ID,
+       F.ID_SILO,
+       F.SILONUMMER,
+       F.HERDENR,
+       F.ID_PERSON,
+       F.LIEFERDATUM,
+       F.LIEFERMENGE,
+       F.PREISDT,
+       F.RABATTPROZ,
+       F.NETTO,
+       F.BRUTTO,
+       F.MWSTPROZ,
+       F.MWSTKZ,
+       F.DATUM,
+       F.ZEITSTEMPEL,
+       F.AW,
+       F.ID_FUTTERSORTEN,
+       FS.BEZEICHNUNG AS FUTTERSORTE_TEXT
+FROM FUTTER F
+         LEFT JOIN FUTTERSORTEN FS ON F.ID_FUTTERSORTEN = FS.ID
+ORDER BY F.LIEFERDATUM DESC;
+
+-- name: CreateFutterBuchung :one
+INSERT INTO FUTTER (ID_SILO, SILONUMMER, HERDENR, ID_PERSON, LIEFERDATUM,
+    LIEFERMENGE, PREISDT, RABATTPROZ, NETTO, BRUTTO,
+                    MWSTPROZ, MWSTKZ, DATUM, ZEITSTEMPEL, AW, ID_FUTTERSORTEN)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: UpdateFutterBuchung :one
+UPDATE FUTTER
+SET ID_SILO     = ?,
+    SILONUMMER  = ?,
+    HERDENR     = ?,
+    ID_PERSON   = ?,
+    LIEFERDATUM = ?,
+    LIEFERMENGE = ?, PREISDT = ?, RABATTPROZ = ?, NETTO = ?, BRUTTO = ?,
+    MWSTPROZ    = ?,
+    MWSTKZ      = ?,
+    DATUM       = ?,
+    ZEITSTEMPEL = ?,
+    AW          = ?,
+    ID_FUTTERSORTEN = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteFutterBuchung :exec
+DELETE
+FROM FUTTER
+WHERE ID = ?;
+
+-- name: ListTierbewegungen :many
+SELECT T.ID,
+       COALESCE(T.HERDENNUMMER, 0)   AS HERDENNUMMER,
+       COALESCE(T.ID_BUCHUNG, 0)     AS ID_BUCHUNG,
+       COALESCE(T.TYP, 'x')          AS TYP,
+       COALESCE(T.ID_TEXTE, 0)       AS ID_TEXTE,
+       COALESCE(T.BEWEGUNGSDATUM, '0001-01-01') AS BEWEGUNGSDATUM,
+       COALESCE(T.BEWEGUNGEN, 0)     AS BEWEGUNGEN,
+       COALESCE(T.ID_HERDEN_VON, 0)  AS ID_HERDEN_VON,
+       COALESCE(T.ID_HERDEN_NACH, 0) AS ID_HERDEN_NACH,
+       COALESCE(T.KOSTEN, 0)         AS KOSTEN,
+       TXT.TEXT_TYP_KZ,
+       U.BETREFF      AS GRUND_TEXT,
+       H.BEZEICHNUNG  AS HERDEN_BEZEICHNUNG,
+       HV.BEZEICHNUNG                AS HERDEN_VON_BEZEICHNUNG,
+       HN.BEZEICHNUNG                AS HERDEN_NACH_BEZEICHNUNG
+FROM TIERBEWEGUNGEN T
+         LEFT JOIN TEXTE TXT ON T.ID_TEXTE = TXT.ID
+         LEFT JOIN UEBERSETZUNGEN U ON TXT.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?
+         LEFT JOIN HERDEN H ON T.HERDENNUMMER = H.HERDENNUMMER
+         LEFT JOIN HERDEN HV ON T.ID_HERDEN_VON = HV.ID
+         LEFT JOIN HERDEN HN ON T.ID_HERDEN_NACH = HN.ID
+ORDER BY T.BEWEGUNGSDATUM DESC;
+
+-- name: CreateTierbewegung :one
+INSERT INTO TIERBEWEGUNGEN (HERDENNUMMER, ID_BUCHUNG, TYP, ID_TEXTE,
+                            BEWEGUNGSDATUM, BEWEGUNGEN, ID_HERDEN_VON, ID_HERDEN_NACH, KOSTEN)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateTierbewegung :one
+UPDATE TIERBEWEGUNGEN
+SET HERDENNUMMER   = ?,
+    ID_BUCHUNG     = ?,
+    TYP            = ?,
+    ID_TEXTE       = ?,
+    BEWEGUNGSDATUM = ?,
+    BEWEGUNGEN     = ?,
+    ID_HERDEN_VON  = ?,
+    ID_HERDEN_NACH = ?,
+    KOSTEN         = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteTierbewegung :exec
+DELETE
+FROM TIERBEWEGUNGEN
+WHERE ID = ?;
+
+-- name: GetKostentabkopf :one
+SELECT *
+FROM KOSTENTABKOPF
+WHERE ID = 1;
+
+-- name: UpdateKostentabkopf :one
+INSERT INTO KOSTENTABKOPF (ID, SCHLACHTERLOES, PRODDAUERGEPLANT, GEBAEUDEWERT, ABSCHREIBUNG_G, GERAETEWERT,
+                           ABSCHREIBUNG_R, KOSTENTAG)
+VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(ID) DO UPDATE SET
+    SCHLACHTERLOES = EXCLUDED.SCHLACHTERLOES,
+                       PRODDAUERGEPLANT = EXCLUDED.PRODDAUERGEPLANT,
+                       GEBAEUDEWERT = EXCLUDED.GEBAEUDEWERT,
+                       ABSCHREIBUNG_G = EXCLUDED.ABSCHREIBUNG_G,
+                       GERAETEWERT = EXCLUDED.GERAETEWERT,
+                       ABSCHREIBUNG_R = EXCLUDED.ABSCHREIBUNG_R,
+                       KOSTENTAG = EXCLUDED.KOSTENTAG
+RETURNING *;
+
+-- name: ListKosten :many
+SELECT *
+FROM KOSTEN
+WHERE ID_KOSTENTABKOPF = 1
+ORDER BY BUCHUNGSDATUM DESC;
+
+-- name: CreateKosten :one
+INSERT INTO KOSTEN (
+    ID_KOSTENTABKOPF, KOSTENTYP, BEZEICHNUNG, KOSTEN, TAGE, BUCHUNGSDATUM
+) VALUES (1, ?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: UpdateKosten :one
+UPDATE KOSTEN
+SET KOSTENTYP = ?, BEZEICHNUNG = ?, KOSTEN = ?, TAGE = ?, BUCHUNGSDATUM = ?
+WHERE ID = ?
+RETURNING *;
+
+-- name: DeleteKosten :exec
+DELETE
+FROM KOSTEN
+WHERE ID = ?;
+
+-- name: ListTextTypen :many
+SELECT *
+FROM TEXT_TYPEN;
+
+-- name: CreateTextTyp :one
+INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG)
+VALUES (?, ?) RETURNING *;
+
+-- name: UpdateTextTyp :one
+UPDATE TEXT_TYPEN
+SET KZ          = ?,
+    BEZEICHNUNG = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteTextTyp :exec
+DELETE
+FROM TEXT_TYPEN
+WHERE ID = ?;
+
+-- name: ListTexte :many
+SELECT T.ID,
+       T.TEXT_TYP_KZ,
+       T.KZ,
+       COALESCE(U.BETREFF, '') AS BETREFF,
+       COALESCE(U.INHALT, '')  AS INHALT
+FROM TEXTE T
+         LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?;
+
+-- name: CreateText :one
+INSERT INTO TEXTE (TEXT_TYP_KZ, KZ)
+VALUES (?, ?) RETURNING *;
+
+-- name: UpdateText :one
+UPDATE TEXTE
+SET TEXT_TYP_KZ = ?,
+    KZ          = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteText :exec
+DELETE
+FROM TEXTE
+WHERE ID = ?;
+
+-- name: ListTexteByType :many
+SELECT T.ID,
+       T.TEXT_TYP_KZ,
+       T.KZ,
+       COALESCE(U.BETREFF, '') AS BETREFF,
+       COALESCE(U.INHALT, '')  AS INHALT
+FROM TEXTE T
+         LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?
+WHERE T.TEXT_TYP_KZ = ?;
+
+-- name: ListVerwendungsTexte :many
+SELECT T.ID,
+       T.KZ,
+       T.TEXT_TYP_KZ,
+       U.BETREFF
+FROM TEXTE T
+         INNER JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE
+WHERE T.TEXT_TYP_KZ = 'E'
+  AND T.KZ <> 'E'
+  AND U.SPRACHE_KZ = ?;
+
+-- name: ListTexteByKZ :many
+SELECT T.ID,
+       T.TEXT_TYP_KZ,
+       T.KZ,
+       COALESCE(U.BETREFF, '') AS BETREFF,
+       COALESCE(U.INHALT, '')  AS INHALT
+FROM TEXTE T
+         LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?
+WHERE T.KZ = ?;
+
+-- name: CreateUebersetzung :one
+INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT)
+VALUES (?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateUebersetzung :one
+UPDATE UEBERSETZUNGEN
+SET BETREFF = ?,
+    INHALT  = ?
+WHERE ID_TEXTE = ?
+  AND SPRACHE_KZ = ?
+RETURNING *;
+
+-- name: UpsertUebersetzung :one
+INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT)
+VALUES (?, ?, ?, ?) ON CONFLICT(ID_TEXTE, SPRACHE_KZ) DO
+UPDATE SET
+    BETREFF = EXCLUDED.BETREFF,
+    INHALT = EXCLUDED.INHALT
+RETURNING *;
+
+-- name: GetTranslatedText :one
+SELECT T.ID,
+       T.TEXT_TYP_KZ,
+       COALESCE(U_TARGET.BETREFF, U_DEFAULT.BETREFF, '')         AS BETREFF,
+       COALESCE(U_TARGET.INHALT, U_DEFAULT.INHALT, '')           AS INHALT,
+       COALESCE(U_TARGET.SPRACHE_KZ, U_DEFAULT.SPRACHE_KZ, 'DE') AS SPRACHE_KZ
+FROM TEXTE T
+         LEFT JOIN UEBERSETZUNGEN U_TARGET ON T.ID = U_TARGET.ID_TEXTE AND U_TARGET.SPRACHE_KZ = ?
+         LEFT JOIN UEBERSETZUNGEN U_DEFAULT ON T.ID = U_DEFAULT.ID_TEXTE AND U_DEFAULT.SPRACHE_KZ = 'DE'
+WHERE T.ID = ?;
+
+-- name: ListSolltabellen :many
+SELECT ID, BEZEICHNUNG
+FROM TABELLENKOPF
+WHERE TABELLENTYP = 'S'
+ORDER BY BEZEICHNUNG;
+
+-- name: ListTabellenkopfByType :many
+SELECT ID,
+       TABELLENTYP,
+       TABELLENNUMMER,
+       BEZEICHNUNG,
+       COALESCE(ANLAGEDATUM, '0001-01-01') AS ANLAGEDATUM,
+       COALESCE(DATUM, '0001-01-01')       AS DATUM
+FROM TABELLENKOPF
+WHERE TRIM(TABELLENTYP) = ?
+ORDER BY BEZEICHNUNG;
+
+-- name: UpdateTabellenkopf :one
+UPDATE TABELLENKOPF
+SET TABELLENNUMMER = ?,
+    BEZEICHNUNG    = ?,
+    ANLAGEDATUM    = ?,
+    DATUM          = ?
+WHERE ID = ? RETURNING *;
+
+-- name: CreateTabellenkopf :one
+INSERT INTO TABELLENKOPF (TABELLENTYP, TABELLENNUMMER, BEZEICHNUNG, ANLAGEDATUM, DATUM)
+VALUES (?, ?, ?, ?, ?) RETURNING *;
+
+-- name: ListLSLKlassikByTabNum :many
+SELECT *
+FROM LSLKLASSIK
+WHERE TABELLENNUMMER = ?
+ORDER BY ALTERINWOCHEN;
+
+-- name: ListGewichtByTabNum :many
+SELECT *
+FROM GEWICHTTABELLE
+WHERE TABELLENNUMMER = ?
+ORDER BY EIGEWICHT;
+
+-- name: CreateLSLKlassik :one
+INSERT INTO LSLKLASSIK (TABELLENNUMMER, ALTERINWOCHEN, EIZAHLKUM, LEGERATEAH, LEGERATEDH, EIGEWICHTWO, EIGEWICHTKUM,
+                        EIMASSEWO, EIMASSEKUM)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateLSLKlassik :one
+UPDATE LSLKLASSIK
+SET TABELLENNUMMER = ?,
+    ALTERINWOCHEN  = ?,
+    EIZAHLKUM      = ?,
+    LEGERATEAH     = ?,
+    LEGERATEDH     = ?,
+    EIGEWICHTWO    = ?,
+    EIGEWICHTKUM   = ?,
+    EIMASSEWO      = ?,
+    EIMASSEKUM     = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteLSLKlassik :exec
+DELETE
+FROM LSLKLASSIK
+WHERE ID = ?;
+
+-- name: CreateGewichtTabelle :one
+INSERT INTO GEWICHTTABELLE (TABELLENNUMMER, EIGEWICHT, KLASSE1, KLASSE2, KLASSE3, KLASSE4, KLASSE5, KLASSE6, KLASSE7)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateGewichtTabelle :one
+UPDATE GEWICHTTABELLE
+SET TABELLENNUMMER = ?,
+    EIGEWICHT      = ?,
+    KLASSE1        = ?,
+    KLASSE2        = ?,
+    KLASSE3        = ?,
+    KLASSE4        = ?,
+    KLASSE5        = ?,
+    KLASSE6        = ?,
+    KLASSE7        = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteGewichtTabelle :exec
+DELETE
+FROM GEWICHTTABELLE
+WHERE ID = ?;
+
+-- name: GetTabellenkopf :one
+SELECT ID,
+       TABELLENTYP,
+       TABELLENNUMMER,
+       BEZEICHNUNG,
+       COALESCE(ANLAGEDATUM, '0001-01-01') AS ANLAGEDATUM,
+       COALESCE(DATUM, '0001-01-01')       AS DATUM
+FROM TABELLENKOPF
+WHERE ID = ?;
+
+-- name: GetGewichtByTabNumAndWeight :one
+SELECT *
+FROM GEWICHTTABELLE
+WHERE TABELLENNUMMER = ?
+  AND ROUND(EIGEWICHT, 1) = ROUND(?, 1)
+LIMIT 1;
+
+-- name: GetLSLByTabNumAndAge :one
+SELECT *
+FROM LSLKLASSIK
+WHERE TABELLENNUMMER = ? AND ALTERINWOCHEN = ?
+LIMIT 1;
+
+-- name: AddEilagerBuchung :one
+INSERT INTO EILAGERBUCHUNG (ID_FREMDESLAGER, ID_BUCHUNG, ID_EILAGER, BUCHUNGSDATUM, JUMBOS, XL, LARGE, MEDIUM, SMALL,
+                            VOLLEIKG, SCHMUTZ, KNICKEIER, BRUCHEIER, BUCHUNGSTYP, CHARGE, KZ_LAGER, ID_FREMDEBUCHUNG,
+                            VERKAUF)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateEilagerBuchung :one
+UPDATE EILAGERBUCHUNG
+SET
+  ID_FREMDESLAGER = ?,
+  ID_BUCHUNG = ?,
+  ID_EILAGER = ?,
+  BUCHUNGSDATUM = ?,
+  JUMBOS = ?,
+  XL = ?,
+  LARGE = ?,
+  MEDIUM = ?,
+  SMALL = ?,
+  VOLLEIKG = ?,
+  SCHMUTZ = ?,
+  KNICKEIER = ?,
+  BRUCHEIER = ?,
+  BUCHUNGSTYP = ?,
+  CHARGE   = ?,
+  KZ_LAGER         = ?,
+  ID_FREMDEBUCHUNG = ?,
+  VERKAUF          = ?
+WHERE ID = ? RETURNING *;
+
+-- name: GetEilagerBuchung :one
+SELECT *
+FROM EILAGERBUCHUNG
+WHERE ID = ?;
+
+-- name: DeleteEilagerBuchung :exec
+DELETE FROM EILAGERBUCHUNG
+WHERE ID = ?;
+
+-- name: ListEilagerBuchungenByLager :many
+SELECT *
+FROM EILAGERBUCHUNG
+WHERE ID_EILAGER = sqlc.arg(lager_id)
+ORDER BY BUCHUNGSDATUM DESC;
+
+-- name: GetBuchungGroupTotals :one
+SELECT SUM(KL6)    AS JUMBOS,
+       SUM(XL)     AS XL,
+       SUM(LARGE)  AS LARGE,
+       SUM(MEDIUM) AS MEDIUM,
+       SUM(SMALL)  AS SMALL,
+       SUM(VOLLEI) AS VOLLEIKG
+FROM BUCHUNG
+WHERE ID_HERDEN = ?
+  AND VERMITTELTAM = ?
+  AND VERMITTELT IN ('V', 'S');
+
+-- name: GetEilagerGroupTotals :one
+SELECT SUM(JUMBOS)   AS JUMBOS,
+       SUM(XL)       AS XL,
+       SUM(LARGE)    AS LARGE,
+       SUM(MEDIUM)   AS MEDIUM,
+       SUM(SMALL)    AS SMALL,
+       SUM(VOLLEIKG) AS VOLLEIKG
+FROM EILAGERBUCHUNG
+WHERE ID_BUCHUNG IN (SELECT ID
+                     FROM BUCHUNG
+                     WHERE ID_HERDEN = ?
+                       AND VERMITTELTAM = ?
+                       AND VERMITTELT IN ('V', 'S'))
+  AND (ID_FREMDESLAGER IS NULL OR ID_FREMDESLAGER = 0);
+
+-- name: GetEilagerSumByBuchungID :one
+SELECT CAST(COALESCE(SUM(JUMBOS), 0) AS INTEGER)   AS JUMBOS,
+       CAST(COALESCE(SUM(XL), 0) AS INTEGER)       AS XL,
+       CAST(COALESCE(SUM(LARGE), 0) AS INTEGER)    AS LARGE,
+       CAST(COALESCE(SUM(MEDIUM), 0) AS INTEGER)   AS MEDIUM,
+       CAST(COALESCE(SUM(SMALL), 0) AS INTEGER)    AS SMALL,
+       CAST(COALESCE(SUM(VOLLEIKG), 0) AS DECIMAL) AS VOLLEIKG,
+       CAST(COALESCE(SUM(SCHMUTZ), 0) AS INTEGER)   AS SCHMUTZ,
+       CAST(COALESCE(SUM(KNICKEIER), 0) AS INTEGER) AS KNICKEIER,
+       CAST(COALESCE(SUM(BRUCHEIER), 0) AS INTEGER) AS BRUCHEIER
+FROM EILAGERBUCHUNG
+WHERE ID_BUCHUNG = ?
+  AND (ID_FREMDESLAGER IS NULL OR ID_FREMDESLAGER = 0);
+
+-- name: GetEilagerSumBySource :one
+SELECT CAST(COALESCE(SUM(JUMBOS), 0) AS INTEGER)   AS JUMBOS,
+       CAST(COALESCE(SUM(XL), 0) AS INTEGER)       AS XL,
+       CAST(COALESCE(SUM(LARGE), 0) AS INTEGER)    AS LARGE,
+       CAST(COALESCE(SUM(MEDIUM), 0) AS INTEGER)   AS MEDIUM,
+       CAST(COALESCE(SUM(SMALL), 0) AS INTEGER)    AS SMALL,
+       CAST(COALESCE(SUM(VOLLEIKG), 0) AS DECIMAL) AS VOLLEIKG
+FROM EILAGERBUCHUNG
+WHERE ID_BUCHUNG = ?
+  AND ID_FREMDESLAGER = ?;
+
+-- name: ListEilagerBuchungenByKZ :many
+SELECT EB.*
+FROM EILAGERBUCHUNG EB
+         LEFT JOIN EILAGER E1 ON EB.ID_EILAGER = E1.ID
+WHERE E1.KZ = sqlc.arg(kz)
+ORDER BY EB.BUCHUNGSDATUM DESC;
+
+-- name: GetEilager :one
+SELECT *
+FROM EILAGER
+WHERE ID = ?;
+
+-- name: CreateEilager :one
+INSERT INTO EILAGER (LAGERNUMMER, KZ, BEZEICHNUNG, LETZTE_BUCHUNG, JUMBOS, XL, LARGE, MEDIUM, SMALL, VOLLEIKG, AW)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateEilager :one
+UPDATE EILAGER
+SET LAGERNUMMER    = ?,
+  KZ = ?,
+  BEZEICHNUNG = ?,
+    LETZTE_BUCHUNG = ?,
+    JUMBOS         = ?,
+  XL = ?,
+  LARGE = ?,
+    MEDIUM         = ?,
+  SMALL = ?,
+  VOLLEIKG = ?,
+  AW = ?
+WHERE ID = ?
+RETURNING *;
+
+-- name: DeleteEilager :exec
+DELETE
+FROM EILAGER
+WHERE ID = ?;
+
+-- name: ListLagerplaetze :many
+SELECT LP.ID, LP.ID_EILAGER, LP.BEZEICHNUNG, LP.BEMERKUNG, E.BEZEICHNUNG AS EILAGER_BEZEICHNUNG
+FROM LAGERPLATZ LP
+         JOIN EILAGER E ON LP.ID_EILAGER = E.ID
+ORDER BY LP.BEZEICHNUNG;
+
+-- name: ListLagerplaetzeByEilager :many
+SELECT LP.ID, LP.ID_EILAGER, LP.BEZEICHNUNG, LP.BEMERKUNG, E.BEZEICHNUNG AS EILAGER_BEZEICHNUNG
+FROM LAGERPLATZ LP
+         JOIN EILAGER E ON LP.ID_EILAGER = E.ID
+WHERE LP.ID_EILAGER = ?
+ORDER BY LP.BEZEICHNUNG;
+
+-- name: GetLagerplatz :one
+SELECT * FROM LAGERPLATZ WHERE ID = ?;
+
+-- name: CreateLagerplatz :one
+INSERT INTO LAGERPLATZ (ID_EILAGER, BEZEICHNUNG, BEMERKUNG)
+VALUES (?, ?, ?) RETURNING *;
+
+-- name: UpdateLagerplatz :one
+UPDATE LAGERPLATZ
+SET ID_EILAGER = ?, BEZEICHNUNG = ?, BEMERKUNG = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteLagerplatz :exec
+DELETE FROM LAGERPLATZ WHERE ID = ?;
+
+-- name: GetBestandsuebersicht :many
+SELECT CHARGE,
+       LAGERPLATZ_BEZEICHNUNG,
+       LAGERPLATZ_ID,
+       EILAGER_KZ,
+       EILAGER_ID,
+       EILAGER_BEZEICHNUNG,
+       SUM(JUMBOS)   AS JUMBOS,
+       SUM(XL)       AS XL,
+       SUM(LARGE)    AS LARGE,
+       SUM(MEDIUM)   AS MEDIUM,
+       SUM(SMALL)    AS SMALL,
+       SUM(VOLLEIKG) AS VOLLEIKG
+FROM (
+         -- Positive Buchungen (Einlagerung / Ziel einer Umbuchung)
+         SELECT EB.CHARGE,
+                LP.BEZEICHNUNG AS LAGERPLATZ_BEZEICHNUNG,
+                LP.ID          AS LAGERPLATZ_ID,
+                E.KZ           AS EILAGER_KZ,
+                EB.ID_EILAGER  AS EILAGER_ID,
+                E.BEZEICHNUNG  AS EILAGER_BEZEICHNUNG,
+                EB.JUMBOS,
+                EB.XL,
+                EB.LARGE,
+                EB.MEDIUM,
+                EB.SMALL,
+                EB.VOLLEIKG
+         FROM EILAGERBUCHUNG EB
+                  LEFT JOIN EILAGER E ON EB.ID_EILAGER = E.ID
+                  LEFT JOIN LAGERPLATZ LP ON EB.ID_LAGERPLATZ = LP.ID
+         WHERE (? = 0 OR EB.ID_EILAGER = ?)
+
+         UNION ALL
+
+         -- Negative Buchungen (Abgang / Quelle einer Umbuchung)
+         SELECT EB.CHARGE,
+                ''                 AS LAGERPLATZ_BEZEICHNUNG,
+                0                  AS LAGERPLATZ_ID,
+                E.KZ               AS EILAGER_KZ,
+                EB.ID_FREMDESLAGER AS EILAGER_ID,
+                E.BEZEICHNUNG      AS EILAGER_BEZEICHNUNG,
+                -EB.JUMBOS,
+                -EB.XL,
+                -EB.LARGE,
+                -EB.MEDIUM,
+                -EB.SMALL,
+                -EB.VOLLEIKG
+         FROM EILAGERBUCHUNG EB
+                  LEFT JOIN EILAGER E ON EB.ID_FREMDESLAGER = E.ID
+         WHERE EB.ID_FREMDESLAGER != 0 AND (? = 0 OR EB.ID_FREMDESLAGER = ?))
+GROUP BY CHARGE, LAGERPLATZ_ID, EILAGER_ID, EILAGER_KZ, EILAGER_BEZEICHNUNG
+ORDER BY EILAGER_BEZEICHNUNG, CHARGE, LAGERPLATZ_BEZEICHNUNG;
+
+-- name: ListEierpreise :many
+SELECT *
+FROM EIERPREISE
+ORDER BY KZ_HALTUNGSTYP, GEWICHT_VON DESC;
+
+-- name: GetEierpreis :one
+SELECT *
+FROM EIERPREISE
+WHERE ID = ?;
+
+-- name: CreateEierpreis :one
+INSERT INTO EIERPREISE (KZ_HALTUNGSTYP, EIERKLASSE, GEWICHT_VON, GEWICHT_BIS, PREIS_VON, PREIS_BIS)
+VALUES (?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateEierpreis :one
+UPDATE EIERPREISE
+SET KZ_HALTUNGSTYP = ?,
+    EIERKLASSE     = ?,
+    GEWICHT_VON    = ?,
+    GEWICHT_BIS    = ?,
+    PREIS_VON      = ?,
+    PREIS_BIS      = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteEierpreis :exec
+DELETE
+FROM EIERPREISE
+WHERE ID = ?;
+
+-- name: ListDynamischeSQL :many
+SELECT ID,
+       BESCHREIBUNG,
+       SQLSTATEMENT,
+       KATEGORIE_KZ,
+       GRUPPEN_KZ,
+       TYP_KZ,
+       SYSTEM_KZ,
+       TEMPLATE_NAME,
+       PARAM_DEF,
+       DETAIL_SQL,
+       LINK_LOGIC,
+       GROUP_FIELD,
+       ROWS_PER_PAGE,
+       PAGE_ORIENTATION,
+       SHOW_MASTER_GRID,
+       SHOW_DETAIL_GRID,
+       SQLSTATEMENT_NATIVE,
+       DETAIL_SQL_NATIVE,
+       ROOT_KZ
+FROM DYNAMISCHE_SQL
+ORDER BY ROOT_KZ ASC,
+         GRUPPEN_KZ ASC,
+         CASE WHEN KATEGORIE_KZ = 'K' THEN 0 WHEN KATEGORIE_KZ = 'L' THEN 1 ELSE 2 END ASC,
+         BESCHREIBUNG ASC;
+
+
+-- name: GetDynamischeSQL :one
+SELECT *
+FROM DYNAMISCHE_SQL
+WHERE ID = ?;
+
+-- name: CreateDynamischeSQL :one
+INSERT INTO DYNAMISCHE_SQL (BESCHREIBUNG, SQLSTATEMENT, KATEGORIE_KZ, GRUPPEN_KZ, TYP_KZ, TEMPLATE_NAME, PARAM_DEF,
+                            DETAIL_SQL, LINK_LOGIC, GROUP_FIELD, ROWS_PER_PAGE, PAGE_ORIENTATION, SHOW_MASTER_GRID,
+                            SHOW_DETAIL_GRID, SYSTEM_KZ,
+                            SQLSTATEMENT_NATIVE, DETAIL_SQL_NATIVE, ROOT_KZ, SUMMENZEILE, IST_SUMMENZEILE)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+-- name: UpdateDynamischeSQL :one
+UPDATE DYNAMISCHE_SQL
+SET BESCHREIBUNG = ?,
+    SQLSTATEMENT = ?,
+    KATEGORIE_KZ  = ?,
+    GRUPPEN_KZ    = ?,
+    TYP_KZ        = ?,
+    TEMPLATE_NAME = ?,
+    PARAM_DEF    = ?,
+    DETAIL_SQL   = ?,
+    LINK_LOGIC   = ?,
+    GROUP_FIELD         = ?,
+    ROWS_PER_PAGE       = ?,
+    PAGE_ORIENTATION    = ?,
+    SHOW_MASTER_GRID    = ?,
+    SHOW_DETAIL_GRID    = ?,
+    SYSTEM_KZ           = ?,
+    SQLSTATEMENT_NATIVE = ?,
+    DETAIL_SQL_NATIVE = ?,
+    ROOT_KZ         = ?,
+    SUMMENZEILE     = ?,
+    IST_SUMMENZEILE = ?
+WHERE ID = ? RETURNING *;
+-- name: DeleteDynamischeSQL :exec
+DELETE
+FROM DYNAMISCHE_SQL
+WHERE ID = ?;
+
+-- name: ListTranslateFeldnamen :many
+SELECT COALESCE(BETREFF, '') AS BETREFF, COALESCE(INHALT, '') AS INHALT
+FROM TRANSLATEFELDNAMEN
+WHERE SPRACHE_KZ = ?;
+
+-- name: ListFieldTranslations :many
+SELECT F.ID,
+       F.KZ,
+       F.FELDNAME,
+       F.NAMEINDB,
+       COALESCE(T.INHALT, '')  AS INHALT,
+       COALESCE(T.BETREFF, '') AS BETREFF
+FROM FELD_KATALOG F
+         LEFT JOIN TRANSLATEFELDNAMEN T ON F.ID = T.ID_FELD_KATALOG AND T.SPRACHE_KZ = ?
+ORDER BY F.FELDNAME;
+
+-- name: UpsertFieldTranslation :one
+INSERT INTO TRANSLATEFELDNAMEN (ID_FELD_KATALOG, SPRACHE_KZ, BETREFF, INHALT)
+VALUES (?, ?, ?, ?) ON CONFLICT(ID_FELD_KATALOG, SPRACHE_KZ) DO
+UPDATE SET
+    BETREFF = EXCLUDED.BETREFF,
+    INHALT = EXCLUDED.INHALT
+    RETURNING *;
+
+-- name: CreateFieldKatalog :one
+INSERT INTO FELD_KATALOG (KZ, FELDNAME, NAMEINDB)
+VALUES (?, ?, ?) RETURNING *;
+
+-- name: DeleteFieldKatalog :exec
+DELETE
+FROM FELD_KATALOG
+WHERE ID = ?;
+
+-- name: GetBenutzerProfilByID :one
+SELECT *
+FROM BENUTZERPROFILE
+WHERE ID = ? LIMIT 1;
+
+-- name: DeleteBenutzerProfil :exec
+DELETE
+FROM BENUTZERPROFILE
+WHERE PROFIL_KZ = ?;
+
+
+-- name: GetBenutzerProfilByKZ :one
+SELECT *
+FROM BENUTZERPROFILE
+WHERE PROFIL_KZ = ?;
+
+-- name: ListBenutzerProfile :many
+SELECT *
+FROM BENUTZERPROFILE;
+
+-- name: CreateBenutzerProfil :one
+INSERT INTO BENUTZERPROFILE (PROFIL_KZ, BESCHREIBUNG, F_DASHBOARD, F_HERDEN_VERWALTEN, F_EINRICHTUNGEN_VERWALTEN,
+                             F_PERSONEN_VERWALTEN, F_BUCHUNGEN_ERFASSEN, F_AUSWERTUNGEN_ANZEIGEN,
+                             F_SQL_STRUKTUR_VERWALTEN, F_BENUTZER_PROFILE, F_PARAMETER_EDITIEREN, F_KOSTEN_VERWALTEN,
+                             F_TABELLEN_ANZEIGEN, F_TEXTE_VERWALTEN, F_SYSTEM_VERWALTUNG, F_BACKUP_ERSTELLEN)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+
+-- name: UpdateBenutzerProfil :one
+UPDATE BENUTZERPROFILE
+SET BESCHREIBUNG              = ?,
+    F_DASHBOARD               = ?,
+    F_HERDEN_VERWALTEN        = ?,
+    F_EINRICHTUNGEN_VERWALTEN = ?,
+    F_PERSONEN_VERWALTEN      = ?,
+    F_BUCHUNGEN_ERFASSEN      = ?,
+    F_AUSWERTUNGEN_ANZEIGEN   = ?,
+    F_SQL_STRUKTUR_VERWALTEN  = ?,
+    F_BENUTZER_PROFILE        = ?,
+    F_PARAMETER_EDITIEREN     = ?,
+    F_KOSTEN_VERWALTEN        = ?,
+    F_TABELLEN_ANZEIGEN       = ?,
+    F_TEXTE_VERWALTEN         = ?,
+    F_SYSTEM_VERWALTUNG       = ?,
+    F_BACKUP_ERSTELLEN        = ?
+WHERE PROFIL_KZ = ? RETURNING *;
+
+
+-- name: GetBenutzerByUsername :one
+SELECT *
+FROM BENUTZER
+WHERE USERNAME = ?;
+
+-- name: ListBenutzer :many
+SELECT B.*, P.PROFIL_KZ
+FROM BENUTZER B
+         LEFT JOIN BENUTZERPROFILE P ON B.ID_BENUTZER_PROFILE = P.ID;
+
+-- name: CreateBenutzer :one
+INSERT INTO BENUTZER (USERNAME, PASSWORT, ID_BENUTZER_PROFILE, KLARNAME)
+VALUES (?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateBenutzer :exec
+UPDATE BENUTZER
+SET PASSWORT            = ?,
+    ID_BENUTZER_PROFILE = ?,
+    KLARNAME            = ?
+WHERE ID = ?;
+
+-- name: DeleteBenutzer :exec
+DELETE
+FROM BENUTZER
+WHERE ID = ?;
+
+
+-- name: ListShowTV :many
+SELECT *
+FROM SHOWTV;
+
+-- name: GetShowTV :one
+SELECT *
+FROM SHOWTV
+WHERE ID = ?;
+
+-- name: CreateShowTV :one
+INSERT INTO SHOWTV (TVNAME, SHOWIT)
+VALUES (?, ?) RETURNING *;
+
+-- name: UpdateShowTV :one
+UPDATE SHOWTV
+SET TVNAME = ?,
+    SHOWIT = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteShowTV :exec
+DELETE
+FROM SHOWTV
+WHERE ID = ?;
+
+-- name: ListFuttersorten :many
+SELECT *
+FROM FUTTERSORTEN
+ORDER BY BEZEICHNUNG;
+
+-- name: CreateFuttersorte :one
+INSERT INTO FUTTERSORTEN (BEZEICHNUNG)
+VALUES (?) RETURNING *;
+
+-- name: UpdateFuttersorte :one
+UPDATE FUTTERSORTEN
+SET BEZEICHNUNG = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteFuttersorte :exec
+DELETE
+FROM FUTTERSORTEN
+WHERE ID = ?;
+
+-- name: ListVerkauf :many
+SELECT *
+FROM VERKAUF
+ORDER BY BUCHUNGSDATUM DESC;
+
+-- name: GetVerkauf :one
+SELECT *
+FROM VERKAUF
+WHERE ID = ?;
+
+-- name: GetVerkaufByEilagerbuchung :one
+SELECT *
+FROM VERKAUF
+WHERE ID_EILAGERBUCHUNG = ?;
+
+-- name: CreateVerkauf :one
+INSERT INTO VERKAUF (ID_EILAGERBUCHUNG, ID_BUCHUNG, BUCHUNGSDATUM,
+                     MENGESMALL, MENGEMEDIUM, MENGELARGE, MENGEXL,
+                     PREISSMALL, PREISMEDIUM, PREISLARGE, PREISXL,
+                     GESAMTPREIS, BIO, VERBUCHT, CHARGE, RABATTPROZENT)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateVerkauf :one
+UPDATE VERKAUF
+SET ID_EILAGERBUCHUNG = ?,
+    ID_BUCHUNG        = ?,
+    BUCHUNGSDATUM     = ?,
+    MENGESMALL        = ?,
+    MENGEMEDIUM       = ?,
+    MENGELARGE        = ?,
+    MENGEXL           = ?,
+    PREISSMALL        = ?,
+    PREISMEDIUM       = ?,
+    PREISLARGE        = ?,
+    PREISXL           = ?,
+    GESAMTPREIS       = ?,
+    BIO               = ?,
+    VERBUCHT      = ?,
+    CHARGE        = ?,
+    RABATTPROZENT = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteVerkauf :exec
+DELETE
+FROM VERKAUF
+WHERE ID = ?;
+
+-- name: DeleteVerkaufByEilagerbuchung :exec
+DELETE
+FROM VERKAUF
+WHERE ID_EILAGERBUCHUNG = ?;

@@ -1,0 +1,495 @@
+
+> -frontend@0.0.1 lint
+> eslint -c ./eslint.config.js "./src*/**/*.{ts,js,cjs,mjs,vue}"
+
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/boot/api.ts
+  33:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/BestandsUebersicht.vue
+  109:7   error  'extractString' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  109:29  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  115:7   error  'extractInt' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  115:26  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  127:12  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  128:28  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  129:12  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  130:8   error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  131:11  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  132:12  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  133:11  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  134:14  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  135:16  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  136:16  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  137:25  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  168:29  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  239:28  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  258:9   error  'lpNode' is never reassigned. Use 'const' instead   prefer-const
+  304:12  error  '_err' is defined but never used                    @typescript-eslint/no-unused-vars
+  318:39  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  325:47  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  351:30  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/EilagerBuchungenGrid.vue
+  230:29   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  236:26   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  250:16   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  251:16   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  252:7    error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  254:12   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  255:8    error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  256:11   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  257:12   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  258:11   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  259:14   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  271:9    error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  359:53   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  412:59   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  413:65   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  510:108  error  Promise returned in function argument where a void return was expected             @typescript-eslint/no-misused-promises
+  512:49   error  Invalid type "unknown" of template literal expression                              @typescript-eslint/restrict-template-expressions
+  524:64   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  532:18   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  535:68   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  540:66   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  541:58   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  542:60   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  543:61   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  544:60   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  545:65   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  565:56   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  569:59   error  Unexpected any. Specify a different type                                           @typescript-eslint/no-explicit-any
+  571:19   error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/EilagerGrid.vue
+  134:17  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  135:8   error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  136:20  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  137:12  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  138:8   error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  139:11  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  140:12  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  141:11  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  142:14  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  161:29  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  167:26  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  191:57  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  196:18  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  203:18  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  206:66  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  207:58  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  208:60  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  209:61  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  210:60  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  211:73  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  232:12  error  '_err' is defined but never used                                        @typescript-eslint/no-unused-vars
+  242:39  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  290:11  error  Promise returned in function argument where a void return was expected  @typescript-eslint/no-misused-promises
+  295:21  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  315:12  error  '_err' is defined but never used                                        @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/EssentialLink.vue
+  15:7   error  'extractString' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  15:29  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  21:7   error  'extractInt' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  21:26  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/ExampleComponent.vue
+  16:7   error  'extractString' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  16:29  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  22:7   error  'extractInt' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  22:26  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/FormHeader.vue
+  54:7   error  'extractString' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  54:29  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  60:7   error  'extractInt' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  60:26  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/FutterGrid.vue
+  250:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  256:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  263:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  269:37  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  317:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  329:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  337:70  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  338:72  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  339:83  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  340:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  341:69  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  342:71  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  413:31  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  420:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  425:46  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  449:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  458:50  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  466:48  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  511:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  523:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  523:73  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  543:14  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  543:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/HerdeGrid.vue
+  449:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  455:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/LagerplatzVerwaltung.vue
+  165:7   error  'extractString' is assigned a value but never used                                                                                                        @typescript-eslint/no-unused-vars
+  165:29  error  Unexpected any. Specify a different type                                                                                                                  @typescript-eslint/no-explicit-any
+  171:7   error  'extractInt' is assigned a value but never used                                                                                                           @typescript-eslint/no-unused-vars
+  171:26  error  Unexpected any. Specify a different type                                                                                                                  @typescript-eslint/no-explicit-any
+  243:36  error  'typeof e.BEZEICHNUNG === 'object' ? e.BEZEICHNUNG : e.BEZEICHNUNG' may use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  243:36  error  Invalid type "string | { String: string; }" of template literal expression                                                                                @typescript-eslint/restrict-template-expressions
+  257:20  error  Unexpected any. Specify a different type                                                                                                                  @typescript-eslint/no-explicit-any
+  258:18  error  Unexpected any. Specify a different type                                                                                                                  @typescript-eslint/no-explicit-any
+  259:28  error  Unexpected any. Specify a different type                                                                                                                  @typescript-eslint/no-explicit-any
+  267:12  error  '_err' is defined but never used                                                                                                                          @typescript-eslint/no-unused-vars
+  299:11  error  Promise returned in function argument where a void return was expected                                                                                    @typescript-eslint/no-misused-promises
+  304:14  error  '_err' is defined but never used                                                                                                                          @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/LeistungGrid.vue
+   573:53   error  'nextTick' is defined but never used                                                                                                      @typescript-eslint/no-unused-vars
+   575:8    error  'axios' is defined but never used                                                                                                         @typescript-eslint/no-unused-vars
+   579:8    error  'TierbewegungDialog' is defined but never used                                                                                            @typescript-eslint/no-unused-vars
+   616:7    error  'siloOptions' is assigned a value but never used                                                                                          @typescript-eslint/no-unused-vars
+   703:7    error  'gewichtProbeInput' is assigned a value but never used                                                                                    @typescript-eslint/no-unused-vars
+   704:7    error  'kontrollGewichtInput' is assigned a value but never used                                                                                 @typescript-eslint/no-unused-vars
+   749:7    error  'isFullyDistributed' is assigned a value but never used                                                                                   @typescript-eslint/no-unused-vars
+   815:11   error  'res' is assigned a value but never used                                                                                                  @typescript-eslint/no-unused-vars
+  1054:23   error  '(row.BUCHUNGSDATUM as { String?: string }) || ''' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+  1054:23   error  Invalid type "{ String?: string; }" of template literal expression                                                                        @typescript-eslint/restrict-template-expressions
+  1071:22   error  This assertion is unnecessary since it does not change the type of the expression                                                         @typescript-eslint/no-unnecessary-type-assertion
+  1146:25   error  'herde.HERDENNUMMER' will use Object's default stringification format ('[object Object]') when stringified                                @typescript-eslint/no-base-to-string
+  1277:110  error  Promise returned in function argument where a void return was expected                                                                    @typescript-eslint/no-misused-promises
+  1279:40   error  Invalid type "unknown" of template literal expression                                                                                     @typescript-eslint/restrict-template-expressions
+  1282:14   error  '_err' is defined but never used                                                                                                          @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/LoginModal.vue
+   79:27  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  124:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/RasseGrid.vue
+   61:29  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+   67:7   error  'extractInt' is assigned a value but never used                         @typescript-eslint/no-unused-vars
+   67:26  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  123:90  error  Promise returned in function argument where a void return was expected  @typescript-eslint/no-misused-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/SiloGrid.vue
+   64:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   70:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   77:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  142:71  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  143:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  144:82  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  145:82  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  146:82  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  147:82  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  148:91  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:67  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  221:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/StallGrid.vue
+   61:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   67:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  120:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  121:76  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  181:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/TierbewegungDialog.vue
+  118:7   error  'extractString' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  118:29  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  124:7   error  'extractInt' is assigned a value but never used     @typescript-eslint/no-unused-vars
+  124:26  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/components/TierbewegungenGrid.vue
+  116:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  122:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/layouts/MainLayout.vue
+  305:12  error  '_err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/AdminDirect.vue
+   67:29  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  101:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  111:15  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  125:3   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/AdminPage.vue
+   89:29  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  132:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  144:17  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  153:3   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/BenutzerPage.vue
+   74:7   error  'profiles' is assigned a value but never used                                                                                                                       @typescript-eslint/no-unused-vars
+   88:29  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   94:16  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+   97:55  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  118:26  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  146:5   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  154:26  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  160:11  error  Promise returned in function argument where a void return was expected                                                                                              @typescript-eslint/no-misused-promises
+  165:7   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/DynamicReportPage.vue
+  1310:7    error  'route' is assigned a value but never used                                                                                                                          @typescript-eslint/no-unused-vars
+  1312:7    error  'sqlEditorRef' is assigned a value but never used                                                                                                                   @typescript-eslint/no-unused-vars
+  1312:26   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  1350:17   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  1369:17   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  1378:1    error  Async function 'createBoilerplateTemplate' has no 'await' expression                                                                                                @typescript-eslint/require-await
+  1555:3    error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  1575:7    error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  1579:12   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  1595:14   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  1663:12   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  1663:18   error  Empty block statement                                                                                                                                               no-empty
+  1672:12   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  1672:18   error  Empty block statement                                                                                                                                               no-empty
+  1727:7    error  'currentVal' is never reassigned. Use 'const' instead                                                                                                               prefer-const
+  1818:10   error  'onDragStart' is defined but never used                                                                                                                             @typescript-eslint/no-unused-vars
+  1838:9    error  'upSql' is assigned a value but never used                                                                                                                          @typescript-eslint/no-unused-vars
+  1916:76   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  1921:17   error  'e' is defined but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+  1944:87   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  1956:16   error  'e' is defined but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+  1964:93   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2047:25   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2048:25   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2053:50   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2090:13   error  'table' is never reassigned. Use 'const' instead                                                                                                                    prefer-const
+  2149:12   error  'err' is defined but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+  2156:29   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2229:9    error  'upperSql' is assigned a value but never used                                                                                                                       @typescript-eslint/no-unused-vars
+  2241:7    error  'prefix' is never reassigned. Use 'const' instead                                                                                                                   prefer-const
+  2258:10   error  'clearSqlFilters' is defined but never used                                                                                                                         @typescript-eslint/no-unused-vars
+  2259:7    error  'sql' is never reassigned. Use 'const' instead                                                                                                                      prefer-const
+  2286:1    error  Async function 'magicWandNative' has no 'await' expression                                                                                                          @typescript-eslint/require-await
+  2342:23   error  This assertion is unnecessary since it does not change the type of the expression                                                                                   @typescript-eslint/no-unnecessary-type-assertion
+  2375:11   error  'c' is never reassigned. Use 'const' instead                                                                                                                        prefer-const
+  2387:31   error  Unnecessary escape character: \.                                                                                                                                    no-useless-escape
+  2393:31   error  Unnecessary escape character: \.                                                                                                                                    no-useless-escape
+  2399:31   error  Unnecessary escape character: \.                                                                                                                                    no-useless-escape
+  2406:31   error  Unnecessary escape character: \.                                                                                                                                    no-useless-escape
+  2486:25   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2495:17   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2548:10   error  'onSqlDragStart' is defined but never used                                                                                                                          @typescript-eslint/no-unused-vars
+  2605:25   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2624:7    error  'groupedReports' is assigned a value but never used                                                                                                                 @typescript-eslint/no-unused-vars
+  2640:7    error  'orphanReports' is assigned a value but never used                                                                                                                  @typescript-eslint/no-unused-vars
+  2649:33   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2649:43   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2655:7    error  'masterColumns' is assigned a value but never used                                                                                                                  @typescript-eslint/no-unused-vars
+  2658:107  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2664:32   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2670:32   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2693:16   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2698:12   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  2703:10   error  'expandAll' is defined but never used                                                                                                                               @typescript-eslint/no-unused-vars
+  2706:52   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2711:10   error  'collapseAll' is defined but never used                                                                                                                             @typescript-eslint/no-unused-vars
+  2715:44   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2732:38   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2788:20   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2797:20   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2797:39   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2807:21   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2838:40   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2838:54   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2839:12   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2949:42   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  2974:42   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3021:42   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3058:7    error  'currentTemplateName' is assigned a value but never used                                                                                                            @typescript-eslint/no-unused-vars
+  3059:7    error  'complexReportData' is assigned a value but never used                                                                                                              @typescript-eslint/no-unused-vars
+  3059:31   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3060:24   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3061:24   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3062:27   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3064:24   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3065:24   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3066:32   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3078:10   error  'toggleExpandAllRows' is defined but never used                                                                                                                     @typescript-eslint/no-unused-vars
+  3087:7    error  'reportPagination' is assigned a value but never used                                                                                                               @typescript-eslint/no-unused-vars
+  3107:10   error  'isChoice' is defined but never used                                                                                                                                @typescript-eslint/no-unused-vars
+  3112:26   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3118:25   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3127:30   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3128:15   error  This assertion is unnecessary since it does not change the type of the expression                                                                                   @typescript-eslint/no-unnecessary-type-assertion
+  3132:43   error  The `Function` type accepts any function-like value.
+Prefer explicitly defining any function parameters and return type                                             @typescript-eslint/no-unsafe-function-type
+  3132:56   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3133:15   error  This assertion is unnecessary since it does not change the type of the expression                                                                                   @typescript-eslint/no-unnecessary-type-assertion
+  3153:45   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3160:43   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3167:45   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3174:44   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3202:34   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3237:28   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3265:19   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3292:46   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3297:17   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3298:15   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3299:16   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3300:16   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3304:17   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3305:15   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3306:16   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3307:16   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3342:22   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3346:58   error  '_e' is defined but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+  3476:17   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3491:5    error  'confirmFilters' is never reassigned. Use 'const' instead                                                                                                           prefer-const
+  3500:64   error  'val' will use Object's default stringification format ('[object Object]') when stringified                                                                         @typescript-eslint/no-base-to-string
+  3535:7    error  'nativeSql' is assigned a value but never used                                                                                                                      @typescript-eslint/no-unused-vars
+  3537:7    error  'configCols' is assigned a value but never used                                                                                                                     @typescript-eslint/no-unused-vars
+  3629:12   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  3658:12   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  3665:32   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3690:10   error  'onExplorerAppend' is defined but never used                                                                                                                        @typescript-eslint/no-unused-vars
+  3691:31   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  3691:193  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3692:31   error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  3692:193  error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3699:10   error  'transformSqlDirect' is defined but never used                                                                                                                      @typescript-eslint/no-unused-vars
+  3729:34   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3731:66   error  'e' is defined but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+  3735:85   error  'm' is defined but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+  3740:51   error  'm' is defined but never used                                                                                                                                       @typescript-eslint/no-unused-vars
+  3770:10   error  'exportNativeSql' is defined but never used                                                                                                                         @typescript-eslint/no-unused-vars
+  3776:34   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3780:14   error  '_e' is defined but never used                                                                                                                                      @typescript-eslint/no-unused-vars
+  3827:20   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3876:16   error  Promise returned in function argument where a void return was expected                                                                                              @typescript-eslint/no-misused-promises
+  3877:12   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  3884:1    error  Async function 'onDelete' has no 'await' expression                                                                                                                 @typescript-eslint/require-await
+  3901:11   error  Promise returned in function argument where a void return was expected                                                                                              @typescript-eslint/no-misused-promises
+  3907:14   error  '_err' is defined but never used                                                                                                                                    @typescript-eslint/no-unused-vars
+  3917:22   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3920:50   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3932:49   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3944:26   error  '_event' is defined but never used                                                                                                                                  @typescript-eslint/no-unused-vars
+  3944:45   error  '_node' is defined but never used                                                                                                                                   @typescript-eslint/no-unused-vars
+  3944:52   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3948:58   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3994:43   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  3994:56   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  4029:9    error  'targetDesc' is never reassigned. Use 'const' instead                                                                                                               prefer-const
+  4036:16   error  Promise returned in function argument where a void return was expected                                                                                              @typescript-eslint/no-misused-promises
+  4037:12   error  'err' is defined but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+  4044:41   error  Unexpected any. Specify a different type                                                                                                                            @typescript-eslint/no-explicit-any
+  4063:16   error  Promise returned in function argument where a void return was expected                                                                                              @typescript-eslint/no-misused-promises
+  4064:12   error  'err' is defined but never used                                                                                                                                     @typescript-eslint/no-unused-vars
+  4074:3    error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+  4075:3    error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/FirmenPage.vue
+  444:12  error  'err' is defined but never used   @typescript-eslint/no-unused-vars
+  449:14  error  'e' is defined but never used     @typescript-eslint/no-unused-vars
+  467:12  error  'err' is defined but never used   @typescript-eslint/no-unused-vars
+  597:12  error  '_err' is defined but never used  @typescript-eslint/no-unused-vars
+  640:12  error  '_err' is defined but never used  @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/HerdenPage.vue
+  46:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/KostenPage.vue
+  219:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  225:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  232:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  238:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  286:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  293:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  300:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  307:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  314:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  321:18  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  345:53  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  427:22  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  445:15  error  '_err' is defined but never used          @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/MistPage.vue
+   714:37  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+   715:45  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+   717:21  error  'v' will use Object's default stringification format ('[object Object]') when stringified  @typescript-eslint/no-base-to-string
+   721:45  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+   722:43  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+   723:43  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  1043:12  error  '_err' is defined but never used                                                           @typescript-eslint/no-unused-vars
+  1054:11  error  Promise returned in function argument where a void return was expected                     @typescript-eslint/no-misused-promises
+  1059:14  error  'err' is defined but never used                                                            @typescript-eslint/no-unused-vars
+  1379:12  error  '_err' is defined but never used                                                           @typescript-eslint/no-unused-vars
+  1385:79  error  Promise returned in function argument where a void return was expected                     @typescript-eslint/no-misused-promises
+  1449:12  error  'err' is defined but never used                                                            @typescript-eslint/no-unused-vars
+  1460:16  error  '_err' is defined but never used                                                           @typescript-eslint/no-unused-vars
+  1524:12  error  '_err' is defined but never used                                                           @typescript-eslint/no-unused-vars
+  1529:1   error  Async function 'onDeleteFuttersorte' has no 'await' expression                             @typescript-eslint/require-await
+  1535:11  error  Promise returned in function argument where a void return was expected                     @typescript-eslint/no-misused-promises
+  1540:14  error  'err' is defined but never used                                                            @typescript-eslint/no-unused-vars
+  1614:18  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  1622:18  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  1630:18  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  1638:18  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  1672:12  error  '_err' is defined but never used                                                           @typescript-eslint/no-unused-vars
+  1696:27  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  1734:1   error  Async function 'onDeletePreis' has no 'await' expression                                   @typescript-eslint/require-await
+  1734:35  error  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  1740:11  error  Promise returned in function argument where a void return was expected                     @typescript-eslint/no-misused-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/MwstPage.vue
+  232:11  error  Promise returned in function argument where a void return was expected  @typescript-eslint/no-misused-promises
+  238:14  error  'err' is defined but never used                                         @typescript-eslint/no-unused-vars
+  264:12  error  'err' is defined but never used                                         @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/PersonPage.vue
+  339:29  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  345:26  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  361:18  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  365:27  error  'any' overrides all other types in this union type  @typescript-eslint/no-redundant-type-constituents
+  444:18  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  451:18  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  454:59  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  459:18  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  461:63  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  470:31  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  516:22  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  568:24  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  630:17  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  631:16  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  632:12  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+  639:27  error  Unexpected any. Specify a different type            @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/ProfilePage.vue
+  173:22  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  174:29  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  185:29  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  191:26  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  198:33  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  221:12  error  'error' is defined but never used                                       @typescript-eslint/no-unused-vars
+  251:27  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  257:11  error  Promise returned in function argument where a void return was expected  @typescript-eslint/no-misused-promises
+  273:27  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  291:11  error  'BESCHREIBUNG' is assigned a value but never used                       @typescript-eslint/no-unused-vars
+  317:20  error  Unexpected any. Specify a different type                                @typescript-eslint/no-explicit-any
+  337:12  error  'error' is defined but never used                                       @typescript-eslint/no-unused-vars
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/ShowTVPage.vue
+  140:3  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/pages/Textverwaltung.vue
+  463:11  error  Promise returned in function argument where a void return was expected  @typescript-eslint/no-misused-promises
+  519:11  error  Promise returned in function argument where a void return was expected  @typescript-eslint/no-misused-promises
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/router/index.ts
+  49:54  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/wernerhofmann/Projekte/HuhnLite/frontend/src/store/session.ts
+  50:20  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  77:28  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 420 problems (420 errors, 0 warnings)
+  13 errors and 0 warnings potentially fixable with the `--fix` option.
+

@@ -1,0 +1,135 @@
+
+> -frontend@0.0.1 build
+> quasar build
+
+
+ .d88888b.
+d88P" "Y88b
+888     888
+888     888 888  888  8888b.  .d8888b   8888b.  888d888
+888     888 888  888     "88b 88K          "88b 888P"
+888 Y8b 888 888  888 .d888888 "Y8888b. .d888888 888
+Y88b.Y8b88P Y88b 888 888  888      X88 888  888 888
+ "Y888888"   "Y88888 "Y888888  88888P' "Y888888 888
+       Y8b
+
+
+ Build mode............. spa
+ Pkg quasar............. v2.19.3
+ Pkg @quasar/app-vite... v2.6.0
+ Pkg vite............... v8.0.9
+ Debugging.............. no
+ Publishing............. no
+
+ App • Using quasar.config.ts in "ts" format
+ App •  WAIT  • Compiling of SPA UI with Vite in progress...
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+ App •  DONE  • SPA UI compiled with success by Vite • 623ms
+
+ Build summary with important files:
+ ╔════════════════════════════════════════════════╦══════════════╦══════════════╗
+ ║                                          Asset ║         Size ║      Gzipped ║
+ ╟────────────────────────────────────────────────╫──────────────╫──────────────╢
+ ║                 assets/AdminDirect-D7Q7pXz3.js ║      2.91 KB ║      1.54 KB ║
+ ║                assets/BenutzerPage-BXbE9y8T.js ║      4.44 KB ║      1.77 KB ║
+ ║               assets/BuchungenPage-DoNnIYRF.js ║    107.70 KB ║     25.45 KB ║
+ ║                  assets/ClosePopup-Cgh80o_s.js ║      0.74 KB ║      0.42 KB ║
+ ║           assets/DynamicReportPage-DzGCapw8.js ║    107.41 KB ║     29.70 KB ║
+ ║           assets/EinrichtungenPage-ClkrIxqi.js ║     39.37 KB ║      9.28 KB ║
+ ║               assets/ErrorNotFound-EcTv1hin.js ║      0.54 KB ║      0.38 KB ║
+ ║                  assets/FirmenPage-C4UUgcG3.js ║     22.36 KB ║      5.93 KB ║
+ ║                  assets/HerdenPage-CuGPVy9w.js ║    557.07 KB ║    146.39 KB ║
+ ║                   assets/IndexPage-Ch6nlFzI.js ║      4.91 KB ║      1.48 KB ║
+ ║                  assets/KostenPage-DmwWX3VP.js ║     10.92 KB ║      3.77 KB ║
+ ║                  assets/MainLayout-BmNgNkne.js ║     27.79 KB ║      8.49 KB ║
+ ║                    assets/MistPage-D7948LY-.js ║     44.12 KB ║      8.46 KB ║
+ ║                  assets/PersonPage-BJ-B4MZL.js ║     18.10 KB ║      5.12 KB ║
+ ║                 assets/ProfilePage-BV9zA_0V.js ║     10.15 KB ║      3.41 KB ║
+ ║                      assets/QBadge-CU6BMpXU.js ║      0.92 KB ║      0.51 KB ║
+ ║                     assets/QBanner-C1sjMyzO.js ║      0.88 KB ║      0.49 KB ║
+ ║                        assets/QBtn-v9hyuqwl.js ║     27.57 KB ║     10.66 KB ║
+ ║                assets/QCardSection-C3I6r41G.js ║      1.00 KB ║      0.51 KB ║
+ ║                   assets/QCheckbox-D5-IfGLz.js ║      4.13 KB ║      1.79 KB ║
+ ║                       assets/QFile-BDCTV7pH.js ║      5.81 KB ║      2.48 KB ║
+ ║                       assets/QForm-Btzou53_.js ║      2.29 KB ║      1.07 KB ║
+ ║                       assets/QIcon-CDMIgvht.js ║      2.89 KB ║      1.32 KB ║
+ ║               assets/QInnerLoading-CyGftyPq.js ║      0.96 KB ║      0.56 KB ║
+ ║                      assets/QInput-69l1AoJd.js ║     29.63 KB ║     10.28 KB ║
+ ║                  assets/QItemLabel-s76kMI_O.js ║      3.00 KB ║      1.33 KB ║
+ ║                       assets/QList-BN9eCLWU.js ║      0.65 KB ║      0.38 KB ║
+ ║                       assets/QPage-B0mwUSzw.js ║      0.93 KB ║      0.51 KB ║
+ ║                 assets/QPopupProxy-D8cznUkC.js ║     20.34 KB ║      6.71 KB ║
+ ║             assets/QScrollObserver-_NQq0wLR.js ║     10.71 KB ║      4.09 KB ║
+ ║                     assets/QSelect-i0yNmSnx.js ║     34.00 KB ║     11.33 KB ║
+ ║            assets/QSlideTransition-Ck0qzv60.js ║      1.33 KB ║      0.64 KB ║
+ ║                      assets/QSpace-Bh-z9SYv.js ║      0.13 KB ║      0.14 KB ║
+ ║                  assets/QTabPanels-C21z1Fa_.js ║     18.40 KB ║      6.75 KB ║
+ ║                      assets/QTable-D6b2L66l.js ║     25.50 KB ║      8.34 KB ║
+ ║                         assets/QTd-C0OA6E0G.js ║      0.60 KB ║      0.37 KB ║
+ ║                    assets/QTooltip-DTKg-xaR.js ║      3.42 KB ║      1.61 KB ║
+ ║                         assets/QTr-DXYa5Fd_.js ║      0.38 KB ║      0.28 KB ║
+ ║                       assets/QTree-78Vt4Stw.js ║      8.91 KB ║      3.17 KB ║
+ ║                 assets/RestorePage-BMDrMsdY.js ║      5.17 KB ║      2.23 KB ║
+ ║                  assets/ShowTVPage-D_8uUi1R.js ║      5.61 KB ║      2.26 KB ║
+ ║              assets/Textverwaltung-CzLsEZOL.js ║     12.83 KB ║      3.59 KB ║
+ ║          assets/TierUmstallungPage-D2FgxhuL.js ║      6.44 KB ║      2.63 KB ║
+ ║   assets/_plugin-vue_export-helper-gFNv2Gru.js ║      0.08 KB ║      0.10 KB ║
+ ║ assets/apexcharts.ssr.esm-fe46cd2d-C_f1WYh-.js ║    496.63 KB ║    131.93 KB ║
+ ║                         assets/api-hqMntRq8.js ║      0.73 KB ║      0.47 KB ║
+ ║                      assets/create-CMjizVsV.js ║     63.53 KB ║     24.53 KB ║
+ ║                        assets/date-hNKubVyn.js ║     12.88 KB ║      4.46 KB ║
+ ║                      assets/format-ZuDx2UuB.js ║      0.48 KB ║      0.32 KB ║
+ ║                       assets/index-BZvHgkeW.js ║    125.15 KB ║     45.42 KB ║
+ ║                          assets/is-CiFgOpVZ.js ║      1.44 KB ║      0.51 KB ║
+ ║             assets/position-engine-DeT7sfXK.js ║      7.71 KB ║      2.98 KB ║
+ ║                       assets/touch-64TNQmBI.js ║      2.24 KB ║      1.16 KB ║
+ ║                  assets/use-quasar-Y6GrCf7u.js ║      0.08 KB ║      0.09 KB ║
+ ║         assets/useResizableColumns-DAz17Nto.js ║      1.64 KB ║      0.79 KB ║
+ ╟────────────────────────────────────────────────╫──────────────╫──────────────╢
+ ║                assets/AdminDirect-eaE9ZyP6.css ║      0.05 KB ║      0.07 KB ║
+ ║              assets/BuchungenPage-BMZoVIDC.css ║      0.45 KB ║      0.21 KB ║
+ ║          assets/DynamicReportPage-Cihh0-oc.css ║      0.79 KB ║      0.36 KB ║
+ ║          assets/EinrichtungenPage-TQCnmOt5.css ║      0.32 KB ║      0.21 KB ║
+ ║                 assets/FirmenPage-C6ym5txQ.css ║      0.09 KB ║      0.08 KB ║
+ ║                  assets/IndexPage-C1MsjaEb.css ║      1.13 KB ║      0.46 KB ║
+ ║                 assets/KostenPage-DcOrSx5F.css ║      0.09 KB ║      0.09 KB ║
+ ║                 assets/MainLayout-QDuBZ6EN.css ║      0.11 KB ║      0.10 KB ║
+ ║                   assets/MistPage-DrmD6ymw.css ║      0.05 KB ║      0.07 KB ║
+ ║                assets/ProfilePage-D1LZXPEu.css ║      0.04 KB ║      0.06 KB ║
+ ║                assets/RestorePage-tLUbDTdD.css ║      0.10 KB ║      0.09 KB ║
+ ║                 assets/ShowTVPage-Dy01ggBi.css ║      0.77 KB ║      0.37 KB ║
+ ║         assets/TierUmstallungPage-CVTdVF2x.css ║      0.05 KB ║      0.07 KB ║
+ ║                      assets/index-DBrLrKCb.css ║    196.18 KB ║     34.55 KB ║
+ ╟────────────────────────────────────────────────╫──────────────╫──────────────╢
+ ║                                     index.html ║      1.52 KB ║            - ║
+ ╠════════════════════════════════════════════════╬══════════════╬══════════════╣
+ ║                            Total JS (55 files) ║   1905.55 KB ║            - ║
+ ║                           Total CSS (14 files) ║    200.22 KB ║            - ║
+ ╚════════════════════════════════════════════════╩══════════════╩══════════════╝
+
+ Build succeeded
+
+ Build mode............. spa
+ Pkg quasar............. v2.19.3
+ Pkg @quasar/app-vite... v2.6.0
+ Pkg vite............... v8.0.9
+ Debugging.............. no
+ Publishing............. no
+ Browser target......... baseline-widely-available
+ =======================
+ Output folder.......... /Users/wernerhofmann/Projekte/HuhnLite/frontend/dist/spa
+
+ Tip: Built files are meant to be served over an HTTP server
+      Opening index.html over file:// won't work
+
+ Tip: You can use "$ quasar serve" command to create a web server,
+      both for testing or production. Type "$ quasar serve -h" for
+      parameters. Also, an npm script (usually named "start") can
+      be added for deployment environments.
+      If you're using Vue Router "history" mode, don't forget to
+      specify the "--history" parameter: "$ quasar serve --history"
+

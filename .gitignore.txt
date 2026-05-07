@@ -1,0 +1,54 @@
+# --- IDE / System ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.out
+
+# --- Go / Backend ---
+# Binärdateien
+build/bin/
+bin/
+# Abhängigkeiten
+vendor/
+go.sum
+# Falls du CGO nutzt (für SQLite)
+*.a
+*.o
+
+# --- Frontend (Vue/Quasar) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.quasar/
+frontend/.env
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Wails Spezifisch ---
+frontend/src/wailsjs/
+# (Hinweis: Manche checken wailsjs ein, aber da es beim Build 
+# generiert wird, ist es sauberer, es auszuschließen)
+
+# --- Datenbanken (Wichtig!) ---
+# Keine echten Daten auf GitHub hochladen!
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# --- Konfiguration ---
+# Die config.json enthält oft Passwörter für MariaDB
+# Wir speichern eine Vorlage (config.example.json) statt der echten Daten
+config.json
+settings.json
+
+# --- LaTeX / Reports ---
+# Der "Müll" der Putz-Routine muss nicht ins Git
+reports/output/*.pdf
+reports/output/*.log
+reports/output/*.aux
+reports/output/*.toc
+reports/output/*.out

@@ -1,0 +1,132 @@
+// app global css in SCSS form
+
+/* Zebra-Striping für alle Tabellen */
+.body--light .q-table tbody tr:nth-child(even),
+.q-table:not(.q-table--dark) tbody tr:nth-child(even) {
+  background-color: #f7f9fa; /* leichtes, kühles Grau */
+}
+
+.body--dark .q-table tbody tr:nth-child(even),
+.q-table--dark tbody tr:nth-child(even) {
+  background-color: #262626; /* dunkles Grau */
+}
+
+/* Hover-Effekt zur besseren Lesbarkeit */
+.body--light .q-table tbody tr:hover {
+  background-color: #eef2f5 !important;
+}
+.body--dark .q-table tbody tr:hover,
+.q-table--dark tbody tr:hover {
+  background-color: #333333 !important;
+}
+
+/* Tabellen Header optisch leicht absetzen (grau / bold) */
+.body--light .q-table__container .q-table thead th {
+  background-color: #e0e0e0;
+  color: #222;
+  font-weight: 700;
+  font-size: 15px;
+}
+.body--dark .q-table__container .q-table thead th {
+  background-color: #1a1a1a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* Tabellen-Spalten dynamisch anpassen ("Size to fit") */
+.q-table__container .q-table {
+  table-layout: auto !important;
+}
+
+.q-table__container .q-table th,
+.q-table__container .q-table td {
+  white-space: nowrap !important;
+  width: auto;
+}
+
+/* Globales Styling für Eingabefelder im Hellmodus */
+.body--light {
+  .q-field--filled .q-field__control {
+    background-color: #f5f5f5 !important;
+    border-radius: 8px 8px 0 0;
+  }
+
+  /* Visuelle Kennzeichnung für Read-Only Felder */
+  .q-field--readonly {
+    .q-field__control {
+      background-color: #e0e0e0 !important; /* Etwas dunkler für "gesperrt" */
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    .q-field__native, .q-field__input, .q-field__prefix, .q-field__suffix {
+      color: #757575 !important;
+    }
+  }
+}
+
+
+/* Einheitliches Grid-Design für HuhnLite (Sticky Header + feste Höhe) */
+.huhnlite-grid-standard {
+  height: 800px; /* Ermöglicht Sichtbarkeit von ca. 15 Zeilen vor Scrollen */
+  
+  .q-table__middle {
+    max-height: 100%;
+  }
+
+  thead tr th {
+    position: sticky;
+    z-index: 2;
+    background: inherit;
+    opacity: 1;
+  }
+
+  thead tr:first-child th {
+    top: 0;
+  }
+
+  /* Spezifische Header-Hintergründe für Sticky-Effekt */
+  &.q-table--light thead tr th {
+    background-color: #e0e0e0 !important;
+  }
+  &.q-table--dark thead tr th {
+    background-color: #1a1a1a !important;
+  }
+
+  /* Resizable Columns Support */
+  thead tr th.resizable-column {
+    position: relative !important;
+    padding-right: 8px !important; 
+    overflow: visible !important; // Allow resizer to be visible if it overlaps slightly
+    
+    .resizer {
+      position: absolute;
+      top: 0;
+      right: -4px;
+      width: 8px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 9999;
+      background: transparent;
+      transition: background 0.2s;
+      pointer-events: auto !important;
+
+      &:hover, &.is-resizing {
+        background: var(--q-primary) !important;
+      }
+    }
+
+  }
+}
+
+.resizable-table {
+  .q-table__middle {
+    overflow-x: auto !important;
+  }
+
+  .q-table {
+    table-layout: fixed !important;
+    width: auto !important;
+    min-width: 100% !important;
+  }
+}
