@@ -1,0 +1,6 @@
+{
+  "mode": "standalone",
+  "db_engine": "mysql",
+  "db_connection": "root:turbodiesel@tcp(192.168.178.60:3307)/huhnlite?parseTime=true",
+  "port": 8080
+}

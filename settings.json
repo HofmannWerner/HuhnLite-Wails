@@ -1,0 +1,6 @@
+{
+  "mode": "standalone",
+  "db_engine": "sqlite",
+  "db_connection": "/Users/wernerhofmann/Projekte/HuhnLite-Wails/HuhnLite.db",
+  "port": 8080
+}
