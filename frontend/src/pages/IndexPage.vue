@@ -106,21 +106,46 @@
 
     </div>
     
-    <div class="q-mt-xl text-grey-6 text-caption">
-      Version vom {{ buildTime }}
+    <div class="q-mt-xl row items-center q-gutter-md">
+      <div class="text-grey-6 text-caption">
+        Version vom {{ buildTime }}
+      </div>
+      <q-badge v-if="dbStatus.engine" :color="dbStatus.engine === 'mysql' ? 'orange-9' : 'blue-8'" class="q-pa-sm text-weight-bold">
+        <q-icon name="database" class="q-mr-xs" />
+        {{ dbStatus.engine === 'mysql' ? 'MariaDB' : 'SQLite' }} Active
+        <q-tooltip>
+          Verbindung: {{ dbStatus.host }}
+        </q-tooltip>
+      </q-badge>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { useRouter } from 'vue-router';
-import {computed} from 'vue';
+import {computed, onMounted, reactive} from 'vue';
 import { useSessionStore } from '../stores/session';
 import landingHero from '../assets/landing_page.jpg';
+import { GetDBStatus } from '../../wailsjs/go/main/App';
 
 const router = useRouter();
 const sessionStore = useSessionStore();
 const session = sessionStore;
+
+const dbStatus = reactive({
+  engine: '',
+  host: ''
+});
+
+onMounted(async () => {
+  try {
+    const status = await GetDBStatus();
+    dbStatus.engine = status.engine;
+    dbStatus.host = status.host;
+  } catch (e) {
+    console.error('Failed to get DB status', e);
+  }
+});
 
 const userDisplayName = computed(() => {
   if (!session.isLoggedIn) return 'Anmelden';

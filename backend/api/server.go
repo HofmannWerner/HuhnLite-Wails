@@ -26,11 +26,9 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/glebarez/go-sqlite"
 
-	db "huhnlite-wails/backend/db/repo"
 	wailsdb "huhnlite-wails/backend/db"
+	db "huhnlite-wails/backend/db/repo"
 )
-
-
 
 func toInt64(i interface{}) int64 {
 	if i == nil {
@@ -326,7 +324,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	currentDBPath := database.Config.DBConnectionString
 	backupDir := filepath.Join(filepath.Dir(currentDBPath), "backups")
 	_ = os.MkdirAll(backupDir, 0755)
-	migrateDB(conn)
+	migrateDB(database)
 
 	// Gin Engine initialisieren
 	r := gin.New()
@@ -373,7 +371,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		var dbVal string
 		err := conn.QueryRowContext(c, "SELECT VALUE FROM SYSTEMSETTINGS WHERE NAME = 'auth_required'").Scan(&dbVal)
 		if err == nil {
-			authEnabled = (dbVal == "true")
+			authEnabled = (dbVal == "true" || dbVal == "1")
+			log.Printf("[API] /api/config - auth_required from DB: %s -> authEnabled: %v", dbVal, authEnabled)
+		} else {
+			log.Printf("[API] /api/config - auth_required not found in DB, using default: %v", authEnabled)
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -382,11 +383,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.POST("/api/system/shutdown", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "Server wird heruntergefahren..."})
-		go func() {
-			time.Sleep(1 * time.Second)
-			os.Exit(0)
-		}()
+		log.Println("[API] Shutdown-Anfrage erhalten")
+		c.JSON(http.StatusOK, gin.H{"message": "Server-Shutdown wird vorbereitet..."})
 	})
 
 	// System-Settings APIs
@@ -395,6 +393,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		var value string
 		err := conn.QueryRowContext(c, "SELECT VALUE FROM SYSTEMSETTINGS WHERE NAME = ?", name).Scan(&value)
 		if err != nil {
+			log.Printf("[API] GET /api/system-settings/%s - Error: %v", name, err)
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 				return
@@ -402,7 +401,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"name": name, "value": value})
+		var jsonVal interface{} = value
+		if value == "true" || value == "1" {
+			jsonVal = true
+		} else if value == "false" || value == "0" {
+			jsonVal = false
+		}
+
+		c.JSON(http.StatusOK, gin.H{"name": name, "value": jsonVal})
 	})
 
 	r.POST("/api/system-settings", func(c *gin.Context) {
@@ -414,7 +420,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		_, err := conn.ExecContext(c, "INSERT INTO SYSTEMSETTINGS (NAME, VALUE) VALUES (?, ?) ON CONFLICT(NAME) DO UPDATE SET VALUE = excluded.VALUE", req.Name, req.Value)
+		upsertQuery := "INSERT INTO SYSTEMSETTINGS (NAME, VALUE) VALUES (?, ?) ON CONFLICT(NAME) DO UPDATE SET VALUE = excluded.VALUE"
+		if database.Engine == "mysql" {
+			upsertQuery = "INSERT INTO SYSTEMSETTINGS (NAME, VALUE) VALUES (?, ?) ON DUPLICATE KEY UPDATE VALUE = VALUES(VALUE)"
+		}
+		_, err := conn.ExecContext(c, upsertQuery, req.Name, req.Value)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -587,9 +597,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			ParamInput
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[API] POST /api/firmenparameter - Bind Error: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		log.Printf("[API] POST /api/firmenparameter - Data: %+v", req)
 
 		params := db.CreateFirmenparameterParams{
 			IDHerden:                  req.IDHerden,
@@ -643,6 +655,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		res, err := queries.CreateFirmenparameter(c, params)
 		if err != nil {
+			log.Printf("[API] POST Firmenparameter Save Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -658,9 +671,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 		var req ParamInput
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[API] PUT /api/firmenparameter/%d - Bind Error: %v", idHerden, err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+		log.Printf("[API] PUT /api/firmenparameter/%d - Data: %+v", idHerden, req)
 
 		// FOOLPROOF STRATEGY: Delete any existing record for this herd, then insert the new one.
 		_ = queries.DeleteFirmenparameter(c, idHerden)
@@ -714,6 +729,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		_, dbErr := queries.CreateFirmenparameter(c, params)
 		if dbErr != nil {
+			log.Printf("[API] Firmenparameter Save Error: %v", dbErr)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
 			return
 		}
@@ -2546,6 +2562,23 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		c.JSON(http.StatusOK, list)
 	})
+	// Hilfsfunktion zur Bereinigung von Datumswerten
+	sanitizeDate := func(d string) string {
+		if len(d) > 10 {
+			return d[:10]
+		}
+		return d
+	}
+
+	sanitizeDateTime := func(d string) string {
+		// MariaDB mag kein "T" oder "Z" in DATETIME Feldern
+		d = strings.ReplaceAll(d, "T", " ")
+		d = strings.ReplaceAll(d, "Z", "")
+		if len(d) > 19 {
+			return d[:19]
+		}
+		return d
+	}
 
 	r.POST("/api/herden", func(c *gin.Context) {
 		var req struct {
@@ -2564,6 +2597,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			AlleBuchungenMitDatum int64   `json:"ALLE_BUCHUNGEN_MIT_DATUM"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[API] POST /api/herden - Bind Error: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -2574,16 +2608,18 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			IDZuechter:            req.IDZuechter,
 			IDEilager:             req.IDEilager,
 			Anfangsbestand:        req.Anfangsbestand,
-			Einstalldatum:         req.Einstalldatum,
-			Legedatum:             req.Legedatum,
+			Einstalldatum:         sanitizeDate(req.Einstalldatum),
+			Legedatum:             sanitizeDate(req.Legedatum),
 			Einstallkosten:        req.Einstallkosten,
 			IDSilo:                req.IDSilo,
 			IDStall:               req.IDStall,
 			Aktiv:                 req.Aktiv,
 			Allebuchungenmitdatum: req.AlleBuchungenMitDatum,
 		}
+		log.Printf("[API] POST /api/herden - Creating: %+v", params)
 		res, err := queries.CreateHerde(c, params)
 		if err != nil {
+			log.Printf("[API] POST /api/herden - Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -2613,6 +2649,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			AlleBuchungenMitDatum int64   `json:"ALLE_BUCHUNGEN_MIT_DATUM"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[API] PUT /api/herden/%d - Bind Error: %v", idInt, err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -2624,16 +2661,18 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			IDZuechter:            req.IDZuechter,
 			IDEilager:             req.IDEilager,
 			Anfangsbestand:        req.Anfangsbestand,
-			Einstalldatum:         req.Einstalldatum,
-			Legedatum:             req.Legedatum,
+			Einstalldatum:         sanitizeDate(req.Einstalldatum),
+			Legedatum:             sanitizeDate(req.Legedatum),
 			Einstallkosten:        req.Einstallkosten,
 			IDSilo:                req.IDSilo,
 			IDStall:               req.IDStall,
 			Aktiv:                 req.Aktiv,
 			Allebuchungenmitdatum: req.AlleBuchungenMitDatum,
 		}
+		log.Printf("[API] PUT /api/herden/%d - Updating: %+v", idInt, params)
 		res, err := queries.UpdateHerde(c, params)
 		if err != nil {
+			log.Printf("[API] PUT /api/herden/%d - Error: %v", idInt, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -2888,26 +2927,68 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Liste der Updates mit exaktem Schema-Casing
+		// Liste der Updates mit exaktem Schema-Casing
 		updates := []struct {
-			sql  string
-			args []interface{}
+			sql      string
+			mysqlSql string
+			args     []interface{}
 		}{
-			{"UPDATE BUCHUNG SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')", []interface{}{days}},
-			{"UPDATE FUTTER SET LIEFERDATUM = date(LIEFERDATUM, ? || ' days'), DATUM = date(DATUM, ? || ' days')", []interface{}{days, days}},
-			{"UPDATE HERDEN SET LEGEDATUM = date(LEGEDATUM, ? || ' days'), EINSTALLDATUM = date(EINSTALLDATUM, ? || ' days')", []interface{}{days, days}},
-			{"UPDATE SILO SET INVENTURDATUMALT = date(INVENTURDATUMALT, ? || ' days'), INVENTURDATUMNEU = date(INVENTURDATUMNEU, ? || ' days')", []interface{}{days, days}},
-			{"UPDATE TIERBEWEGUNGEN SET BEWEGUNGSDATUM = date(BEWEGUNGSDATUM, ? || ' days')", []interface{}{days}},
-			{"UPDATE EILAGERBUCHUNG SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')", []interface{}{days}},
-			{"UPDATE EILAGER SET letzte_buchung = date(letzte_buchung, ? || ' days')", []interface{}{days}},
-			{"UPDATE KOSTEN SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')", []interface{}{days}},
-			{"UPDATE TABELLENKOPF SET Anlagedatum = date(Anlagedatum, ? || ' days'), DATUM = date(DATUM, ? || ' days')", []interface{}{days, days}},
+			{
+				"UPDATE BUCHUNG SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')",
+				"UPDATE BUCHUNG SET BUCHUNGSDATUM = DATE_ADD(BUCHUNGSDATUM, INTERVAL ? DAY)",
+				[]interface{}{days},
+			},
+			{
+				"UPDATE FUTTER SET LIEFERDATUM = date(LIEFERDATUM, ? || ' days'), DATUM = date(DATUM, ? || ' days')",
+				"UPDATE FUTTER SET LIEFERDATUM = DATE_ADD(LIEFERDATUM, INTERVAL ? DAY), DATUM = DATE_ADD(DATUM, INTERVAL ? DAY)",
+				[]interface{}{days, days},
+			},
+			{
+				"UPDATE HERDEN SET LEGEDATUM = date(LEGEDATUM, ? || ' days'), EINSTALLDATUM = date(EINSTALLDATUM, ? || ' days')",
+				"UPDATE HERDEN SET LEGEDATUM = DATE_ADD(LEGEDATUM, INTERVAL ? DAY), EINSTALLDATUM = DATE_ADD(EINSTALLDATUM, INTERVAL ? DAY)",
+				[]interface{}{days, days},
+			},
+			{
+				"UPDATE SILO SET INVENTURDATUMALT = date(INVENTURDATUMALT, ? || ' days'), INVENTURDATUMNEU = date(INVENTURDATUMNEU, ? || ' days')",
+				"UPDATE SILO SET INVENTURDATUMALT = DATE_ADD(INVENTURDATUMALT, INTERVAL ? DAY), INVENTURDATUMNEU = DATE_ADD(INVENTURDATUMNEU, INTERVAL ? DAY)",
+				[]interface{}{days, days},
+			},
+			{
+				"UPDATE TIERBEWEGUNGEN SET BEWEGUNGSDATUM = date(BEWEGUNGSDATUM, ? || ' days')",
+				"UPDATE TIERBEWEGUNGEN SET BEWEGUNGSDATUM = DATE_ADD(BEWEGUNGSDATUM, INTERVAL ? DAY)",
+				[]interface{}{days},
+			},
+			{
+				"UPDATE EILAGERBUCHUNG SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')",
+				"UPDATE EILAGERBUCHUNG SET BUCHUNGSDATUM = DATE_ADD(BUCHUNGSDATUM, INTERVAL ? DAY)",
+				[]interface{}{days},
+			},
+			{
+				"UPDATE EILAGER SET letzte_buchung = date(letzte_buchung, ? || ' days')",
+				"UPDATE EILAGER SET letzte_buchung = DATE_ADD(letzte_buchung, INTERVAL ? DAY)",
+				[]interface{}{days},
+			},
+			{
+				"UPDATE KOSTEN SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')",
+				"UPDATE KOSTEN SET BUCHUNGSDATUM = DATE_ADD(KOSTEN.BUCHUNGSDATUM, INTERVAL ? DAY)",
+				[]interface{}{days},
+			},
+			{
+				"UPDATE TABELLENKOPF SET Anlagedatum = date(Anlagedatum, ? || ' days'), DATUM = date(DATUM, ? || ' days')",
+				"UPDATE TABELLENKOPF SET Anlagedatum = DATE_ADD(Anlagedatum, INTERVAL ? DAY), DATUM = DATE_ADD(DATUM, INTERVAL ? DAY)",
+				[]interface{}{days, days},
+			},
 		}
 
 		for _, up := range updates {
-			_, err = tx.ExecContext(c, up.sql, up.args...)
+			query := up.sql
+			if database.Engine == "mysql" {
+				query = up.mysqlSql
+			}
+			_, err = tx.ExecContext(c, query, up.args...)
 			if err != nil {
 				tx.Rollback()
-				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("SQL-Fehler in [%s]: %v", up.sql, err)})
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("SQL-Fehler in [%s]: %v", query, err)})
 				return
 			}
 		}
@@ -2944,14 +3025,89 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 	})
 
+	// LegacyBuchungRow stellt sicher, dass die JSON-Tags großgeschrieben werden (für das Frontend)
+	type LegacyBuchungRow struct {
+		ID                   int64   `json:"ID"`
+		IDHerden             int64   `json:"ID_HERDEN"`
+		Lw                   int64   `json:"LW"`
+		Herdennummer         int64   `json:"HERDENNUMMER"`
+		Buchungsdatum        string  `json:"BUCHUNGSDATUM"`
+		Gewichtprobe         int64   `json:"GEWICHTPROBE"`
+		Kontrollgewicht      float64 `json:"KONTROLLGEWICHT"`
+		Klassea              int64   `json:"KLASSEA"`
+		Verluste             int64   `json:"VERLUSTE"`
+		Eimasse              float64 `json:"EIMASSE"`
+		Schmutz              int64   `json:"SCHMUTZ"`
+		Knickeier            int64   `json:"KNICKEIER"`
+		Vollei               float64 `json:"VOLLEI"`
+		Brucheier            int64   `json:"BRUCHEIER"`
+		Tierbestand          int64   `json:"TIERBESTAND"`
+		IDEitabelle          int64   `json:"ID_EITABELLE"`
+		IDDgewichttab        int64   `json:"ID_DGEWICHTTAB"`
+		Futterktag           int64   `json:"FUTTERKTAG"`
+		Silonr               int64   `json:"SILONR"`
+		Kl6                  int64   `json:"KL6"`
+		Vermitteltam         string  `json:"VERMITTELTAM"`
+		Small                int64   `json:"SMALL"`
+		Large                int64   `json:"LARGE"`
+		Medium               int64   `json:"MEDIUM"`
+		Xl                   int64   `json:"XL"`
+		Zeitstempel          string  `json:"ZEITSTEMPEL"`
+		Dgewichtei           float64 `json:"DGEWICHTEI"`
+		Aw                   int64   `json:"AW"`
+		Vermittelt           string  `json:"VERMITTELT"`
+		HerdenNummerRel      int64   `json:"HERDEN_NUMMER_REL"`
+		HerdenBezeichnungRel string  `json:"HERDEN_BEZEICHNUNG_REL"`
+	}
+
 	// Buchung APIs
 	r.GET("/api/buchung", func(c *gin.Context) {
 		res, err := queries.ListBuchungen(c)
 		if err != nil {
+			log.Printf("[API] GET /api/buchung - Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, res)
+
+		// Mapping auf Legacy-Struktur mit Großbuchstaben
+		legacyList := make([]LegacyBuchungRow, len(res))
+		for i, v := range res {
+			legacyList[i] = LegacyBuchungRow{
+				ID:              v.ID,
+				IDHerden:        v.IDHerden,
+				Lw:              v.Lw,
+				Herdennummer:    v.Herdennummer,
+				Buchungsdatum:   sanitizeDate(v.Buchungsdatum),
+				Gewichtprobe:    v.Gewichtprobe,
+				Kontrollgewicht: v.Kontrollgewicht,
+				Klassea:         v.Klassea,
+				Verluste:        v.Verluste,
+				Eimasse:         v.Eimasse,
+				Schmutz:         v.Schmutz,
+				Knickeier:       v.Knickeier,
+				Vollei:          v.Vollei,
+				Brucheier:       v.Brucheier,
+				Tierbestand:     v.Tierbestand,
+				IDEitabelle:     v.IDEitabelle,
+				IDDgewichttab:   v.IDDgewichttab,
+				Futterktag:      v.Futterktag,
+				Silonr:          v.Silonr,
+				Kl6:             v.Kl6,
+				Vermitteltam:    sanitizeDate(v.Vermitteltam),
+				Small:           v.Small,
+				Large:           v.Large,
+				Medium:          v.Medium,
+				Xl:              v.Xl,
+				Zeitstempel:     v.Zeitstempel,
+				Dgewichtei:      v.Dgewichtei,
+				Aw:              v.Aw,
+				Vermittelt:      toString(v.Vermittelt),
+				HerdenNummerRel: v.HerdenNummerRel.Int64,
+			}
+		}
+
+		log.Printf("[API] GET /api/buchung - Found %d records, mapped to Legacy format", len(legacyList))
+		c.JSON(http.StatusOK, legacyList)
 	})
 
 	r.GET("/api/buchung/:id", func(c *gin.Context) {
@@ -3111,44 +3267,69 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Vermittelt      string  `json:"VERMITTELT"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[API] POST /api/buchung - Bind Error: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
+		req.Buchungsdatum = sanitizeDate(req.Buchungsdatum)
+		req.Vermitteltam = sanitizeDate(req.Vermitteltam)
+		req.Zeitstempel = sanitizeDateTime(req.Zeitstempel)
+
+		log.Printf("[API] POST /api/buchung - Received: %+v", req)
+
 		// Dublettenprüfung
 		var count int64
 		err := conn.QueryRowContext(c, "SELECT COUNT(*) FROM BUCHUNG WHERE ID_HERDEN = ? AND BUCHUNGSDATUM = ?", req.IDHerden, req.Buchungsdatum).Scan(&count)
+		if err != nil {
+			log.Printf("[API] POST /api/buchung - Duplicate Check Error: %v", err)
+		}
 		if err == nil && count > 0 {
+			log.Printf("[API] POST /api/buchung - Duplicate found for Herde %d at %s", req.IDHerden, req.Buchungsdatum)
 			c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("Doppelte Buchung nicht zulässig (Herde: %d, Datum: %s)", req.IDHerden, req.Buchungsdatum)})
 			return
 		}
 
+		log.Printf("[API] POST /api/buchung - Loading parameters for Herde %d...", req.IDHerden)
 		// Parameter und letzte Buchung laden
 		paramsRow, err := queries.GetFirmenparameterByHerde(c, req.IDHerden)
 		if err != nil {
+			log.Printf("[API] POST /api/buchung - GetFirmenparameter Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Laden der Parameter: " + err.Error()})
 			return
 		}
+		log.Printf("[API] POST /api/buchung - Parameters loaded: %+v", paramsRow)
 
+		log.Printf("[API] POST /api/buchung - Loading latest booking for Herde %d...", req.IDHerden)
 		lastBooking, err := queries.GetLatestBookingByHerde(c, req.IDHerden)
+
 		doVermittlung := false
 		var diffDays int
 		var lastDate time.Time
 		var newDate time.Time
 
+		// Das aktuelle Buchungsdatum parsen (vorher säubern!)
+		newDateStr := sanitizeDate(req.Buchungsdatum)
+		newDate, _ = time.Parse("2006-01-02", newDateStr)
+
 		if err == nil && lastBooking.Buchungsdatum != "" {
-			lastDate, _ = time.Parse("2006-01-02", lastBooking.Buchungsdatum)
-			newDate, _ = time.Parse("2006-01-02", req.Buchungsdatum)
+			log.Printf("[API] POST /api/buchung - Latest booking found: %+v", lastBooking)
+			lastDate, _ = time.Parse("2006-01-02", sanitizeDate(lastBooking.Buchungsdatum))
 			diffDays = int(newDate.Sub(lastDate).Hours() / 24)
 		} else {
+			log.Printf("[API] POST /api/buchung - No latest booking found, trying fallback to herd start date...")
 			// NEU: Fallback auf das Legedatum der Herde, falls noch gar keine Buchung existiert
 			if h, err := queries.GetHerde(c, req.IDHerden); err == nil && h.Legedatum != "" {
-				legeDate, _ := time.Parse("2006-01-02", h.Legedatum)
-				newDate, _ = time.Parse("2006-01-02", req.Buchungsdatum)
-				lastDate = legeDate.AddDate(0, 0, -1) // ALT = Legedatum - 1 Tag
+				log.Printf("[API] POST /api/buchung - Fallback to herd Legedatum: %s", h.Legedatum)
+				lastDate, _ = time.Parse("2006-01-02", sanitizeDate(h.Legedatum))
+				lastDate = lastDate.AddDate(0, 0, -1) // ALT = Legedatum - 1 Tag
 				diffDays = int(newDate.Sub(lastDate).Hours() / 24)
+			} else {
+				log.Printf("[API] POST /api/buchung - Fallback failed, no Legedatum found for Herde %d", req.IDHerden)
 			}
 		}
+
+		log.Printf("[API] POST /api/buchung - Calculated diffDays: %d (Max allowed: %d)", diffDays, paramsRow.Maxtagevermitteln)
 
 		// Lückenlosigkeits-Prüfung / Vermittlung
 		if diffDays > 0 {
@@ -3208,6 +3389,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				return base
 			}
 
+			log.Printf("[API] POST /api/buchung - Starting Vermittlung for %d days...", diffDays)
 			var lastCreatedRes db.Buchung
 			for i := 1; i <= diffDays; i++ {
 				isLast := (i == diffDays)
@@ -3245,6 +3427,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				}
 				res, err := queries.CreateBuchung(c, p)
 				if err != nil {
+					log.Printf("[API] POST /api/buchung - Vermittlung Error at day %d (%s): %v", i, currentDate, err)
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler bei Vermittlungsschleife: " + err.Error()})
 					return
 				}
@@ -3252,6 +3435,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				// Jede Teilbuchung automatisch ins Eilager buchen (wenn Parameter aktiv)
 				_ = doAutomaticEilagerBuchung(c, conn, queries, res.ID)
 			}
+			log.Printf("[API] POST /api/buchung - Vermittlung finished successfully.")
 			c.JSON(http.StatusOK, lastCreatedRes)
 			return
 		}
@@ -3289,6 +3473,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 		res, err := queries.CreateBuchung(c, params)
 		if err != nil {
+			log.Printf("[API] POST /api/buchung - Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -3337,6 +3522,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
+
+		req.Buchungsdatum = sanitizeDate(req.Buchungsdatum)
+		req.Vermitteltam = sanitizeDate(req.Vermitteltam)
 
 		// Dublettenprüfung (unter Ausschluss des eigenen Datensatzes)
 		var count int64
@@ -4900,8 +5088,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// 2. Alle Spaltennamen sammeln
 		fieldNames := make(map[string]bool)
 		for _, tableName := range tableNames {
-			// PRAGMA ist kein Standard-SQL, wir nutzen Query
-			cols, err := conn.Query(fmt.Sprintf("PRAGMA table_info('%s')", tableName))
+			var cols *sql.Rows
+			var err error
+			if database.Engine == "mysql" {
+				cols, err = conn.Query("SELECT 0 as cid, COLUMN_NAME as name, DATA_TYPE as dtype, IF(IS_NULLABLE='NO', 1, 0) as notnull, COLUMN_DEFAULT as dfltValue, IF(COLUMN_KEY='PRI', 1, 0) as pk FROM information_schema.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()", tableName)
+			} else {
+				cols, err = conn.Query(fmt.Sprintf("PRAGMA table_info('%s')", tableName))
+			}
 			if err != nil {
 				continue
 			}
@@ -6740,7 +6933,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/schema/columns/:table", func(c *gin.Context) {
 		table := c.Param("table")
-		rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(\"%s\")", table))
+		var rows *sql.Rows
+		var err error
+		if database.Engine == "mysql" {
+			rows, err = conn.Query("SELECT 0 as cid, COLUMN_NAME as name, DATA_TYPE as dtype, IF(IS_NULLABLE='NO', 1, 0) as notnull, COLUMN_DEFAULT as dfltValue, IF(COLUMN_KEY='PRI', 1, 0) as pk FROM information_schema.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()", table)
+		} else {
+			rows, err = conn.Query(fmt.Sprintf("PRAGMA table_info(\"%s\")", table))
+		}
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -6757,9 +6956,6 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 		c.JSON(http.StatusOK, columns)
 	})
-
-
-
 
 	r.GET("/api/user-state/:key", func(c *gin.Context) {
 		key := c.Param("key")
@@ -6793,9 +6989,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		_, err := conn.Exec(`INSERT INTO USER_STATE (USERNAME, KEY, VALUE) VALUES (?, ?, ?)
-			ON CONFLICT(USERNAME, KEY) DO UPDATE SET VALUE = excluded.VALUE`,
-			req.Username, req.Key, req.Value)
+		upsertQuery := `INSERT INTO USER_STATE (USERNAME, KEY, VALUE) VALUES (?, ?, ?)
+			ON CONFLICT(USERNAME, KEY) DO UPDATE SET VALUE = excluded.VALUE`
+		if database.Engine == "mysql" {
+			upsertQuery = `INSERT INTO USER_STATE (USERNAME, KEY, VALUE) VALUES (?, ?, ?)
+				ON DUPLICATE KEY UPDATE VALUE = VALUES(VALUE)`
+		}
+		_, err := conn.Exec(upsertQuery, req.Username, req.Key, req.Value)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -7442,11 +7642,12 @@ func generateDefaultListHtml(report db.DynamischeSql, firma, firmenparams map[st
 	sb.WriteString("<br/><p style='font-size:10px; color:gray; text-align:right; font-family: sans-serif;'>Erstellt am: " + time.Now().Format("02.01.2006 15:04") + "</p></body></html>")
 	return sb.String()
 }
-func migrateDB(db *sql.DB) {
+func migrateDB(database *wailsdb.DB) {
+	db := database.SQL
 	log.Println("Prüfe Datenbank-Schema...")
 
 	// 1. VERKAUF Tabelle sicherstellen
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS VERKAUF (
+	verkaufTable := `CREATE TABLE IF NOT EXISTS VERKAUF (
 		ID INTEGER PRIMARY KEY AUTOINCREMENT,
 		ID_EILAGERBUCHUNG INTEGER NOT NULL DEFAULT 0 UNIQUE,
 		ID_BUCHUNG INTEGER NOT NULL DEFAULT 0,
@@ -7464,74 +7665,335 @@ func migrateDB(db *sql.DB) {
 		VERBUCHT BOOLEAN NOT NULL DEFAULT 0,
 		CHARGE TEXT NOT NULL DEFAULT '',
 		RABATTPROZENT REAL NOT NULL DEFAULT 0.0
-	)`)
+	)`
+	if database.Engine == "mysql" {
+		verkaufTable = `CREATE TABLE IF NOT EXISTS VERKAUF (
+			ID INTEGER PRIMARY KEY AUTO_INCREMENT,
+			ID_EILAGERBUCHUNG INTEGER NOT NULL DEFAULT 0 UNIQUE,
+			ID_BUCHUNG INTEGER NOT NULL DEFAULT 0,
+			BUCHUNGSDATUM VARCHAR(25) NOT NULL DEFAULT '0001-01-01',
+			MENGESMALL INTEGER NOT NULL DEFAULT 0,
+			MENGEMEDIUM INTEGER NOT NULL DEFAULT 0,
+			MENGELARGE INTEGER NOT NULL DEFAULT 0,
+			MENGEXL INTEGER NOT NULL DEFAULT 0,
+			PREISSMALL DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+			PREISMEDIUM DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+			PREISLARGE DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+			PREISXL DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+			GESAMTPREIS DECIMAL(10, 2) NOT NULL DEFAULT 0.0,
+			BIO BOOLEAN NOT NULL DEFAULT 0,
+			VERBUCHT BOOLEAN NOT NULL DEFAULT 0,
+			CHARGE VARCHAR(255) NOT NULL DEFAULT '',
+			RABATTPROZENT DECIMAL(5, 2) NOT NULL DEFAULT 0.0
+		)`
+	}
+	_, err := db.Exec(verkaufTable)
 	if err != nil {
 		log.Printf("Fehler beim Erstellen der Tabelle VERKAUF: %v", err)
 	}
 
 	// 1b. USER_STATE Tabelle sicherstellen
-	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS USER_STATE (
+	userStateTable := `CREATE TABLE IF NOT EXISTS USER_STATE (
 		ID INTEGER PRIMARY KEY AUTOINCREMENT,
 		USERNAME TEXT NOT NULL,
 		KEY TEXT NOT NULL,
 		VALUE TEXT NOT NULL,
 		UNIQUE(USERNAME, KEY)
-	)`)
+	)`
+	if database.Engine == "mysql" {
+		userStateTable = `CREATE TABLE IF NOT EXISTS USER_STATE (
+			ID INTEGER PRIMARY KEY AUTO_INCREMENT,
+			USERNAME VARCHAR(255) NOT NULL,
+			` + "`KEY`" + ` VARCHAR(255) NOT NULL,
+			VALUE TEXT NOT NULL,
+			UNIQUE(USERNAME, ` + "`KEY`" + `)
+		)`
+	}
+	_, err = db.Exec(userStateTable)
 	if err != nil {
 		log.Printf("Fehler beim Erstellen der Tabelle USER_STATE: %v", err)
 	}
 
-	// 2. Fehlende Spalten hinzufügen mit PRAGMA Check
+	// 1bb. SYSTEMSETTINGS Tabelle sicherstellen
+	sysSettingsTable := `CREATE TABLE IF NOT EXISTS SYSTEMSETTINGS (
+		NAME TEXT PRIMARY KEY,
+		VALUE TEXT
+	)`
+	if database.Engine == "mysql" {
+		sysSettingsTable = `CREATE TABLE IF NOT EXISTS SYSTEMSETTINGS (
+			NAME VARCHAR(255) PRIMARY KEY,
+			VALUE TEXT
+		)`
+	}
+	_, err = db.Exec(sysSettingsTable)
+	if err != nil {
+		log.Printf("Fehler beim Erstellen der Tabelle SYSTEMSETTINGS: %v", err)
+	}
+
+	// 1c. SILO Tabelle sicherstellen
+	siloTable := `CREATE TABLE IF NOT EXISTS SILO (
+		ID INTEGER PRIMARY KEY AUTOINCREMENT,
+		SILONUMMER INTEGER NOT NULL DEFAULT 0,
+		PERSONENNUMMER INTEGER NOT NULL DEFAULT 0,
+		ID_LIEFERANT INTEGER NOT NULL DEFAULT 0,
+		BEZEICHNUNG TEXT NOT NULL DEFAULT '',
+		INVENTURDATUMALT TEXT NOT NULL DEFAULT '0001-01-01',
+		INVENTURDATUMNEU TEXT NOT NULL DEFAULT '0001-01-01',
+		MAXFUELLMENGE INTEGER NOT NULL DEFAULT 0,
+		MINFUELLMENGE INTEGER NOT NULL DEFAULT 0,
+		INVENTURFUELLMENGE INTEGER NOT NULL DEFAULT 0,
+		AW INTEGER NOT NULL DEFAULT 0
+	)`
+	if database.Engine == "mysql" {
+		siloTable = `CREATE TABLE IF NOT EXISTS SILO (
+			ID INTEGER PRIMARY KEY AUTO_INCREMENT,
+			SILONUMMER INTEGER NOT NULL DEFAULT 0,
+			PERSONENNUMMER INTEGER NOT NULL DEFAULT 0,
+			ID_LIEFERANT INTEGER NOT NULL DEFAULT 0,
+			BEZEICHNUNG VARCHAR(30) NOT NULL DEFAULT '',
+			INVENTURDATUMALT VARCHAR(25) NOT NULL DEFAULT '0001-01-01',
+			INVENTURDATUMNEU VARCHAR(25) NOT NULL DEFAULT '0001-01-01',
+			MAXFUELLMENGE INTEGER NOT NULL DEFAULT 0,
+			MINFUELLMENGE INTEGER NOT NULL DEFAULT 0,
+			INVENTURFUELLMENGE INTEGER NOT NULL DEFAULT 0,
+			AW INTEGER NOT NULL DEFAULT 0
+		)`
+	}
+	_, err = db.Exec(siloTable)
+	if err != nil {
+		log.Printf("Fehler beim Erstellen der Tabelle SILO: %v", err)
+	}
+
+	// 1d. PERSON Tabelle sicherstellen
+	personTable := `CREATE TABLE IF NOT EXISTS PERSON (
+		ID INTEGER PRIMARY KEY AUTOINCREMENT,
+		PERSONENNUMMER INTEGER NOT NULL DEFAULT 0,
+		NAME TEXT NOT NULL DEFAULT '',
+		FIRMA TEXT NOT NULL DEFAULT '',
+		STRASSE TEXT NOT NULL DEFAULT '',
+		PLZ TEXT NOT NULL DEFAULT '',
+		ORT TEXT NOT NULL DEFAULT '',
+		TELEFON TEXT NOT NULL DEFAULT '',
+		EMAIL TEXT NOT NULL DEFAULT '',
+		KZ TEXT NOT NULL DEFAULT ''
+	)`
+	if database.Engine == "mysql" {
+		personTable = `CREATE TABLE IF NOT EXISTS PERSON (
+			ID INTEGER PRIMARY KEY AUTO_INCREMENT,
+			PERSONENNUMMER INTEGER NOT NULL DEFAULT 0,
+			NAME VARCHAR(191) NOT NULL DEFAULT '',
+			FIRMA VARCHAR(191) NOT NULL DEFAULT '',
+			STRASSE VARCHAR(191) NOT NULL DEFAULT '',
+			PLZ VARCHAR(20) NOT NULL DEFAULT '',
+			ORT VARCHAR(191) NOT NULL DEFAULT '',
+			TELEFON VARCHAR(50) NOT NULL DEFAULT '',
+			EMAIL VARCHAR(191) NOT NULL DEFAULT '',
+			KZ VARCHAR(10) NOT NULL DEFAULT ''
+		)`
+	}
+	_, err = db.Exec(personTable)
+
+	// 1e. FIRMENPARAMETER Tabelle sicherstellen
+	firmenTable := `CREATE TABLE IF NOT EXISTS FIRMENPARAMETER (
+		ID INTEGER PRIMARY KEY AUTO_INCREMENT,
+		ID_HERDEN INTEGER NOT NULL DEFAULT 0,
+		KZ CHAR(1) NOT NULL DEFAULT 'x'
+	)`
+	if database.Engine == "mysql" {
+		firmenTable = `CREATE TABLE IF NOT EXISTS FIRMENPARAMETER (
+			ID INTEGER PRIMARY KEY AUTO_INCREMENT,
+			ID_HERDEN INTEGER NOT NULL DEFAULT 0,
+			KZ CHAR(1) NOT NULL DEFAULT 'x',
+			JUMBOS INTEGER NOT NULL DEFAULT 0,
+			KLASSENERFASSEN INTEGER NOT NULL DEFAULT 0,
+			KLASSEAERFASSEN INTEGER NOT NULL DEFAULT 0,
+			KLASSEAERRECHNEN INTEGER NOT NULL DEFAULT 0,
+			KLASSEAVERMITTELN INTEGER NOT NULL DEFAULT 0,
+			ERFASSESCHMUTZEI INTEGER NOT NULL DEFAULT 0,
+			ERFASSEKNICKEI INTEGER NOT NULL DEFAULT 0,
+			ERFASSEBRUCHEI INTEGER NOT NULL DEFAULT 0,
+			ERFASSEVOLLEI INTEGER NOT NULL DEFAULT 0,
+			MASSVOLLEI INTEGER NOT NULL DEFAULT 0,
+			AUFTEILUNGGEWICHT INTEGER NOT NULL DEFAULT 0,
+			KONTROLLWIEGUNG INTEGER NOT NULL DEFAULT 0,
+			ANZAHLKONTROLLW INTEGER NOT NULL DEFAULT 0,
+			VERPACKUNGKG DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+			AUFTEILUNGALTER INTEGER NOT NULL DEFAULT 0,
+			ERFASSEVOLLEIKG INTEGER NOT NULL DEFAULT 0,
+			LAUFZEITWOCHEN INTEGER NOT NULL DEFAULT 0,
+			ZEITSTEMPEL VARCHAR(25) NOT NULL DEFAULT '',
+			SCHLACHTERLOESHENNE DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+			PRODUKTIONSDAUER INTEGER NOT NULL DEFAULT 0,
+			ID_TABELLEGEWICHT INTEGER NOT NULL DEFAULT 0,
+			ID_TABELLEALTER INTEGER NOT NULL DEFAULT 0,
+			LEGEBEGINN_LW INTEGER NOT NULL DEFAULT 0,
+			VERLUSTEBEIBUCHUNG INTEGER NOT NULL DEFAULT 0,
+			LAGERBUCHUNGBEIBUCHUNG INTEGER NOT NULL DEFAULT 0,
+			MAXTAGEVERMITTELN INTEGER NOT NULL DEFAULT 0,
+			CHARGEJUMBOS INTEGER NOT NULL DEFAULT 0,
+			CHARGEXL INTEGER NOT NULL DEFAULT 0,
+			CHARGEMEDIUM INTEGER NOT NULL DEFAULT 0,
+			CHARGESMALL INTEGER NOT NULL DEFAULT 0,
+			CHARGELARGE INTEGER NOT NULL DEFAULT 0,
+			CHARGEVOLLEI INTEGER NOT NULL DEFAULT 0,
+			CHARGEPREFIXFIRMA VARCHAR(50) NOT NULL DEFAULT '',
+			CHARGEPREFIXHERDENNUMMER INTEGER NOT NULL DEFAULT 0,
+			CHARGEDATUM INTEGER NOT NULL DEFAULT 0,
+			CHARGELAGERNUMMER INTEGER NOT NULL DEFAULT 0,
+			CHARGETRENNUNG VARCHAR(10) NOT NULL DEFAULT '',
+			BEIVERMITTELNDATUMAKTUELL INTEGER NOT NULL DEFAULT 0,
+			PSEUDOLAGER INTEGER NOT NULL DEFAULT 0,
+			BIO INTEGER NOT NULL DEFAULT 0,
+			HALTUNGSTYP VARCHAR(10) NOT NULL DEFAULT '',
+			BIOAUFSCHLAG DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+			AW INTEGER NOT NULL DEFAULT 0
+		)`
+	}
+	_, err = db.Exec(firmenTable)
+
+	// 2. Fehlende Spalten hinzufügen
 	cols := []struct {
-		table string
-		col   string
-		def   string
+		table    string
+		col      string
+		def      string
+		mysqlDef string
 	}{
-		{"VERKAUF", "CHARGE", "TEXT NOT NULL DEFAULT ''"},
-		{"VERKAUF", "RABATTPROZENT", "REAL NOT NULL DEFAULT 0.0"},
-		{"EILAGERBUCHUNG", "SCHMUTZ", "INTEGER NOT NULL DEFAULT 0"},
-		{"EILAGERBUCHUNG", "KNICKEIER", "INTEGER NOT NULL DEFAULT 0"},
-		{"EILAGERBUCHUNG", "BRUCHEIER", "INTEGER NOT NULL DEFAULT 0"},
-		{"EILAGERBUCHUNG", "BUCHUNGSTYP", "TEXT NOT NULL DEFAULT 'E'"},
-		{"EILAGERBUCHUNG", "CHARGE", "TEXT NOT NULL DEFAULT ''"},
-		{"EILAGERBUCHUNG", "KZ_LAGER", "TEXT NOT NULL DEFAULT ''"},
-		{"EILAGERBUCHUNG", "ID_FREMDEBUCHUNG", "INTEGER NOT NULL DEFAULT 0"},
-		{"EILAGERBUCHUNG", "VERKAUF", "INTEGER NOT NULL DEFAULT 0"},
-		{"EILAGERBUCHUNG", "ID_LAGERPLATZ", "INTEGER NOT NULL DEFAULT 0"},
-		{"TIERBEWEGUNGEN", "HERDENNUMMER", "INTEGER NOT NULL DEFAULT 0"},
-		{"TIERBEWEGUNGEN", "ID_BUCHUNG", "INTEGER NOT NULL DEFAULT 0"},
-		{"TIERBEWEGUNGEN", "BEWEGUNGEN", "INTEGER NOT NULL DEFAULT 0"},
-		{"TIERBEWEGUNGEN", "ID_HERDEN_VON", "INTEGER NOT NULL DEFAULT 0"},
-		{"TIERBEWEGUNGEN", "ID_HERDEN_NACH", "INTEGER NOT NULL DEFAULT 0"},
+		{"VERKAUF", "CHARGE", "TEXT NOT NULL DEFAULT ''", "VARCHAR(255) NOT NULL DEFAULT ''"},
+		{"VERKAUF", "RABATTPROZENT", "REAL NOT NULL DEFAULT 0.0", "DECIMAL(5, 2) NOT NULL DEFAULT 0.0"},
+		{"EILAGERBUCHUNG", "SCHMUTZ", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"EILAGERBUCHUNG", "KNICKEIER", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"EILAGERBUCHUNG", "BRUCHEIER", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"EILAGERBUCHUNG", "BUCHUNGSTYP", "TEXT NOT NULL DEFAULT 'E'", "VARCHAR(10) NOT NULL DEFAULT 'E'"},
+		{"EILAGERBUCHUNG", "CHARGE", "TEXT NOT NULL DEFAULT ''", "VARCHAR(255) NOT NULL DEFAULT ''"},
+		{"EILAGERBUCHUNG", "KZ_LAGER", "TEXT NOT NULL DEFAULT ''", "VARCHAR(10) NOT NULL DEFAULT ''"},
+		{"EILAGERBUCHUNG", "ID_FREMDEBUCHUNG", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"EILAGERBUCHUNG", "VERKAUF", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"EILAGERBUCHUNG", "ID_LAGERPLATZ", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"TIERBEWEGUNGEN", "HERDENNUMMER", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"TIERBEWEGUNGEN", "ID_BUCHUNG", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"TIERBEWEGUNGEN", "BEWEGUNGEN", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"TIERBEWEGUNGEN", "ID_HERDEN_VON", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
+		{"TIERBEWEGUNGEN", "ID_HERDEN_NACH", "INTEGER NOT NULL DEFAULT 0", "INTEGER NOT NULL DEFAULT 0"},
 	}
 
 	for _, c := range cols {
-		// Prüfen ob Spalte existiert
 		exists := false
-		rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", c.table))
-		if err == nil {
-			for rows.Next() {
-				var cid int
-				var name, dtype string
-				var notnull, pk int
-				var dflt_value interface{}
-				if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil {
-					if strings.EqualFold(name, c.col) {
-						exists = true
-						break
+		if database.Engine == "sqlite" {
+			rows, err := db.Query(fmt.Sprintf("PRAGMA table_info(%s)", c.table))
+			if err == nil {
+				for rows.Next() {
+					var cid int
+					var name, dtype string
+					var notnull, pk int
+					var dflt_value interface{}
+					if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil {
+						if strings.EqualFold(name, c.col) {
+							exists = true
+							break
+						}
 					}
 				}
+				rows.Close()
 			}
-			rows.Close()
+		} else {
+			// MySQL Check
+			err := db.QueryRow("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_NAME = ? AND COLUMN_NAME = ? AND TABLE_SCHEMA = DATABASE()", c.table, c.col).Scan(&exists)
+			if err != nil && err != sql.ErrNoRows {
+				log.Printf("Fehler beim Prüfen der Spalte %s.%s: %v", c.table, c.col, err)
+			}
+			if err == nil {
+				exists = true
+			}
 		}
 
 		if !exists {
 			log.Printf("Migration: Füge Spalte %s zu Tabelle %s hinzu...", c.col, c.table)
-			query := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", c.table, c.col, c.def)
+			def := c.def
+			if database.Engine == "mysql" {
+				def = c.mysqlDef
+			}
+			query := fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", c.table, c.col, def)
 			if _, err := db.Exec(query); err != nil {
 				log.Printf("FEHLER bei Migration von %s.%s: %v", c.table, c.col, err)
 			}
 		}
 	}
 	log.Println("Schema-Prüfung abgeschlossen.")
+
+	// 3. Basis-Daten synchronisieren, falls MariaDB leer ist
+	if database.Engine == "mysql" {
+		syncDataFromSQLite(database)
+	}
+}
+
+func syncDataFromSQLite(database *wailsdb.DB) {
+	// SQLite öffnen (hartcodierter Pfad für diesen Workspace)
+	sqlitePath := "/Users/wernerhofmann/Projekte/HuhnLite-Wails/HuhnLite.db"
+
+	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
+		log.Printf("Synchronisation ABGEBROCHEN: SQLite-Datei nicht gefunden unter %s", sqlitePath)
+		return
+	}
+
+	log.Printf("Synchronisation: Öffne SQLite unter %s...", sqlitePath)
+	sqliteConn, err := sql.Open("sqlite", sqlitePath)
+	if err != nil {
+		log.Printf("Konnte SQLite für Synchronisation nicht öffnen: %v", err)
+		return
+	}
+	defer sqliteConn.Close()
+
+	tables := []string{"TABELLENKOPF", "GEWICHTTABELLE", "EIERPREISE", "RASSE", "STALL", "PERSON", "SILO", "EILAGER", "FUTTERSORTEN", "SYSTEMSETTINGS"}
+
+	for _, table := range tables {
+		// Prüfen, ob die Tabelle in MariaDB Daten hat
+		var count int
+		_ = database.SQL.QueryRow(fmt.Sprintf("SELECT COUNT(*) FROM %s", table)).Scan(&count)
+		if count > 0 {
+			continue // Tabelle hat schon Daten, überspringen
+		}
+
+		log.Printf("Synchronisation: Tabelle %s ist leer. Kopiere aus SQLite...", table)
+		rows, err := sqliteConn.Query(fmt.Sprintf("SELECT * FROM %s", table))
+		if err != nil {
+			log.Printf("Fehler beim Lesen von %s aus SQLite: %v", table, err)
+			continue
+		}
+
+		cols, _ := rows.Columns()
+		placeholders := make([]string, len(cols))
+		for i := range placeholders {
+			placeholders[i] = "?"
+		}
+
+		insertQuery := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, strings.Join(cols, ","), strings.Join(placeholders, ","))
+		if table == "USER_STATE" {
+			insertQuery = fmt.Sprintf("INSERT INTO %s (USERNAME, `KEY`, VALUE) VALUES (?, ?, ?)", table)
+		}
+
+		count = 0
+		for rows.Next() {
+			vals := make([]interface{}, len(cols))
+			valPtrs := make([]interface{}, len(cols))
+			for i := range vals {
+				valPtrs[i] = &vals[i]
+			}
+			if err := rows.Scan(valPtrs...); err == nil {
+				// MariaDB Fixes für Typen
+				for i, v := range vals {
+					if b, ok := v.([]byte); ok {
+						vals[i] = string(b)
+					}
+				}
+				_, err = database.SQL.Exec(insertQuery, vals...)
+				if err != nil {
+					log.Printf("FEHLER beim Kopieren in %s: %v (Query: %s)", table, err, insertQuery)
+				} else {
+					count++
+				}
+			}
+		}
+		rows.Close()
+		log.Printf("Synchronisation: %d Zeilen in %s kopiert.", count, table)
+	}
 }

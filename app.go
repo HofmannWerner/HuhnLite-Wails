@@ -52,7 +52,7 @@ func (a *App) SaveWindowState(ctx context.Context, username string) {
 	w, h := runtime.WindowGetSize(ctx)
 	val := fmt.Sprintf("%dx%d", w, h)
 	log.Printf("[Wails] Window size to save: %s", val)
-	
+
 	isMax := runtime.WindowIsMaximised(ctx)
 	maxVal := "false"
 	if isMax {
@@ -60,16 +60,26 @@ func (a *App) SaveWindowState(ctx context.Context, username string) {
 	}
 	log.Printf("[Wails] Window maximized to save: %s", maxVal)
 
-	_, err := a.database.SQL.Exec(`INSERT INTO USER_STATE (USERNAME, KEY, VALUE) VALUES (?, 'window_size', ?)
-		ON CONFLICT(USERNAME, KEY) DO UPDATE SET VALUE = excluded.VALUE`,
-		username, val)
+	query := `INSERT INTO USER_STATE (USERNAME, "KEY", VALUE) VALUES (?, 'window_size', ?)
+		ON CONFLICT(USERNAME, "KEY") DO UPDATE SET VALUE = excluded.VALUE`
+	if a.database.Engine == "mysql" {
+		query = `INSERT INTO USER_STATE (USERNAME, ` + "`KEY`" + `, VALUE) VALUES (?, 'window_size', ?)
+			ON DUPLICATE KEY UPDATE VALUE = VALUES(VALUE)`
+	}
+
+	_, err := a.database.SQL.Exec(query, username, val)
 	if err != nil {
 		log.Printf("[Wails] Error saving window size: %v", err)
 	}
 
-	_, err = a.database.SQL.Exec(`INSERT INTO USER_STATE (USERNAME, KEY, VALUE) VALUES (?, 'window_maximized', ?)
-		ON CONFLICT(USERNAME, KEY) DO UPDATE SET VALUE = excluded.VALUE`,
-		username, maxVal)
+	maxQuery := `INSERT INTO USER_STATE (USERNAME, "KEY", VALUE) VALUES (?, 'window_maximized', ?)
+		ON CONFLICT(USERNAME, "KEY") DO UPDATE SET VALUE = excluded.VALUE`
+	if a.database.Engine == "mysql" {
+		maxQuery = `INSERT INTO USER_STATE (USERNAME, ` + "`KEY`" + `, VALUE) VALUES (?, 'window_maximized', ?)
+			ON DUPLICATE KEY UPDATE VALUE = VALUES(VALUE)`
+	}
+
+	_, err = a.database.SQL.Exec(maxQuery, username, maxVal)
 	if err != nil {
 		log.Printf("[Wails] Error saving window maximized: %v", err)
 	}
@@ -80,15 +90,32 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 	log.Printf("[Wails] OnBeforeClose triggered")
 	// Letzten angemeldeten User finden (oder default)
 	var username string
-	err := a.database.SQL.QueryRow("SELECT USERNAME FROM USER_STATE WHERE KEY = 'window_size' ORDER BY ROWID DESC LIMIT 1").Scan(&username)
+	query := "SELECT USERNAME FROM USER_STATE WHERE \"KEY\" = 'window_size' ORDER BY ROWID DESC LIMIT 1"
+	if a.database.Engine == "mysql" {
+		query = "SELECT USERNAME FROM USER_STATE WHERE `KEY` = 'window_size' LIMIT 1"
+	}
+	err := a.database.SQL.QueryRow(query).Scan(&username)
 	if err != nil {
 		log.Printf("[Wails] Could not find last user for window state: %v", err)
 		username = "default"
 	}
-	
+
 	log.Printf("[Wails] Saving window state for user: %s", username)
 	a.SaveWindowState(ctx, username)
 	return false // Don't prevent closing
+}
+
+// GetDBStatus returns the current database engine and connection info
+func (a *App) GetDBStatus() map[string]string {
+	return map[string]string{
+		"engine": a.database.Engine,
+		"host":   a.database.Config.DBConnectionString,
+	}
+}
+
+// Quit closes the application
+func (a *App) Quit() {
+	runtime.Quit(a.ctx)
 }
 
 // Greet returns a greeting for the given name

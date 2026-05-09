@@ -299,26 +299,31 @@ async function shutdownServer() {
         await window.go.main.App.SaveWindowState(sessionStore.username || 'default');
       }
 
-      // Zuerst dem Backend sagen, dass es sich beenden soll
+      // Backend informieren (für Logs etc.)
       await api.post('/api/system/shutdown');
       
       $q.notify({
         type: 'warning',
         message: 'Anwendung wird geschlossen...',
         position: 'center',
-        timeout: 2000
+        timeout: 1000
       });
 
-      // Kurz warten, dann versuchen das Fenster zu schließen
-      setTimeout(() => {
+      // Sauber über Wails beenden
+      if (window.go && window.go.main && window.go.main.App) {
+        setTimeout(() => {
+          window.go.main.App.Quit();
+        }, 500);
+      } else {
         window.close();
-        // Fallback falls window.close() blockiert wird
-        document.body.innerHTML = '<div style="background:#111; color:#eee; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif;"><h1>HuhnLite wurde beendet</h1><p>Sie können dieses Fenster nun schließen.</p></div>';
-      }, 1000);
+      }
     } catch (err) {
       console.error('Shutdown error:', err);
-      // Wenn der Server schon weg ist oder ein Fehler kam
-      window.close();
+      if (window.go && window.go.main && window.go.main.App) {
+        window.go.main.App.Quit();
+      } else {
+        window.close();
+      }
     }
   });
 }
@@ -347,38 +352,35 @@ const handleLogout = () => {
 };
 
 onMounted(async () => {
-  try {
-    // 1. Zuerst den DB-Parameter prüfen (Priorität)
-    console.log('MainLayout: Prüfe auth_required Parameter in DB...');
-    const res = await api.get('/api/system-settings/auth_required');
-    const dbVal = String(res.data.value || '').toLowerCase();
-    sessionStore.authEnabled = (dbVal === 'true' || dbVal === '1');
-    console.log('MainLayout: DB auth_required =', sessionStore.authEnabled);
-    if (!sessionStore.authEnabled) {
-      sessionStore.setAdminSession();
-    }
-  } catch (_err: unknown) {
-    // 2. Fallback auf .env / Config, falls DB-Wert (noch) nicht da
-    console.log('MainLayout: DB Parameter nicht gefunden, nutze /api/config Fallback');
+  console.log('MainLayout: Starte Initialisierung...');
+  
+  let success = false;
+  let retries = 5;
+
+  while (!success && retries > 0) {
     try {
-      const configRes = await api.get('/api/config');
-      sessionStore.authEnabled = (configRes.data as { auth_enabled: boolean }).auth_enabled;
-      console.log('MainLayout: Config auth_enabled =', sessionStore.authEnabled);
+      const res = await api.get('/api/system-settings/auth_required');
+      const val = res.data.value;
+      sessionStore.authEnabled = (val === true || val === 'true' || val === '1');
+      console.log('MainLayout: Auth-Status geladen:', sessionStore.authEnabled);
+      
       if (!sessionStore.authEnabled) {
         sessionStore.setAdminSession();
       }
-    } catch (err2: unknown) {
-      console.error('Config-Fehler:', err2);
-      sessionStore.authEnabled = true; // Sicherer Default
+      success = true;
+    } catch (err) {
+      console.log(`MainLayout: Server noch nicht bereit, Retry (${retries})...`);
+      retries--;
+      if (retries > 0) await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
-  // Wenn deaktiviert -> Auto-Login als Admin
-  if (!sessionStore.authEnabled) {
-    console.log('MainLayout: Auto-Login als Test-Admin...');
+  // Fallback falls alles fehlschlägt
+  if (!success) {
+    console.warn('MainLayout: Konnte Auth-Status nicht laden, nutze Default.');
+    // Wenn wir gar keine Antwort bekommen, loggen wir sicherheitshalber ein,
+    // damit der User nicht vor einem leeren Fenster steht.
     sessionStore.setAdminSession();
-  } else {
-    console.log('MainLayout: Login erforderlich.');
   }
 });
 

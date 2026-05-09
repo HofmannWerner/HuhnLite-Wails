@@ -10,12 +10,15 @@ import (
 
 	"huhnlite-wails/backend/config"
 	"huhnlite-wails/backend/db/repo"
+	"huhnlite-wails/backend/db/repo_mysql"
 )
 
 type DB struct {
-	SQL    *sql.DB
-	Repo   repo.Querier
-	Config config.Config
+	SQL       *sql.DB
+	Repo      repo.Querier
+	RepoMySQL *repo_mysql.Queries
+	Config    config.Config
+	Engine    string
 }
 
 func Connect(cfg config.Config) (*DB, error) {
@@ -45,9 +48,18 @@ func Connect(cfg config.Config) (*DB, error) {
 
 	log.Printf("Successfully connected to %s database at %s", cfg.DBEngine, cfg.DBConnectionString)
 
-	return &DB{
-		SQL:    conn,
-		Repo:   repo.New(conn),
-		Config: cfg,
-	}, nil
+	d := &DB{
+		SQL:       conn,
+		RepoMySQL: repo_mysql.New(conn),
+		Config:    cfg,
+		Engine:    cfg.DBEngine,
+	}
+
+	if cfg.DBEngine == "mysql" {
+		d.Repo = NewMySQLWrapper(repo.New(conn), d.RepoMySQL)
+	} else {
+		d.Repo = repo.New(conn)
+	}
+
+	return d, nil
 }

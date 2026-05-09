@@ -23,8 +23,13 @@ export const useSessionStore = defineStore('session', () => {
   const klarname = ref<string | null>(null);
   const profile_kz = ref<string | null>(null);
   const isLoggedIn = ref(false);
-  const authEnabled = ref(true);
+  const authEnabled = ref(localStorage.getItem('authEnabled') !== 'false');
   const loginDismissed = ref(false);
+
+  // Synchronisiere authEnabled mit localStorage
+  watch(authEnabled, (val) => {
+    localStorage.setItem('authEnabled', val ? 'true' : 'false');
+  });
 
   const permissions = ref({
     dashboard: false,

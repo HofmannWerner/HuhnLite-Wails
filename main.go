@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"log"
+	"time"
 
 	"huhnlite-wails/backend/config"
 	"huhnlite-wails/backend/db"
@@ -20,11 +21,23 @@ func main() {
 	// Load config
 	cfg := config.LoadConfig()
 
-	// Connect to database
-	log.Printf("Connecting to database: %s (Engine: %s)", cfg.DBConnectionString, cfg.DBEngine)
-	database, err := db.Connect(cfg)
+	// Connect to database with retry
+	var database *db.DB
+	var err error
+	for i := 1; i <= 3; i++ {
+		log.Printf("Connecting to database (Attempt %d/3): %s", i, cfg.DBConnectionString)
+		database, err = db.Connect(cfg)
+		if err == nil {
+			break
+		}
+		log.Printf("Connection attempt %d failed: %v", i, err)
+		if i < 3 {
+			time.Sleep(2 * time.Second)
+		}
+	}
+
 	if err != nil {
-		log.Fatalf("Could not connect to database: %v", err)
+		log.Fatalf("Could not connect to database after 3 attempts: %v", err)
 	}
 
 	// Create an instance of the app structure

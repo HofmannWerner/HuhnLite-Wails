@@ -441,7 +441,8 @@ onMounted(() => {
 async function loadAuthSetting() {
   try {
     const res = await api.get('/api/system-settings/auth_required');
-    authRequired.value = res.data.value === 'true';
+    const val = res.data.value;
+    authRequired.value = (val === true || val === 'true' || val === '1');
   } catch (err) {
     // Falls noch nicht in DB, Fallback auf aktuellen Config-Status
     try {

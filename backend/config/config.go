@@ -7,13 +7,14 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type Config struct {
-	Mode             string `json:"mode"`               // "standalone" or "server"
-	DBEngine         string `json:"db_engine"`          // "sqlite" or "mysql"
-	DBConnectionString string `json:"db_connection"`      // e.g. "HuhnLite.db" or "user:pass@tcp(127.0.0.1:3306)/dbname"
-	Port             int    `json:"port"`               // HTTP Port for server mode or standalone Gin server
+	Mode               string `json:"mode"`          // "standalone" or "server"
+	DBEngine           string `json:"db_engine"`     // "sqlite" or "mysql"
+	DBConnectionString string `json:"db_connection"` // e.g. "HuhnLite.db" or "user:pass@tcp(127.0.0.1:3306)/dbname"
+	Port               int    `json:"port"`          // HTTP Port for server mode or standalone Gin server
 }
 
 func LoadConfig() Config {
@@ -26,7 +27,7 @@ func LoadConfig() Config {
 			fmt.Printf("ERROR creating AppDataDir: %v\n", err)
 		}
 		fmt.Printf("AppDataDir: %s\n", appDataDir)
-		
+
 		// Logging in Datei umleiten
 		logPath := filepath.Join(appDataDir, "app.log")
 		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -95,15 +96,27 @@ func LoadConfig() Config {
 		Port:               8080,
 	}
 
+	// Name der Einstellungsdatei basierend auf dem Programm-Namen bestimmen
+	configName := "settings.json"
+	// Wir nutzen den execPath, den wir weiter oben bereits ermittelt haben
+	if execPath != "" {
+		fullPath := strings.ToLower(execPath)
+		// Prüfe ob "mariadb" im Pfad der Executable oder des Bundles vorkommt
+		if strings.Contains(fullPath, "mariadb") {
+			configName = "settings_mariadb.json"
+			log.Printf("MariaDB-Modus erkannt (Dateiname: %s)", configName)
+		}
+	}
+
 	paths := []string{
-		filepath.Join(cwd, "settings.json"),
-		filepath.Join(parent, "settings.json"),
+		filepath.Join(cwd, configName),
+		filepath.Join(parent, configName),
 	}
 	if bundleDir != "" {
-		paths = append(paths, filepath.Join(bundleDir, "settings.json"))
+		paths = append(paths, filepath.Join(bundleDir, configName))
 	}
 	if appDataDir != "" {
-		paths = append(paths, filepath.Join(appDataDir, "settings.json"))
+		paths = append(paths, filepath.Join(appDataDir, configName))
 	}
 
 	for _, p := range paths {
@@ -113,7 +126,7 @@ func LoadConfig() Config {
 			decoder := json.NewDecoder(file)
 			if err := decoder.Decode(&cfg); err == nil {
 				log.Printf("Konfiguration aus %s geladen", p)
-				
+
 				// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
 				if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
 					cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
