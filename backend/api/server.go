@@ -2935,47 +2935,47 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}{
 			{
 				"UPDATE BUCHUNG SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')",
-				"UPDATE BUCHUNG SET BUCHUNGSDATUM = DATE_ADD(BUCHUNGSDATUM, INTERVAL ? DAY)",
+				"UPDATE BUCHUNG SET BUCHUNGSDATUM = DATE(DATE_ADD(BUCHUNGSDATUM, INTERVAL ? DAY))",
 				[]interface{}{days},
 			},
 			{
 				"UPDATE FUTTER SET LIEFERDATUM = date(LIEFERDATUM, ? || ' days'), DATUM = date(DATUM, ? || ' days')",
-				"UPDATE FUTTER SET LIEFERDATUM = DATE_ADD(LIEFERDATUM, INTERVAL ? DAY), DATUM = DATE_ADD(DATUM, INTERVAL ? DAY)",
+				"UPDATE FUTTER SET LIEFERDATUM = DATE(DATE_ADD(LIEFERDATUM, INTERVAL ? DAY)), DATUM = DATE(DATE_ADD(DATUM, INTERVAL ? DAY))",
 				[]interface{}{days, days},
 			},
 			{
 				"UPDATE HERDEN SET LEGEDATUM = date(LEGEDATUM, ? || ' days'), EINSTALLDATUM = date(EINSTALLDATUM, ? || ' days')",
-				"UPDATE HERDEN SET LEGEDATUM = DATE_ADD(LEGEDATUM, INTERVAL ? DAY), EINSTALLDATUM = DATE_ADD(EINSTALLDATUM, INTERVAL ? DAY)",
+				"UPDATE HERDEN SET LEGEDATUM = DATE(DATE_ADD(LEGEDATUM, INTERVAL ? DAY)), EINSTALLDATUM = DATE(DATE_ADD(EINSTALLDATUM, INTERVAL ? DAY))",
 				[]interface{}{days, days},
 			},
 			{
 				"UPDATE SILO SET INVENTURDATUMALT = date(INVENTURDATUMALT, ? || ' days'), INVENTURDATUMNEU = date(INVENTURDATUMNEU, ? || ' days')",
-				"UPDATE SILO SET INVENTURDATUMALT = DATE_ADD(INVENTURDATUMALT, INTERVAL ? DAY), INVENTURDATUMNEU = DATE_ADD(INVENTURDATUMNEU, INTERVAL ? DAY)",
+				"UPDATE SILO SET INVENTURDATUMALT = DATE(DATE_ADD(INVENTURDATUMALT, INTERVAL ? DAY)), INVENTURDATUMNEU = DATE(DATE_ADD(INVENTURDATUMNEU, INTERVAL ? DAY))",
 				[]interface{}{days, days},
 			},
 			{
 				"UPDATE TIERBEWEGUNGEN SET BEWEGUNGSDATUM = date(BEWEGUNGSDATUM, ? || ' days')",
-				"UPDATE TIERBEWEGUNGEN SET BEWEGUNGSDATUM = DATE_ADD(BEWEGUNGSDATUM, INTERVAL ? DAY)",
+				"UPDATE TIERBEWEGUNGEN SET BEWEGUNGSDATUM = DATE(DATE_ADD(BEWEGUNGSDATUM, INTERVAL ? DAY))",
 				[]interface{}{days},
 			},
 			{
 				"UPDATE EILAGERBUCHUNG SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')",
-				"UPDATE EILAGERBUCHUNG SET BUCHUNGSDATUM = DATE_ADD(BUCHUNGSDATUM, INTERVAL ? DAY)",
+				"UPDATE EILAGERBUCHUNG SET BUCHUNGSDATUM = DATE(DATE_ADD(BUCHUNGSDATUM, INTERVAL ? DAY))",
 				[]interface{}{days},
 			},
 			{
 				"UPDATE EILAGER SET letzte_buchung = date(letzte_buchung, ? || ' days')",
-				"UPDATE EILAGER SET letzte_buchung = DATE_ADD(letzte_buchung, INTERVAL ? DAY)",
+				"UPDATE EILAGER SET letzte_buchung = DATE(DATE_ADD(letzte_buchung, INTERVAL ? DAY))",
 				[]interface{}{days},
 			},
 			{
 				"UPDATE KOSTEN SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')",
-				"UPDATE KOSTEN SET BUCHUNGSDATUM = DATE_ADD(KOSTEN.BUCHUNGSDATUM, INTERVAL ? DAY)",
+				"UPDATE KOSTEN SET BUCHUNGSDATUM = DATE(DATE_ADD(KOSTEN.BUCHUNGSDATUM, INTERVAL ? DAY))",
 				[]interface{}{days},
 			},
 			{
 				"UPDATE TABELLENKOPF SET Anlagedatum = date(Anlagedatum, ? || ' days'), DATUM = date(DATUM, ? || ' days')",
-				"UPDATE TABELLENKOPF SET Anlagedatum = DATE_ADD(Anlagedatum, INTERVAL ? DAY), DATUM = DATE_ADD(DATUM, INTERVAL ? DAY)",
+				"UPDATE TABELLENKOPF SET Anlagedatum = DATE(DATE_ADD(Anlagedatum, INTERVAL ? DAY)), DATUM = DATE(DATE_ADD(DATUM, INTERVAL ? DAY))",
 				[]interface{}{days, days},
 			},
 		}
@@ -4158,22 +4158,43 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.POST("/api/texttypen", func(c *gin.Context) {
 		var req struct {
-			KZ          string `json:"kz" binding:"required"`
-			Bezeichnung string `json:"BEZEICHNUNG"`
+			Kz          string      `json:"kz" binding:"required"`
+			Bezeichnung string      `json:"bezeichnung"`
+			System      interface{} `json:"system"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.CreateTextTyp(c, db.CreateTextTypParams{
-			Kz:          req.KZ,
-			Bezeichnung: req.Bezeichnung,
-		})
+
+		sysVal := int64(0)
+		switch v := req.System.(type) {
+		case bool:
+			if v {
+				sysVal = 1
+			}
+		case float64:
+			sysVal = int64(v)
+		case int64:
+			sysVal = v
+		}
+
+		kzClean := wailsdb.SanitizeKZ(req.Kz)
+
+		insertQuery := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, SYSTEM) VALUES (?, ?, ?)"
+		if database.Engine == "mysql" {
+			insertQuery = "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM`) VALUES (?, ?, ?)"
+		}
+
+		res, err := conn.ExecContext(c, insertQuery, kzClean, req.Bezeichnung, sysVal)
 		if err != nil {
+			log.Printf("[API] POST /api/texttypen - DB Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, res)
+		newID, _ := res.LastInsertId()
+		log.Printf("[API] POST /api/texttypen - Success, New ID: %d", newID)
+		c.JSON(http.StatusOK, gin.H{"ID": newID, "KZ": kzClean})
 	})
 
 	r.PUT("/api/texttypen/:id", func(c *gin.Context) {
@@ -4183,33 +4204,51 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 		var req struct {
-			KZ          *string `json:"KZ"`
-			Bezeichnung *string `json:"BEZEICHNUNG"`
+			Kz          *string     `json:"kz"`
+			Bezeichnung *string     `json:"bezeichnung"`
+			System      interface{} `json:"system"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "JSON unmarshal error: " + err.Error()})
+			log.Printf("[API] PUT /api/texttypen/%d - JSON binding error: %v", id, err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "JSON error: " + err.Error()})
 			return
 		}
 
 		kzVal := ""
-		if req.KZ != nil {
-			kzVal = *req.KZ
+		if req.Kz != nil {
+			kzVal = wailsdb.SanitizeKZ(*req.Kz)
 		}
 		bezVal := ""
 		if req.Bezeichnung != nil {
 			bezVal = *req.Bezeichnung
 		}
+		sysVal := int64(0)
+		switch v := req.System.(type) {
+		case bool:
+			if v {
+				sysVal = 1
+			}
+		case float64:
+			sysVal = int64(v)
+		case int64:
+			sysVal = v
+		}
 
-		res, err := queries.UpdateTextTyp(c, db.UpdateTextTypParams{
-			ID:          id,
-			Kz:          kzVal,
-			Bezeichnung: bezVal,
-		})
+		log.Printf("[API] PUT /api/texttypen/%d - Mapped: KZ=%s, Bez=%s, Sys=%d", id, kzVal, bezVal, sysVal)
+
+		updateQuery := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, SYSTEM = ? WHERE ID = ?"
+		if database.Engine == "mysql" {
+			updateQuery = "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, `SYSTEM` = ? WHERE ID = ?"
+		}
+
+		res, err := conn.ExecContext(c, updateQuery, kzVal, bezVal, sysVal, id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, res)
+
+		rows, _ := res.RowsAffected()
+		c.JSON(http.StatusOK, gin.H{"id": id, "status": "updated", "rows": rows})
 	})
 
 	r.DELETE("/api/texttypen/:id", func(c *gin.Context) {
@@ -4274,15 +4313,29 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.POST("/api/texte", func(c *gin.Context) {
 		var req struct {
-			TextTypKz string `json:"TEXT_TYP_KZ"`
-			Kz        string `json:"KZ"`
-			Betreff   string `json:"BETREFF"`
-			Inhalt    string `json:"INHALT"`
+			TextTypKz string      `json:"text_typ_kz" binding:"required"`
+			Kz        string      `json:"kz"`
+			Betreff   string      `json:"betreff"`
+			Inhalt    string      `json:"inhalt"`
+			System    interface{} `json:"system"`
 		}
 		lang := c.DefaultQuery("lang", "de")
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "JSON error: " + err.Error()})
 			return
+		}
+
+		// Convert System to int64 (handles bool or int)
+		sysVal := int64(0)
+		switch v := req.System.(type) {
+		case bool:
+			if v {
+				sysVal = 1
+			}
+		case float64:
+			sysVal = int64(v)
+		case int64:
+			sysVal = v
 		}
 
 		tx, err := conn.BeginTx(c, nil)
@@ -4291,32 +4344,31 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 		defer tx.Rollback()
-		qtx := db.New(tx)
 
 		// 1. Create text entry
-		textEntry, err := qtx.CreateText(c, db.CreateTextParams{
-			TextTypKz: req.TextTypKz,
-			Kz:        req.Kz,
-		})
+		kzClean := wailsdb.SanitizeKZ(req.Kz)
+
+		insertQuery := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, SYSTEM) VALUES (?, ?, ?)"
+		if database.Engine == "mysql" {
+			insertQuery = "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM`) VALUES (?, ?, ?)"
+		}
+
+		res, err := tx.ExecContext(c, insertQuery, req.TextTypKz, kzClean, sysVal)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Create text failed: " + err.Error()})
 			return
 		}
+		lastID, _ := res.LastInsertId()
 
 		// 2. Create translation
-		_, err = qtx.CreateUebersetzung(c, db.CreateUebersetzungParams{
-			IDTexte:   textEntry.ID,
-			SpracheKz: lang,
-			Betreff:   req.Betreff,
-			Inhalt:    req.Inhalt,
-		})
+		_, err = tx.ExecContext(c, "INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) VALUES (?, ?, ?, ?)", lastID, lang, req.Betreff, req.Inhalt)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Create translation failed: " + err.Error()})
 			return
 		}
 
 		tx.Commit()
-		c.JSON(http.StatusOK, textEntry)
+		c.JSON(http.StatusOK, gin.H{"ID": lastID})
 	})
 
 	r.PUT("/api/texte/:id", func(c *gin.Context) {
@@ -4325,17 +4377,35 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
+
 		lang := c.DefaultQuery("lang", "de")
 		var req struct {
-			TextTypKz string `json:"TEXT_TYP_KZ"`
-			Kz        string `json:"KZ"`
-			Betreff   string `json:"BETREFF"`
-			Inhalt    string `json:"INHALT"`
+			TextTypKz string      `json:"text_typ_kz"`
+			Kz        string      `json:"kz"`
+			Betreff   string      `json:"betreff"`
+			Inhalt    string      `json:"inhalt"`
+			System    interface{} `json:"system"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[API] PUT /api/texte/%d - JSON binding error: %v", id, err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "JSON error: " + err.Error()})
 			return
 		}
+
+		// Convert System to int64 (handles bool or int)
+		sysVal := int64(0)
+		switch v := req.System.(type) {
+		case bool:
+			if v {
+				sysVal = 1
+			}
+		case float64:
+			sysVal = int64(v)
+		case int64:
+			sysVal = v
+		}
+
+		log.Printf("[API] PUT /api/texte/%d - Mapped Data: %+v, Final System: %d", id, req, sysVal)
 
 		tx, err := conn.BeginTx(c, nil)
 		if err != nil {
@@ -4343,32 +4413,46 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 		defer tx.Rollback()
-		qtx := db.New(tx)
 
 		// 1. Update text entry
-		_, err = qtx.UpdateText(c, db.UpdateTextParams{
-			ID:        id,
-			TextTypKz: req.TextTypKz,
-			Kz:        req.Kz,
-		})
+		kzClean := wailsdb.SanitizeKZ(req.Kz)
+
+		updateQuery := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, SYSTEM = ? WHERE ID = ?"
+		if database.Engine == "mysql" {
+			updateQuery = "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, `SYSTEM` = ? WHERE ID = ?"
+		}
+
+		res, err := tx.ExecContext(c, updateQuery, req.TextTypKz, kzClean, sysVal, id)
 		if err != nil {
+			log.Printf("[API] PUT /api/texte/%d - DB Error: %v", id, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Update text failed: " + err.Error()})
 			return
 		}
+		rows, _ := res.RowsAffected()
+		log.Printf("[API] PUT /api/texte/%d - Success, Rows affected: %d", id, rows)
 
 		// 2. Upsert translation
-		_, err = qtx.UpsertUebersetzung(c, db.UpsertUebersetzungParams{
-			IDTexte:   id,
-			SpracheKz: lang,
-			Betreff:   req.Betreff,
-			Inhalt:    req.Inhalt,
-		})
+		upsertQuery := `INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) 
+                        VALUES (?, ?, ?, ?) 
+                        ON CONFLICT(ID_TEXTE, SPRACHE_KZ) DO UPDATE SET BETREFF = excluded.BETREFF, INHALT = excluded.INHALT`
+		if database.Engine == "mysql" {
+			upsertQuery = `INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) 
+                           VALUES (?, ?, ?, ?) 
+                           ON DUPLICATE KEY UPDATE BETREFF = VALUES(BETREFF), INHALT = VALUES(INHALT)`
+		}
+
+		_, err = tx.ExecContext(c, upsertQuery, id, lang, req.Betreff, req.Inhalt)
 		if err != nil {
+			log.Printf("[API] PUT /api/texte/%d - Upsert translation Error: %v", id, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Upsert translation failed: " + err.Error()})
 			return
 		}
 
-		tx.Commit()
+		if err := tx.Commit(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Commit failed: " + err.Error()})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{"id": id, "status": "updated"})
 	})
 
@@ -4388,6 +4472,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	// Backup Endpunkt
 	// Backup Endpunkt mit Zeitstempel
 	r.POST("/api/backup", func(c *gin.Context) {
+		if database.Engine == "mysql" {
+			c.JSON(http.StatusOK, gin.H{
+				"status":  "info",
+				"message": "MariaDB Backups können nicht über diese Anwendung erstellt werden. Bitte führen Sie die Sicherung über Ihre externe Datenbank-Administration (z.B. mysqldump, phpMyAdmin, HeidiSQL) durch.",
+			})
+			return
+		}
+
 		timestamp := time.Now().Format("0601021504")
 		destPath := filepath.Join(backupDir, fmt.Sprintf("HuhnLite%s.db", timestamp))
 
@@ -4472,6 +4564,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.POST("/api/db/restore", func(c *gin.Context) {
+		if database.Engine == "mysql" {
+			c.JSON(http.StatusOK, gin.H{
+				"status":  "info",
+				"message": "Ein Restore von MariaDB-Daten muss extern über die Datenbank-Administration durchgeführt werden. Diese Funktion ist nur für die lokale SQLite-Datenbank verfügbar.",
+			})
+			return
+		}
+
 		var req struct {
 			Path string `json:"PATH"`
 		}
@@ -4671,6 +4771,37 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 		c.JSON(http.StatusOK, res)
+	})
+
+	r.DELETE("/api/tabellenkopf/:id", func(c *gin.Context) {
+		id, _ := strconv.ParseInt(c.Param("id"), 10, 64)
+
+		// 1. Get the Tabellenkopf to know Typ and Nummer
+		var ttyp interface{}
+		var tnum int64
+		err := conn.QueryRowContext(c, "SELECT TABELLENTYP, TABELLENNUMMER FROM TABELLENKOPF WHERE ID = ?", id).Scan(&ttyp, &tnum)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Tabelle nicht gefunden"})
+			return
+		}
+
+		typStr := fmt.Sprintf("%s", ttyp)
+
+		// 2. Delete rows in associated tables
+		if typStr == "G" {
+			_, _ = conn.ExecContext(c, "DELETE FROM GEWICHTTABELLE WHERE TABELLENNUMMER = ?", tnum)
+		} else if typStr == "L" {
+			_, _ = conn.ExecContext(c, "DELETE FROM LSLKLASSIK WHERE TABELLENNUMMER = ?", tnum)
+		}
+
+		// 3. Delete the header
+		_, err = conn.ExecContext(c, "DELETE FROM TABELLENKOPF WHERE ID = ?", id)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 	})
 
 	r.GET("/api/lsl_klassik/tabnum/:tabnum", func(c *gin.Context) {
@@ -5066,10 +5197,16 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 	})
-
 	r.POST("/api/field-configs/sync", func(c *gin.Context) {
 		// 1. Alle Tabellennamen abfragen (System-Tabellen ausschliessen)
-		tableRows, err := conn.Query("SELECT NAME FROM sqlite_master WHERE type='table' AND NAME NOT LIKE 'sqlite_%'")
+		var tableRows *sql.Rows
+		var err error
+		if database.Engine == "mysql" {
+			tableRows, err = conn.Query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()")
+		} else {
+			tableRows, err = conn.Query("SELECT NAME FROM sqlite_master WHERE type='table' AND NAME NOT LIKE 'sqlite_%'")
+		}
+
 		if err != nil {
 			log.Printf("Sync-Fehler bei Tabellenabfrage: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Lesen der Tabellenstruktur: " + err.Error()})

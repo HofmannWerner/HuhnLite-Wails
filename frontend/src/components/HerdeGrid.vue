@@ -933,13 +933,20 @@ async function loadData() {
     rows.value = resHerden.data || [];
     console.log('Herden data loaded:', rows.value);
 
-    herdeLookupOptions.value = rows.value.map(h => ({
-      ID: h.ID,
-      HERDENNUMMER: h.HERDENNUMMER,
-      BEZEICHNUNG: h.BEZEICHNUNG,
-      label: `${h.HERDENNUMMER} - ${h.BEZEICHNUNG}`,
-      AKTIV: extractIntValue(h.AKTIV)
-    }));
+    herdeLookupOptions.value = rows.value.map(h => {
+      const id = h.id !== undefined ? h.id : h.ID;
+      const nr = h.herdennummer !== undefined ? h.herdennummer : h.HERDENNUMMER;
+      const bez = h.bezeichnung !== undefined ? h.bezeichnung : h.BEZEICHNUNG;
+      const aktiv = extractIntValue(h.aktiv !== undefined ? h.aktiv : h.AKTIV);
+      
+      return {
+        ID: id,
+        HERDENNUMMER: nr,
+        BEZEICHNUNG: bez,
+        label: `${nr || ''} - ${bez || ''}`,
+        AKTIV: aktiv
+      };
+    });
     filteredHerdeOptions.value = herdeLookupOptions.value.filter(h => h.AKTIV === 1);
   } catch (err) {
     console.error('Failed to load herden:', err);
@@ -969,6 +976,11 @@ async function loadData() {
   }).catch(() => {});
 
   loading.value = false;
+  
+  if (chartHerdeId.value === null) {
+    chartHerdeId.value = -1;
+    void onChartHerdeChange(-1);
+  }
 }
 
 function openCreate() {
@@ -1202,7 +1214,10 @@ async function onChartHerdeChange(val: number | null) {
   // Load available years for this herd
   try {
     const res = await api.get(`/api/herden/${val}/years`);
-    yearOptions.value = res.data || [];
+    // Ensure all years are strings for consistent comparison/display
+    const years = (res.data || []).map((y: any) => String(y));
+    yearOptions.value = years;
+    
     if (yearOptions.value.length > 0 && !filterYear.value) {
       filterYear.value = yearOptions.value[0];
     }
@@ -1248,7 +1263,7 @@ function resetChartFilters() {
 
 onMounted(async () => {
   initWidths(columns);
-  await Promise.all([loadData(), loadRassen(), loadPersonen(), loadStallOptions(), loadSiloOptions(), loadEilagerOptions(), loadTabellenOptions()]);
+  await loadData();
 });
 
 defineExpose({ loadData });

@@ -2893,6 +2893,7 @@ func (q *Queries) GetTabellenkopf(ctx context.Context, id int64) (Tabellenkopf, 
 const getTranslatedText = `-- name: GetTranslatedText :one
 SELECT T.ID,
        T.TEXT_TYP_KZ,
+       T.SYSTEM,
        COALESCE(U_TARGET.BETREFF, U_DEFAULT.BETREFF, '')         AS BETREFF,
        COALESCE(U_TARGET.INHALT, U_DEFAULT.INHALT, '')           AS INHALT,
        COALESCE(U_TARGET.SPRACHE_KZ, U_DEFAULT.SPRACHE_KZ, 'DE') AS SPRACHE_KZ
@@ -2910,6 +2911,7 @@ type GetTranslatedTextParams struct {
 type GetTranslatedTextRow struct {
 	ID        int64  `json:"id"`
 	TextTypKz string `json:"text_typ_kz"`
+	System    int64  `json:"system"`
 	Betreff   string `json:"betreff"`
 	Inhalt    string `json:"inhalt"`
 	SpracheKz string `json:"sprache_kz"`
@@ -2921,6 +2923,7 @@ func (q *Queries) GetTranslatedText(ctx context.Context, arg GetTranslatedTextPa
 	err := row.Scan(
 		&i.ID,
 		&i.TextTypKz,
+		&i.System,
 		&i.Betreff,
 		&i.Inhalt,
 		&i.SpracheKz,
@@ -3346,6 +3349,8 @@ type ListDynamischeSQLRow struct {
 	SqlstatementNative string      `json:"sqlstatement_native"`
 	DetailSqlNative    string      `json:"detail_sql_native"`
 	RootKz             interface{} `json:"root_kz"`
+	Summenzeile        string      `json:"summenzeile"`
+	IstSummenzeile     int64       `json:"ist_summenzeile"`
 }
 
 func (q *Queries) ListDynamischeSQL(ctx context.Context) ([]ListDynamischeSQLRow, error) {
@@ -4562,6 +4567,7 @@ const listTexte = `-- name: ListTexte :many
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
+       T.SYSTEM,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -4572,6 +4578,7 @@ type ListTexteRow struct {
 	ID        int64       `json:"id"`
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
+	System    int64       `json:"system"`
 	Betreff   string      `json:"betreff"`
 	Inhalt    string      `json:"inhalt"`
 }
@@ -4589,6 +4596,7 @@ func (q *Queries) ListTexte(ctx context.Context, spracheKz string) ([]ListTexteR
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
+			&i.System,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4609,6 +4617,7 @@ const listTexteByKZ = `-- name: ListTexteByKZ :many
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
+       T.SYSTEM,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -4625,6 +4634,7 @@ type ListTexteByKZRow struct {
 	ID        int64       `json:"id"`
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
+	System    int64       `json:"system"`
 	Betreff   string      `json:"betreff"`
 	Inhalt    string      `json:"inhalt"`
 }
@@ -4642,6 +4652,7 @@ func (q *Queries) ListTexteByKZ(ctx context.Context, arg ListTexteByKZParams) ([
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
+			&i.System,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4662,6 +4673,7 @@ const listTexteByType = `-- name: ListTexteByType :many
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
+       T.SYSTEM,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -4678,6 +4690,7 @@ type ListTexteByTypeRow struct {
 	ID        int64       `json:"id"`
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
+	System    int64       `json:"system"`
 	Betreff   string      `json:"betreff"`
 	Inhalt    string      `json:"inhalt"`
 }
@@ -4695,6 +4708,7 @@ func (q *Queries) ListTexteByType(ctx context.Context, arg ListTexteByTypeParams
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
+			&i.System,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4878,6 +4892,7 @@ const listVerwendungsTexte = `-- name: ListVerwendungsTexte :many
 SELECT T.ID,
        T.KZ,
        T.TEXT_TYP_KZ,
+       T.SYSTEM,
        U.BETREFF
 FROM TEXTE T
          INNER JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE
@@ -4890,6 +4905,7 @@ type ListVerwendungsTexteRow struct {
 	ID        int64       `json:"id"`
 	Kz        interface{} `json:"kz"`
 	TextTypKz string      `json:"text_typ_kz"`
+	System    int64       `json:"system"`
 	Betreff   string      `json:"betreff"`
 }
 
@@ -4906,6 +4922,7 @@ func (q *Queries) ListVerwendungsTexte(ctx context.Context, spracheKz string) ([
 			&i.ID,
 			&i.Kz,
 			&i.TextTypKz,
+			&i.System,
 			&i.Betreff,
 		); err != nil {
 			return nil, err

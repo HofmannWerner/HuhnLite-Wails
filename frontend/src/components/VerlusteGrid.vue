@@ -247,6 +247,13 @@ async function loadData() {
   }
 }
 
+onMounted(async () => {
+  initWidths(columns);
+  await fetchVerlustTexte();
+  await fetchHerden();
+  await loadData();
+});
+
 async function fetchHerden() {
   const res = await api.get('/api/herden/lookup');
   herdeOptions.value = (res.data || []).map((h: any) => {

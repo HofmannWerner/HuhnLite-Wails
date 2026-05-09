@@ -90,9 +90,9 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 	log.Printf("[Wails] OnBeforeClose triggered")
 	// Letzten angemeldeten User finden (oder default)
 	var username string
-	query := "SELECT USERNAME FROM USER_STATE WHERE \"KEY\" = 'window_size' ORDER BY ROWID DESC LIMIT 1"
+	query := "SELECT USERNAME FROM USER_STATE WHERE \"KEY\" = 'window_size' ORDER BY ID DESC LIMIT 1"
 	if a.database.Engine == "mysql" {
-		query = "SELECT USERNAME FROM USER_STATE WHERE `KEY` = 'window_size' LIMIT 1"
+		query = "SELECT USERNAME FROM USER_STATE WHERE `KEY` = 'window_size' ORDER BY ID DESC LIMIT 1"
 	}
 	err := a.database.SQL.QueryRow(query).Scan(&username)
 	if err != nil {

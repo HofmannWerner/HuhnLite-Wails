@@ -97,41 +97,43 @@ func LoadConfig() Config {
 	}
 
 	// Name der Einstellungsdatei basierend auf dem Programm-Namen bestimmen
-	configName := "settings.json"
-	// Wir nutzen den execPath, den wir weiter oben bereits ermittelt haben
+	// 1. Priorität: settings.json (Standard/SQLite)
+	// 2. Fallback: settings_mariadb.json (falls MariaDB-Modus erkannt)
+	configFiles := []string{"settings.json"}
+
 	if execPath != "" {
 		fullPath := strings.ToLower(execPath)
-		// Prüfe ob "mariadb" im Pfad der Executable oder des Bundles vorkommt
 		if strings.Contains(fullPath, "mariadb") {
-			configName = "settings_mariadb.json"
-			log.Printf("MariaDB-Modus erkannt (Dateiname: %s)", configName)
+			configFiles = append(configFiles, "settings_mariadb.json")
+			log.Printf("MariaDB-Modus als Fallback erkannt")
 		}
 	}
 
-	paths := []string{
-		filepath.Join(cwd, configName),
-		filepath.Join(parent, configName),
-	}
-	if bundleDir != "" {
-		paths = append(paths, filepath.Join(bundleDir, configName))
-	}
-	if appDataDir != "" {
-		paths = append(paths, filepath.Join(appDataDir, configName))
-	}
+	for _, configName := range configFiles {
+		paths := []string{
+			filepath.Join(cwd, configName),
+			filepath.Join(parent, configName),
+		}
+		if bundleDir != "" {
+			paths = append(paths, filepath.Join(bundleDir, configName))
+		}
+		if appDataDir != "" {
+			paths = append(paths, filepath.Join(appDataDir, configName))
+		}
 
-	for _, p := range paths {
-		file, err := os.Open(p)
-		if err == nil {
-			defer file.Close()
-			decoder := json.NewDecoder(file)
-			if err := decoder.Decode(&cfg); err == nil {
-				log.Printf("Konfiguration aus %s geladen", p)
-
-				// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
-				if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
-					cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
+		for _, p := range paths {
+			file, err := os.Open(p)
+			if err == nil {
+				defer file.Close()
+				decoder := json.NewDecoder(file)
+				if err := decoder.Decode(&cfg); err == nil {
+					log.Printf("Konfiguration aus %s geladen (Engine: %s)", p, cfg.DBEngine)
+					// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
+					if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
+						cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
+					}
+					return cfg
 				}
-				return cfg
 			}
 		}
 	}

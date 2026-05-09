@@ -68,6 +68,17 @@
                 class="text-white q-px-md"
                 @click="isEditingAlter = true"
               />
+              <q-btn
+                v-if="!isEditingAlter && alterForm.ID"
+                outline
+                rounded
+                dense
+                icon="delete"
+                color="negative"
+                label="Tabelle löschen"
+                class="text-white q-px-md q-ml-sm"
+                @click="onDeleteHeader"
+              />
               <q-space />
               <!-- Title (Right) -->
               <div class="row items-center q-gutter-x-sm q-pr-sm">
@@ -201,6 +212,17 @@
                 label="Kopfdaten bearbeiten"
                 class="text-white q-px-md"
                 @click="isEditingGewicht = true"
+              />
+              <q-btn
+                v-if="!isEditingGewicht && gewichtForm.ID"
+                outline
+                rounded
+                dense
+                icon="delete"
+                color="negative"
+                label="Tabelle löschen"
+                class="text-white q-px-md q-ml-sm"
+                @click="onDeleteGewichtHeader"
               />
               <q-space />
               <!-- Title (Right) -->
@@ -1242,6 +1264,29 @@ async function onSubmitAlterHeader() {
   }
 }
 
+async function onDeleteHeader() {
+  if (!alterForm.ID) return;
+  $q.dialog({
+    title: 'Tabelle löschen',
+    message: 'Möchten Sie die gesamte Tabelle (Kopfdaten und alle Zeilen) unwiderruflich löschen?',
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Löschen', color: 'negative', rounded: true, unelevated: true },
+    cancel: { label: 'Abbrechen', flat: true }
+  }).onOk(async () => {
+    try {
+      await api.delete(`/api/tabellenkopf/${alterForm.ID}`);
+      $q.notify({ type: 'positive', message: 'Tabelle wurde gelöscht' });
+      selectedHeaderId.value = null;
+      onNewHeader();
+      void loadTabellenkopfLookups();
+    } catch (err) {
+      console.error('onDeleteHeader error:', err);
+      $q.notify({ type: 'negative', message: 'Fehler beim Löschen der Tabelle' });
+    }
+  });
+}
+
 // Gewichtstabelle Methoden
 async function loadGewichtDetails(tabNum: number) {
   loadingGewicht.value = true;
@@ -1325,6 +1370,29 @@ async function onSubmitGewichtHeader() {
     console.error('onSubmitGewichtHeader error:', err);
     $q.notify({ type: 'negative', message: 'Fehler beim Speichern der Kopfdaten (Gewichtstabelle)' });
   }
+}
+
+async function onDeleteGewichtHeader() {
+  if (!gewichtForm.ID) return;
+  $q.dialog({
+    title: 'Tabelle löschen',
+    message: 'Möchten Sie die gesamte Tabelle (Kopfdaten und alle Zeilen) unwiderruflich löschen?',
+    cancel: true,
+    persistent: true,
+    ok: { label: 'Löschen', color: 'negative', rounded: true, unelevated: true },
+    cancel: { label: 'Abbrechen', flat: true }
+  }).onOk(async () => {
+    try {
+      await api.delete(`/api/tabellenkopf/${gewichtForm.ID}`);
+      $q.notify({ type: 'positive', message: 'Tabelle wurde gelöscht' });
+      selectedGewichtHeaderId.value = null;
+      onNewGewichtHeader();
+      void loadTabellenkopfLookups();
+    } catch (err) {
+      console.error('onDeleteGewichtHeader error:', err);
+      $q.notify({ type: 'negative', message: 'Fehler beim Löschen der Tabelle' });
+    }
+  });
 }
 
 // Alter Row Methods

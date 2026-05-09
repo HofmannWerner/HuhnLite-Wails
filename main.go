@@ -46,7 +46,11 @@ func main() {
 	// Fenstergröße aus DB laden
 	width, height := 1280, 800
 	var savedSize string
-	err = database.SQL.QueryRow("SELECT VALUE FROM USER_STATE WHERE KEY = 'window_size' ORDER BY USERNAME DESC LIMIT 1").Scan(&savedSize)
+	sizeQuery := "SELECT VALUE FROM USER_STATE WHERE \"KEY\" = 'window_size' ORDER BY ID DESC LIMIT 1"
+	if cfg.DBEngine == "mysql" {
+		sizeQuery = "SELECT VALUE FROM USER_STATE WHERE `KEY` = 'window_size' ORDER BY ID DESC LIMIT 1"
+	}
+	err = database.SQL.QueryRow(sizeQuery).Scan(&savedSize)
 	if err == nil && savedSize != "" {
 		fmt.Sscanf(savedSize, "%dx%d", &width, &height)
 		log.Printf("Restoring window size: %dx%d", width, height)
@@ -55,7 +59,11 @@ func main() {
 	// Maximiert-Status laden
 	startState := options.Maximised
 	var savedMax string
-	err = database.SQL.QueryRow("SELECT VALUE FROM USER_STATE WHERE KEY = 'window_maximized' ORDER BY USERNAME DESC LIMIT 1").Scan(&savedMax)
+	maxQuery := "SELECT VALUE FROM USER_STATE WHERE \"KEY\" = 'window_maximized' ORDER BY ID DESC LIMIT 1"
+	if cfg.DBEngine == "mysql" {
+		maxQuery = "SELECT VALUE FROM USER_STATE WHERE `KEY` = 'window_maximized' ORDER BY ID DESC LIMIT 1"
+	}
+	err = database.SQL.QueryRow(maxQuery).Scan(&savedMax)
 	if err == nil {
 		if savedMax == "false" {
 			startState = options.Normal
