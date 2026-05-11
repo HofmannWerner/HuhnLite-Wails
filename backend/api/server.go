@@ -4181,20 +4181,18 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		kzClean := wailsdb.SanitizeKZ(req.Kz)
 
-		insertQuery := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, SYSTEM) VALUES (?, ?, ?)"
-		if database.Engine == "mysql" {
-			insertQuery = "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM`) VALUES (?, ?, ?)"
-		}
-
-		res, err := conn.ExecContext(c, insertQuery, kzClean, req.Bezeichnung, sysVal)
+		res, err := queries.CreateTextTyp(c, db.CreateTextTypParams{
+			Kz:          kzClean,
+			Bezeichnung: req.Bezeichnung,
+			System:      sysVal,
+		})
 		if err != nil {
 			log.Printf("[API] POST /api/texttypen - DB Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		newID, _ := res.LastInsertId()
-		log.Printf("[API] POST /api/texttypen - Success, New ID: %d", newID)
-		c.JSON(http.StatusOK, gin.H{"ID": newID, "KZ": kzClean})
+		log.Printf("[API] POST /api/texttypen - Success, New ID: %d", res.ID)
+		c.JSON(http.StatusOK, gin.H{"ID": res.ID, "KZ": res.Kz})
 	})
 
 	r.PUT("/api/texttypen/:id", func(c *gin.Context) {
@@ -4236,19 +4234,18 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		log.Printf("[API] PUT /api/texttypen/%d - Mapped: KZ=%s, Bez=%s, Sys=%d", id, kzVal, bezVal, sysVal)
 
-		updateQuery := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, SYSTEM = ? WHERE ID = ?"
-		if database.Engine == "mysql" {
-			updateQuery = "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, `SYSTEM` = ? WHERE ID = ?"
-		}
-
-		res, err := conn.ExecContext(c, updateQuery, kzVal, bezVal, sysVal, id)
+		updatedRes, err := queries.UpdateTextTyp(c, db.UpdateTextTypParams{
+			ID:          id,
+			Kz:          kzVal,
+			Bezeichnung: bezVal,
+			System:      sysVal,
+		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
-		rows, _ := res.RowsAffected()
-		c.JSON(http.StatusOK, gin.H{"id": id, "status": "updated", "rows": rows})
+		c.JSON(http.StatusOK, gin.H{"id": updatedRes.ID, "status": "updated", "rows": 1})
 	})
 
 	r.DELETE("/api/texttypen/:id", func(c *gin.Context) {
@@ -4348,27 +4345,37 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// 1. Create text entry
 		kzClean := wailsdb.SanitizeKZ(req.Kz)
 
-		insertQuery := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, SYSTEM) VALUES (?, ?, ?)"
+		var qtx db.Querier
 		if database.Engine == "mysql" {
-			insertQuery = "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM`) VALUES (?, ?, ?)"
+			qtx = queries.(*wailsdb.MySQLWrapper).WithTx(tx)
+		} else {
+			qtx = queries.(*db.Queries).WithTx(tx)
 		}
 
-		res, err := tx.ExecContext(c, insertQuery, req.TextTypKz, kzClean, sysVal)
+		res, err := qtx.CreateText(c, db.CreateTextParams{
+			TextTypKz: req.TextTypKz,
+			Kz:        kzClean,
+			System:    sysVal,
+		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Create text failed: " + err.Error()})
 			return
 		}
-		lastID, _ := res.LastInsertId()
 
 		// 2. Create translation
-		_, err = tx.ExecContext(c, "INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) VALUES (?, ?, ?, ?)", lastID, lang, req.Betreff, req.Inhalt)
+		_, err = qtx.CreateUebersetzung(c, db.CreateUebersetzungParams{
+			IDTexte:   res.ID,
+			SpracheKz: lang,
+			Betreff:   req.Betreff,
+			Inhalt:    req.Inhalt,
+		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Create translation failed: " + err.Error()})
 			return
 		}
 
 		tx.Commit()
-		c.JSON(http.StatusOK, gin.H{"ID": lastID})
+		c.JSON(http.StatusOK, gin.H{"ID": res.ID})
 	})
 
 	r.PUT("/api/texte/:id", func(c *gin.Context) {
@@ -4414,34 +4421,34 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 		defer tx.Rollback()
 
-		// 1. Update text entry
-		kzClean := wailsdb.SanitizeKZ(req.Kz)
-
-		updateQuery := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, SYSTEM = ? WHERE ID = ?"
+		var qtx db.Querier
 		if database.Engine == "mysql" {
-			updateQuery = "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, `SYSTEM` = ? WHERE ID = ?"
+			qtx = queries.(*wailsdb.MySQLWrapper).WithTx(tx)
+		} else {
+			qtx = queries.(*db.Queries).WithTx(tx)
 		}
 
-		res, err := tx.ExecContext(c, updateQuery, req.TextTypKz, kzClean, sysVal, id)
+		// 1. Update text entry
+		kzClean := wailsdb.SanitizeKZ(req.Kz)
+		_, err = qtx.UpdateText(c, db.UpdateTextParams{
+			ID:        id,
+			TextTypKz: req.TextTypKz,
+			Kz:        kzClean,
+			System:    sysVal,
+		})
 		if err != nil {
 			log.Printf("[API] PUT /api/texte/%d - DB Error: %v", id, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Update text failed: " + err.Error()})
 			return
 		}
-		rows, _ := res.RowsAffected()
-		log.Printf("[API] PUT /api/texte/%d - Success, Rows affected: %d", id, rows)
 
 		// 2. Upsert translation
-		upsertQuery := `INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) 
-                        VALUES (?, ?, ?, ?) 
-                        ON CONFLICT(ID_TEXTE, SPRACHE_KZ) DO UPDATE SET BETREFF = excluded.BETREFF, INHALT = excluded.INHALT`
-		if database.Engine == "mysql" {
-			upsertQuery = `INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) 
-                           VALUES (?, ?, ?, ?) 
-                           ON DUPLICATE KEY UPDATE BETREFF = VALUES(BETREFF), INHALT = VALUES(INHALT)`
-		}
-
-		_, err = tx.ExecContext(c, upsertQuery, id, lang, req.Betreff, req.Inhalt)
+		_, err = qtx.UpsertUebersetzung(c, db.UpsertUebersetzungParams{
+			IDTexte:   id,
+			SpracheKz: lang,
+			Betreff:   req.Betreff,
+			Inhalt:    req.Inhalt,
+		})
 		if err != nil {
 			log.Printf("[API] PUT /api/texte/%d - Upsert translation Error: %v", id, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Upsert translation failed: " + err.Error()})

@@ -3,12 +3,12 @@ package db
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"fmt"
 	"huhnlite-wails/backend/db/repo"
 	"huhnlite-wails/backend/db/repo_mysql"
 	"log"
 	"strconv"
-	"encoding/base64"
 	"strings"
 )
 
@@ -24,6 +24,14 @@ func NewMySQLWrapper(sqlite *repo.Queries, mysql *repo_mysql.Queries, db *sql.DB
 		Queries: sqlite,
 		mysql:   mysql,
 		db:      db,
+	}
+}
+
+func (w *MySQLWrapper) WithTx(tx *sql.Tx) *MySQLWrapper {
+	return &MySQLWrapper{
+		Queries: w.Queries.WithTx(tx),
+		mysql:   w.mysql.WithTx(tx),
+		db:      w.db,
 	}
 }
 
@@ -423,26 +431,26 @@ func (w *MySQLWrapper) ListHerden(ctx context.Context) ([]repo.ListHerdenRow, er
 	items := make([]repo.ListHerdenRow, len(res))
 	for i, v := range res {
 		items[i] = repo.ListHerdenRow{
-			ID:                   int64(v.ID),
-			IDSilo:               int64(v.IDSilo),
-			IDStall:              int64(v.IDStall),
-			IDEilager:            int64(v.IDEilager),
-			IDGewichttab:         int64(v.IDGewichttab),
-			IDZuechter:           int64(v.IDZuechter),
-			IDRasse:              int64(v.IDRasse),
-			Herdennummer:         int64(v.Herdennummer),
-			Bezeichnung:          v.Bezeichnung,
-			Anfangskosten:        int64(v.Anfangskosten),
-			Anfangsbestand:       int64(v.Anfangsbestand),
-			Einstalldatum:        v.Einstalldatum,
-			Legedatum:            v.Legedatum,
-			Einstallkosten:       v.Einstallkosten,
-			Datum:                v.Datum,
-			Zeitstempel:          v.Zeitstempel,
-			Aktiv:                int64(v.Aktiv),
-			Aw:                   int64(v.Aw),
+			ID:                    int64(v.ID),
+			IDSilo:                int64(v.IDSilo),
+			IDStall:               int64(v.IDStall),
+			IDEilager:             int64(v.IDEilager),
+			IDGewichttab:          int64(v.IDGewichttab),
+			IDZuechter:            int64(v.IDZuechter),
+			IDRasse:               int64(v.IDRasse),
+			Herdennummer:          int64(v.Herdennummer),
+			Bezeichnung:           v.Bezeichnung,
+			Anfangskosten:         int64(v.Anfangskosten),
+			Anfangsbestand:        int64(v.Anfangsbestand),
+			Einstalldatum:         v.Einstalldatum,
+			Legedatum:             v.Legedatum,
+			Einstallkosten:        v.Einstallkosten,
+			Datum:                 v.Datum,
+			Zeitstempel:           v.Zeitstempel,
+			Aktiv:                 int64(v.Aktiv),
+			Aw:                    int64(v.Aw),
 			Allebuchungenmitdatum: int64(v.Allebuchungenmitdatum),
-			StallBezeichnung:     v.StallBezeichnung,
+			StallBezeichnung:      v.StallBezeichnung,
 		}
 	}
 	return items, nil
@@ -454,37 +462,37 @@ func (w *MySQLWrapper) GetHerde(ctx context.Context, id int64) (repo.Herden, err
 		return repo.Herden{}, err
 	}
 	return repo.Herden{
-		ID:                   int64(v.ID),
-		IDSilo:               int64(v.IDSilo),
-		IDStall:              int64(v.IDStall),
-		IDEilager:            int64(v.IDEilager),
-		IDRasse:              int64(v.IDRasse),
-		IDZuechter:           int64(v.IDZuechter),
-		Herdennummer:         int64(v.Herdennummer),
-		Bezeichnung:          v.Bezeichnung,
-		Anfangsbestand:       int64(v.Anfangsbestand),
-		Einstalldatum:        v.Einstalldatum,
-		Legedatum:            v.Legedatum,
-		Einstallkosten:       v.Einstallkosten,
-		Aktiv:                int64(v.Aktiv),
+		ID:                    int64(v.ID),
+		IDSilo:                int64(v.IDSilo),
+		IDStall:               int64(v.IDStall),
+		IDEilager:             int64(v.IDEilager),
+		IDRasse:               int64(v.IDRasse),
+		IDZuechter:            int64(v.IDZuechter),
+		Herdennummer:          int64(v.Herdennummer),
+		Bezeichnung:           v.Bezeichnung,
+		Anfangsbestand:        int64(v.Anfangsbestand),
+		Einstalldatum:         v.Einstalldatum,
+		Legedatum:             v.Legedatum,
+		Einstallkosten:        v.Einstallkosten,
+		Aktiv:                 int64(v.Aktiv),
 		Allebuchungenmitdatum: int64(v.Allebuchungenmitdatum),
 	}, nil
 }
 
 func (w *MySQLWrapper) CreateHerde(ctx context.Context, arg repo.CreateHerdeParams) (repo.Herden, error) {
 	res, err := w.mysql.CreateHerde(ctx, repo_mysql.CreateHerdeParams{
-		IDSilo:               int32(arg.IDSilo),
-		IDStall:              int32(arg.IDStall),
-		IDEilager:            int32(arg.IDEilager),
-		IDRasse:              int32(arg.IDRasse),
-		IDZuechter:           int32(arg.IDZuechter),
-		Herdennummer:         int32(arg.Herdennummer),
-		Bezeichnung:          arg.Bezeichnung,
-		Anfangsbestand:       int32(arg.Anfangsbestand),
-		Einstalldatum:        arg.Einstalldatum,
-		Legedatum:            arg.Legedatum,
-		Einstallkosten:       arg.Einstallkosten,
-		Aktiv:                int32(arg.Aktiv),
+		IDSilo:                int32(arg.IDSilo),
+		IDStall:               int32(arg.IDStall),
+		IDEilager:             int32(arg.IDEilager),
+		IDRasse:               int32(arg.IDRasse),
+		IDZuechter:            int32(arg.IDZuechter),
+		Herdennummer:          int32(arg.Herdennummer),
+		Bezeichnung:           arg.Bezeichnung,
+		Anfangsbestand:        int32(arg.Anfangsbestand),
+		Einstalldatum:         arg.Einstalldatum,
+		Legedatum:             arg.Legedatum,
+		Einstallkosten:        arg.Einstallkosten,
+		Aktiv:                 int32(arg.Aktiv),
 		Allebuchungenmitdatum: int32(arg.Allebuchungenmitdatum),
 	})
 	if err != nil {
@@ -496,20 +504,20 @@ func (w *MySQLWrapper) CreateHerde(ctx context.Context, arg repo.CreateHerdePara
 
 func (w *MySQLWrapper) UpdateHerde(ctx context.Context, arg repo.UpdateHerdeParams) (repo.Herden, error) {
 	_, err := w.mysql.UpdateHerde(ctx, repo_mysql.UpdateHerdeParams{
-		IDSilo:               int32(arg.IDSilo),
-		IDStall:              int32(arg.IDStall),
-		IDEilager:            int32(arg.IDEilager),
-		IDRasse:              int32(arg.IDRasse),
-		IDZuechter:           int32(arg.IDZuechter),
-		Herdennummer:         int32(arg.Herdennummer),
-		Bezeichnung:          arg.Bezeichnung,
-		Anfangsbestand:       int32(arg.Anfangsbestand),
-		Einstalldatum:        arg.Einstalldatum,
-		Legedatum:            arg.Legedatum,
-		Einstallkosten:       arg.Einstallkosten,
-		Aktiv:                int32(arg.Aktiv),
+		IDSilo:                int32(arg.IDSilo),
+		IDStall:               int32(arg.IDStall),
+		IDEilager:             int32(arg.IDEilager),
+		IDRasse:               int32(arg.IDRasse),
+		IDZuechter:            int32(arg.IDZuechter),
+		Herdennummer:          int32(arg.Herdennummer),
+		Bezeichnung:           arg.Bezeichnung,
+		Anfangsbestand:        int32(arg.Anfangsbestand),
+		Einstalldatum:         arg.Einstalldatum,
+		Legedatum:             arg.Legedatum,
+		Einstallkosten:        arg.Einstallkosten,
+		Aktiv:                 int32(arg.Aktiv),
 		Allebuchungenmitdatum: int32(arg.Allebuchungenmitdatum),
-		ID:                   int32(arg.ID),
+		ID:                    int32(arg.ID),
 	})
 	if err != nil {
 		return repo.Herden{}, err
@@ -593,6 +601,7 @@ func (w *MySQLWrapper) GetEggStatsWeeklyByHerde(ctx context.Context, idHerden in
 	}
 	return items, nil
 }
+
 // --- Eilager Methoden ---
 
 func (w *MySQLWrapper) ListEilager(ctx context.Context) ([]repo.ListEilagerRow, error) {
@@ -736,7 +745,7 @@ func (w *MySQLWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBe
 		GROUP BY CHARGE, LAGERPLATZ_ID, EILAGER_ID, EILAGER_KZ, EILAGER_BEZEICHNUNG
 		ORDER BY EILAGER_BEZEICHNUNG, CHARGE, LAGERPLATZ_BEZEICHNUNG
 	`
-	
+
 	idInt := toInt64(arg.IDEilager)
 	rows, err := w.db.QueryContext(ctx, query, idInt, idInt, idInt, idInt)
 	if err != nil {
@@ -758,7 +767,7 @@ func (w *MySQLWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBe
 			log.Printf("[DB] GetBestandsuebersicht Scan Error: %v", err)
 			return nil, err
 		}
-		
+
 		items = append(items, repo.GetBestandsuebersichtRow{
 			Charge:                charge.String,
 			LagerplatzBezeichnung: lpBez.String,
@@ -1110,52 +1119,52 @@ func (w *MySQLWrapper) GetFirmenparameterByHerde(ctx context.Context, idHerden i
 
 func convertFirmenparameter(v repo_mysql.Firmenparameter) repo.Firmenparameter {
 	return repo.Firmenparameter{
-		ID:                int64(v.ID),
-		IDHerden:          int64(v.IDHerden),
-		Kz:                v.Kz,
-		Jumbos:            int64(v.Jumbos),
-		Klassenerfassen:   int64(v.Klassenerfassen),
-		Klasseaerfassen:   int64(v.Klasseaerfassen),
-		Klasseaerrechnen:  int64(v.Klasseaerrechnen),
-		Klasseavermitteln: int64(v.Klasseavermitteln),
-		Erfasseschmutzei:  int64(v.Erfasseschmutzei),
-		Erfasseknickei:    int64(v.Erfasseknickei),
-		Erfassebruchei:    int64(v.Erfassebruchei),
-		Erfassevollei:     int64(v.Erfassevollei),
-		Massvollei:        int64(v.Massvollei),
-		Aufteilunggewicht: int64(v.Aufteilunggewicht),
-		Kontrollwiegung:   int64(v.Kontrollwiegung),
-		Anzahlkontrollw:   int64(v.Anzahlkontrollw),
-		Verpackungkg:      v.Verpackungkg,
-		Aufteilungalter:   int64(v.Aufteilungalter),
-		Erfassevolleikg:   int64(v.Erfassevolleikg),
-		Laufzeitwochen:    int64(v.Laufzeitwochen),
-		Zeitstempel:       v.Zeitstempel,
-		Schlachterloeshenne: v.Schlachterloeshenne,
-		Produktionsdauer:  int64(v.Produktionsdauer),
-		IDTabellegewicht:  int64(v.IDTabellegewicht),
-		IDTabellealter:    int64(v.IDTabellealter),
-		LegebeginnLw:      int64(v.LegebeginnLw),
-		Verlustebeibuchung: int64(v.Verlustebeibuchung),
-		Lagerbuchungbeibuchung: int64(v.Lagerbuchungbeibuchung),
-		Maxtagevermitteln: int64(v.Maxtagevermitteln),
-		Chargejumbos:      int64(v.Chargejumbos),
-		Chargexl:          int64(v.Chargexl),
-		Chargemedium:      int64(v.Chargemedium),
-		Chargesmall:       int64(v.Chargesmall),
-		Chargelarge:       int64(v.Chargelarge),
-		Chargevollei:      int64(v.Chargevollei),
-		Chargeprefixfirma: v.Chargeprefixfirma,
-		Chargeprefixherdennummer: int64(v.Chargeprefixherdennummer),
-		Chargedatum:       int64(v.Chargedatum),
-		Chargelagernummer: int64(v.Chargelagernummer),
-		Chargetrennung:    v.Chargetrennung,
+		ID:                        int64(v.ID),
+		IDHerden:                  int64(v.IDHerden),
+		Kz:                        v.Kz,
+		Jumbos:                    int64(v.Jumbos),
+		Klassenerfassen:           int64(v.Klassenerfassen),
+		Klasseaerfassen:           int64(v.Klasseaerfassen),
+		Klasseaerrechnen:          int64(v.Klasseaerrechnen),
+		Klasseavermitteln:         int64(v.Klasseavermitteln),
+		Erfasseschmutzei:          int64(v.Erfasseschmutzei),
+		Erfasseknickei:            int64(v.Erfasseknickei),
+		Erfassebruchei:            int64(v.Erfassebruchei),
+		Erfassevollei:             int64(v.Erfassevollei),
+		Massvollei:                int64(v.Massvollei),
+		Aufteilunggewicht:         int64(v.Aufteilunggewicht),
+		Kontrollwiegung:           int64(v.Kontrollwiegung),
+		Anzahlkontrollw:           int64(v.Anzahlkontrollw),
+		Verpackungkg:              v.Verpackungkg,
+		Aufteilungalter:           int64(v.Aufteilungalter),
+		Erfassevolleikg:           int64(v.Erfassevolleikg),
+		Laufzeitwochen:            int64(v.Laufzeitwochen),
+		Zeitstempel:               v.Zeitstempel,
+		Schlachterloeshenne:       v.Schlachterloeshenne,
+		Produktionsdauer:          int64(v.Produktionsdauer),
+		IDTabellegewicht:          int64(v.IDTabellegewicht),
+		IDTabellealter:            int64(v.IDTabellealter),
+		LegebeginnLw:              int64(v.LegebeginnLw),
+		Verlustebeibuchung:        int64(v.Verlustebeibuchung),
+		Lagerbuchungbeibuchung:    int64(v.Lagerbuchungbeibuchung),
+		Maxtagevermitteln:         int64(v.Maxtagevermitteln),
+		Chargejumbos:              int64(v.Chargejumbos),
+		Chargexl:                  int64(v.Chargexl),
+		Chargemedium:              int64(v.Chargemedium),
+		Chargesmall:               int64(v.Chargesmall),
+		Chargelarge:               int64(v.Chargelarge),
+		Chargevollei:              int64(v.Chargevollei),
+		Chargeprefixfirma:         v.Chargeprefixfirma,
+		Chargeprefixherdennummer:  int64(v.Chargeprefixherdennummer),
+		Chargedatum:               int64(v.Chargedatum),
+		Chargelagernummer:         int64(v.Chargelagernummer),
+		Chargetrennung:            v.Chargetrennung,
 		Beivermittelndatumaktuell: int64(v.Beivermittelndatumaktuell),
-		Pseudolager:       int64(v.Pseudolager),
-		Bio:               int64(v.Bio),
-		Haltungstyp:       v.Haltungstyp,
-		Bioaufschlag:      v.Bioaufschlag,
-		Aw:                int64(v.Aw),
+		Pseudolager:               int64(v.Pseudolager),
+		Bio:                       int64(v.Bio),
+		Haltungstyp:               v.Haltungstyp,
+		Bioaufschlag:              v.Bioaufschlag,
+		Aw:                        int64(v.Aw),
 	}
 }
 
@@ -1280,13 +1289,13 @@ func (w *MySQLWrapper) ListEierpreise(ctx context.Context) ([]repo.Eierpreise, e
 	items := make([]repo.Eierpreise, len(res))
 	for i, v := range res {
 		items[i] = repo.Eierpreise{
-			ID:             int64(v.ID),
-			KzHaltungstyp:  v.KzHaltungstyp,
-			Eierklasse:     v.Eierklasse,
-			GewichtVon:     v.GewichtVon,
-			GewichtBis:     v.GewichtBis,
-			PreisVon:       v.PreisVon,
-			PreisBis:       v.PreisBis,
+			ID:            int64(v.ID),
+			KzHaltungstyp: v.KzHaltungstyp,
+			Eierklasse:    v.Eierklasse,
+			GewichtVon:    v.GewichtVon,
+			GewichtBis:    v.GewichtBis,
+			PreisVon:      v.PreisVon,
+			PreisBis:      v.PreisBis,
 		}
 	}
 	return items, nil
@@ -1836,8 +1845,8 @@ func (w *MySQLWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, err
 
 func (w *MySQLWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] CreateTextTyp called: %s", arg.Kz)
-	query := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM`) VALUES (?, ?, 0)"
-	res, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung)
+	query := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM`) VALUES (?, ?, ?)"
+	res, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.System)
 	if err != nil {
 		log.Printf("[DB] CreateTextTyp Error: %v", err)
 		return repo.TextTypen{}, err
@@ -1847,14 +1856,14 @@ func (w *MySQLWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTyp
 		ID:          id,
 		Kz:          arg.Kz,
 		Bezeichnung: arg.Bezeichnung,
-		System:      0,
+		System:      arg.System,
 	}, nil
 }
 
 func (w *MySQLWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] UpdateTextTyp called: %d", arg.ID)
-	query := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ? WHERE ID = ?"
-	_, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.ID)
+	query := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, `SYSTEM` = ? WHERE ID = ?"
+	_, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.System, arg.ID)
 	if err != nil {
 		log.Printf("[DB] UpdateTextTyp Error: %v", err)
 		return repo.TextTypen{}, err
@@ -1868,8 +1877,8 @@ func (w *MySQLWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateTextTyp
 
 func (w *MySQLWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] CreateText called for Typ: %s", arg.TextTypKz)
-	query := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM`) VALUES (?, ?, 0)"
-	res, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz)
+	query := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM`) VALUES (?, ?, ?)"
+	res, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.System)
 	if err != nil {
 		log.Printf("[DB] CreateText Error: %v", err)
 		return repo.Texte{}, err
@@ -1879,14 +1888,14 @@ func (w *MySQLWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams
 		ID:        id,
 		TextTypKz: arg.TextTypKz,
 		Kz:        arg.Kz,
-		System:    0,
+		System:    arg.System,
 	}, nil
 }
 
 func (w *MySQLWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] UpdateText called: %d", arg.ID)
-	query := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ? WHERE ID = ?"
-	_, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.ID)
+	query := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, `SYSTEM` = ? WHERE ID = ?"
+	_, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.System, arg.ID)
 	if err != nil {
 		log.Printf("[DB] UpdateText Error: %v", err)
 		return repo.Texte{}, err
@@ -2066,4 +2075,3 @@ func (w *MySQLWrapper) ListShowTV(ctx context.Context) ([]repo.Showtv, error) {
 	}
 	return items, nil
 }
-

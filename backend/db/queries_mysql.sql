@@ -636,13 +636,14 @@ SELECT *
 FROM TEXT_TYPEN;
 
 -- name: CreateTextTyp :execresult
-INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG)
-VALUES (?, ?) ;
+INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM`)
+VALUES (?, ?, ?) ;
 
 -- name: UpdateTextTyp :execresult
 UPDATE TEXT_TYPEN
 SET KZ          = ?,
-    BEZEICHNUNG = ?
+    BEZEICHNUNG = ?,
+    `SYSTEM`    = ?
 WHERE ID = ? ;
 
 -- name: DeleteTextTyp :exec
@@ -654,19 +655,21 @@ WHERE ID = ?;
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
+       T.`SYSTEM`,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
          LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?;
 
 -- name: CreateText :execresult
-INSERT INTO TEXTE (TEXT_TYP_KZ, KZ)
-VALUES (?, ?) ;
+INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM`)
+VALUES (?, ?, ?) ;
 
 -- name: UpdateText :execresult
 UPDATE TEXTE
 SET TEXT_TYP_KZ = ?,
-    KZ          = ?
+    KZ          = ?,
+    `SYSTEM`    = ?
 WHERE ID = ? ;
 
 -- name: DeleteText :exec
@@ -678,6 +681,7 @@ WHERE ID = ?;
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
+       T.`SYSTEM`,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -688,6 +692,7 @@ WHERE T.TEXT_TYP_KZ = ?;
 SELECT T.ID,
        T.KZ,
        T.TEXT_TYP_KZ,
+       T.`SYSTEM`,
        U.BETREFF
 FROM TEXTE T
          INNER JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE
@@ -699,6 +704,7 @@ WHERE T.TEXT_TYP_KZ = 'E'
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
+       T.`SYSTEM`,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -726,6 +732,7 @@ VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE BETREFF = VALUES(BETREFF),
 -- name: GetTranslatedText :one
 SELECT T.ID,
        T.TEXT_TYP_KZ,
+       T.`SYSTEM`,
        COALESCE(U_TARGET.BETREFF, U_DEFAULT.BETREFF, '')         AS BETREFF,
        COALESCE(U_TARGET.INHALT, U_DEFAULT.INHALT, '')           AS INHALT,
        COALESCE(U_TARGET.SPRACHE_KZ, U_DEFAULT.SPRACHE_KZ, 'DE') AS SPRACHE_KZ
@@ -1105,7 +1112,9 @@ SELECT ID,
        SHOW_DETAIL_GRID,
        SQLSTATEMENT_NATIVE,
        DETAIL_SQL_NATIVE,
-       ROOT_KZ
+       ROOT_KZ,
+       SUMMENZEILE,
+       IST_SUMMENZEILE
 FROM DYNAMISCHE_SQL
 ORDER BY ROOT_KZ ASC,
          GRUPPEN_KZ ASC,
