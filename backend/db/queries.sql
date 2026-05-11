@@ -633,18 +633,19 @@ FROM KOSTEN
 WHERE ID = ?;
 
 -- name: ListTextTypen :many
-SELECT *
+SELECT ID, KZ, BEZEICHNUNG, SYSTEM_KZ, STATUS
 FROM TEXT_TYPEN;
 
 -- name: CreateTextTyp :one
-INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, SYSTEM)
-VALUES (?, ?, ?) RETURNING *;
+INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, SYSTEM_KZ, STATUS)
+VALUES (?, ?, ?, ?) RETURNING *;
 
 -- name: UpdateTextTyp :one
 UPDATE TEXT_TYPEN
 SET KZ          = ?,
     BEZEICHNUNG = ?,
-    SYSTEM    = ?
+    SYSTEM_KZ    = ?,
+    STATUS      = ?
 WHERE ID = ? RETURNING *;
 
 -- name: DeleteTextTyp :exec
@@ -656,21 +657,23 @@ WHERE ID = ?;
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
+       
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
          LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?;
 
 -- name: CreateText :one
-INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, SYSTEM)
-VALUES (?, ?, ?) RETURNING *;
+INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, SYSTEM_KZ, STATUS)
+VALUES (?, ?, ?, ?) RETURNING *;
 
 -- name: UpdateText :one
 UPDATE TEXTE
 SET TEXT_TYP_KZ = ?,
     KZ          = ?,
-    SYSTEM    = ?
+    SYSTEM_KZ    = ?,
+    STATUS      = ?
 WHERE ID = ? RETURNING *;
 
 -- name: DeleteText :exec
@@ -682,7 +685,7 @@ WHERE ID = ?;
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -693,7 +696,7 @@ WHERE T.TEXT_TYP_KZ = ?;
 SELECT T.ID,
        T.KZ,
        T.TEXT_TYP_KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        U.BETREFF
 FROM TEXTE T
          INNER JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE
@@ -705,7 +708,7 @@ WHERE T.TEXT_TYP_KZ = 'E'
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -735,7 +738,7 @@ RETURNING *;
 -- name: GetTranslatedText :one
 SELECT T.ID,
        T.TEXT_TYP_KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        COALESCE(U_TARGET.BETREFF, U_DEFAULT.BETREFF, '')         AS BETREFF,
        COALESCE(U_TARGET.INHALT, U_DEFAULT.INHALT, '')           AS INHALT,
        COALESCE(U_TARGET.SPRACHE_KZ, U_DEFAULT.SPRACHE_KZ, 'DE') AS SPRACHE_KZ

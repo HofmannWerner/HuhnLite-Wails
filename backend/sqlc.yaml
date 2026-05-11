@@ -32,6 +32,16 @@ sql:
             go_type: "float64"
           - db_type: "NUMERIC"
             go_type: "float64"
+          - column: "texte.system_kz"
+            go_struct_tag: 'json:"system"'
+          - column: "texte.status"
+            go_struct_tag: 'json:"status"'
+          - column: "text_typen.system_kz"
+            go_struct_tag: 'json:"system"'
+          - column: "text_typen.status"
+            go_struct_tag: 'json:"status"'
+          - column: "dynamische_sql.system_kz"
+            go_struct_tag: 'json:"system"'
 
 #  - engine: "mysql"
 #    queries: "db/queries_mysql.sql"

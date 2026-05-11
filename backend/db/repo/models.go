@@ -84,7 +84,7 @@ type DynamischeSql struct {
 	PageOrientation    string      `json:"page_orientation"`
 	ShowMasterGrid     int64       `json:"show_master_grid"`
 	ShowDetailGrid     int64       `json:"show_detail_grid"`
-	SystemKz           string      `json:"system_kz"`
+	SystemKz           string      `json:"system"`
 	SqlstatementNative string      `json:"sqlstatement_native"`
 	DetailSqlNative    string      `json:"detail_sql_native"`
 	RootKz             interface{} `json:"root_kz"`
@@ -386,14 +386,16 @@ type TextTypen struct {
 	ID          int64  `json:"id"`
 	Kz          string `json:"kz"`
 	Bezeichnung string `json:"bezeichnung"`
-	System      int64  `json:"system"`
+	SystemKz    int64  `json:"system"`
+	Status      int64  `json:"status"`
 }
 
 type Texte struct {
 	ID        int64       `json:"id"`
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
-	System    int64       `json:"system"`
+	SystemKz  int64       `json:"system"`
+	Status    int64       `json:"status"`
 }
 
 type Tierbewegungen struct {

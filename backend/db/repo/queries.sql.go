@@ -329,7 +329,7 @@ type CreateDynamischeSQLParams struct {
 	PageOrientation    string      `json:"page_orientation"`
 	ShowMasterGrid     int64       `json:"show_master_grid"`
 	ShowDetailGrid     int64       `json:"show_detail_grid"`
-	SystemKz           string      `json:"system_kz"`
+	SystemKz           string      `json:"system"`
 	SqlstatementNative string      `json:"sqlstatement_native"`
 	DetailSqlNative    string      `json:"detail_sql_native"`
 	RootKz             interface{} `json:"root_kz"`
@@ -1227,47 +1227,61 @@ func (q *Queries) CreateTabellenkopf(ctx context.Context, arg CreateTabellenkopf
 }
 
 const createText = `-- name: CreateText :one
-INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, SYSTEM)
-VALUES (?, ?, ?) RETURNING id, text_typ_kz, kz, system
+INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, SYSTEM_KZ, STATUS)
+VALUES (?, ?, ?, ?) RETURNING id, text_typ_kz, kz, system_kz, status
 `
 
 type CreateTextParams struct {
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
-	System    int64       `json:"system"`
+	SystemKz  int64       `json:"system"`
+	Status    int64       `json:"status"`
 }
 
 func (q *Queries) CreateText(ctx context.Context, arg CreateTextParams) (Texte, error) {
-	row := q.db.QueryRowContext(ctx, createText, arg.TextTypKz, arg.Kz, arg.System)
+	row := q.db.QueryRowContext(ctx, createText,
+		arg.TextTypKz,
+		arg.Kz,
+		arg.SystemKz,
+		arg.Status,
+	)
 	var i Texte
 	err := row.Scan(
 		&i.ID,
 		&i.TextTypKz,
 		&i.Kz,
-		&i.System,
+		&i.SystemKz,
+		&i.Status,
 	)
 	return i, err
 }
 
 const createTextTyp = `-- name: CreateTextTyp :one
-INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, SYSTEM)
-VALUES (?, ?, ?) RETURNING id, kz, bezeichnung, system
+INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, SYSTEM_KZ, STATUS)
+VALUES (?, ?, ?, ?) RETURNING id, kz, bezeichnung, system_kz, status
 `
 
 type CreateTextTypParams struct {
 	Kz          string `json:"kz"`
 	Bezeichnung string `json:"bezeichnung"`
-	System      int64  `json:"system"`
+	SystemKz    int64  `json:"system"`
+	Status      int64  `json:"status"`
 }
 
 func (q *Queries) CreateTextTyp(ctx context.Context, arg CreateTextTypParams) (TextTypen, error) {
-	row := q.db.QueryRowContext(ctx, createTextTyp, arg.Kz, arg.Bezeichnung, arg.System)
+	row := q.db.QueryRowContext(ctx, createTextTyp,
+		arg.Kz,
+		arg.Bezeichnung,
+		arg.SystemKz,
+		arg.Status,
+	)
 	var i TextTypen
 	err := row.Scan(
 		&i.ID,
 		&i.Kz,
 		&i.Bezeichnung,
-		&i.System,
+		&i.SystemKz,
+		&i.Status,
 	)
 	return i, err
 }
@@ -2895,7 +2909,7 @@ func (q *Queries) GetTabellenkopf(ctx context.Context, id int64) (Tabellenkopf, 
 const getTranslatedText = `-- name: GetTranslatedText :one
 SELECT T.ID,
        T.TEXT_TYP_KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        COALESCE(U_TARGET.BETREFF, U_DEFAULT.BETREFF, '')         AS BETREFF,
        COALESCE(U_TARGET.INHALT, U_DEFAULT.INHALT, '')           AS INHALT,
        COALESCE(U_TARGET.SPRACHE_KZ, U_DEFAULT.SPRACHE_KZ, 'DE') AS SPRACHE_KZ
@@ -2913,7 +2927,8 @@ type GetTranslatedTextParams struct {
 type GetTranslatedTextRow struct {
 	ID        int64  `json:"id"`
 	TextTypKz string `json:"text_typ_kz"`
-	System    int64  `json:"system"`
+	SystemKz  int64  `json:"system"`
+	Status    int64  `json:"status"`
 	Betreff   string `json:"betreff"`
 	Inhalt    string `json:"inhalt"`
 	SpracheKz string `json:"sprache_kz"`
@@ -2925,7 +2940,8 @@ func (q *Queries) GetTranslatedText(ctx context.Context, arg GetTranslatedTextPa
 	err := row.Scan(
 		&i.ID,
 		&i.TextTypKz,
-		&i.System,
+		&i.SystemKz,
+		&i.Status,
 		&i.Betreff,
 		&i.Inhalt,
 		&i.SpracheKz,
@@ -3340,7 +3356,7 @@ type ListDynamischeSQLRow struct {
 	KategorieKz        interface{} `json:"kategorie_kz"`
 	GruppenKz          interface{} `json:"gruppen_kz"`
 	TypKz              interface{} `json:"typ_kz"`
-	SystemKz           string      `json:"system_kz"`
+	SystemKz           string      `json:"system"`
 	TemplateName       string      `json:"template_name"`
 	ParamDef           string      `json:"param_def"`
 	DetailSql          string      `json:"detail_sql"`
@@ -4537,7 +4553,7 @@ func (q *Queries) ListTabellenkopfByType(ctx context.Context, tabellentyp interf
 }
 
 const listTextTypen = `-- name: ListTextTypen :many
-SELECT id, kz, bezeichnung, system
+SELECT ID, KZ, BEZEICHNUNG, SYSTEM_KZ, STATUS
 FROM TEXT_TYPEN
 `
 
@@ -4554,7 +4570,8 @@ func (q *Queries) ListTextTypen(ctx context.Context) ([]TextTypen, error) {
 			&i.ID,
 			&i.Kz,
 			&i.Bezeichnung,
-			&i.System,
+			&i.SystemKz,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -4573,7 +4590,8 @@ const listTexte = `-- name: ListTexte :many
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
+       
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -4584,7 +4602,8 @@ type ListTexteRow struct {
 	ID        int64       `json:"id"`
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
-	System    int64       `json:"system"`
+	SystemKz  int64       `json:"system"`
+	Status    int64       `json:"status"`
 	Betreff   string      `json:"betreff"`
 	Inhalt    string      `json:"inhalt"`
 }
@@ -4602,7 +4621,8 @@ func (q *Queries) ListTexte(ctx context.Context, spracheKz string) ([]ListTexteR
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
-			&i.System,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4623,7 +4643,7 @@ const listTexteByKZ = `-- name: ListTexteByKZ :many
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -4640,7 +4660,8 @@ type ListTexteByKZRow struct {
 	ID        int64       `json:"id"`
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
-	System    int64       `json:"system"`
+	SystemKz  int64       `json:"system"`
+	Status    int64       `json:"status"`
 	Betreff   string      `json:"betreff"`
 	Inhalt    string      `json:"inhalt"`
 }
@@ -4658,7 +4679,8 @@ func (q *Queries) ListTexteByKZ(ctx context.Context, arg ListTexteByKZParams) ([
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
-			&i.System,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4679,7 +4701,7 @@ const listTexteByType = `-- name: ListTexteByType :many
 SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -4696,7 +4718,8 @@ type ListTexteByTypeRow struct {
 	ID        int64       `json:"id"`
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
-	System    int64       `json:"system"`
+	SystemKz  int64       `json:"system"`
+	Status    int64       `json:"status"`
 	Betreff   string      `json:"betreff"`
 	Inhalt    string      `json:"inhalt"`
 }
@@ -4714,7 +4737,8 @@ func (q *Queries) ListTexteByType(ctx context.Context, arg ListTexteByTypeParams
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
-			&i.System,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4898,7 +4922,7 @@ const listVerwendungsTexte = `-- name: ListVerwendungsTexte :many
 SELECT T.ID,
        T.KZ,
        T.TEXT_TYP_KZ,
-       T.SYSTEM,
+       T.SYSTEM_KZ, T.STATUS,
        U.BETREFF
 FROM TEXTE T
          INNER JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE
@@ -4911,7 +4935,8 @@ type ListVerwendungsTexteRow struct {
 	ID        int64       `json:"id"`
 	Kz        interface{} `json:"kz"`
 	TextTypKz string      `json:"text_typ_kz"`
-	System    int64       `json:"system"`
+	SystemKz  int64       `json:"system"`
+	Status    int64       `json:"status"`
 	Betreff   string      `json:"betreff"`
 }
 
@@ -4928,7 +4953,8 @@ func (q *Queries) ListVerwendungsTexte(ctx context.Context, spracheKz string) ([
 			&i.ID,
 			&i.Kz,
 			&i.TextTypKz,
-			&i.System,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 		); err != nil {
 			return nil, err
@@ -5287,7 +5313,7 @@ type UpdateDynamischeSQLParams struct {
 	PageOrientation    string      `json:"page_orientation"`
 	ShowMasterGrid     int64       `json:"show_master_grid"`
 	ShowDetailGrid     int64       `json:"show_detail_grid"`
-	SystemKz           string      `json:"system_kz"`
+	SystemKz           string      `json:"system"`
 	SqlstatementNative string      `json:"sqlstatement_native"`
 	DetailSqlNative    string      `json:"detail_sql_native"`
 	RootKz             interface{} `json:"root_kz"`
@@ -6426,14 +6452,16 @@ const updateText = `-- name: UpdateText :one
 UPDATE TEXTE
 SET TEXT_TYP_KZ = ?,
     KZ          = ?,
-    SYSTEM    = ?
-WHERE ID = ? RETURNING id, text_typ_kz, kz, system
+    SYSTEM_KZ    = ?,
+    STATUS      = ?
+WHERE ID = ? RETURNING id, text_typ_kz, kz, system_kz, status
 `
 
 type UpdateTextParams struct {
 	TextTypKz string      `json:"text_typ_kz"`
 	Kz        interface{} `json:"kz"`
-	System    int64       `json:"system"`
+	SystemKz  int64       `json:"system"`
+	Status    int64       `json:"status"`
 	ID        int64       `json:"id"`
 }
 
@@ -6441,7 +6469,8 @@ func (q *Queries) UpdateText(ctx context.Context, arg UpdateTextParams) (Texte, 
 	row := q.db.QueryRowContext(ctx, updateText,
 		arg.TextTypKz,
 		arg.Kz,
-		arg.System,
+		arg.SystemKz,
+		arg.Status,
 		arg.ID,
 	)
 	var i Texte
@@ -6449,7 +6478,8 @@ func (q *Queries) UpdateText(ctx context.Context, arg UpdateTextParams) (Texte, 
 		&i.ID,
 		&i.TextTypKz,
 		&i.Kz,
-		&i.System,
+		&i.SystemKz,
+		&i.Status,
 	)
 	return i, err
 }
@@ -6458,14 +6488,16 @@ const updateTextTyp = `-- name: UpdateTextTyp :one
 UPDATE TEXT_TYPEN
 SET KZ          = ?,
     BEZEICHNUNG = ?,
-    SYSTEM    = ?
-WHERE ID = ? RETURNING id, kz, bezeichnung, system
+    SYSTEM_KZ    = ?,
+    STATUS      = ?
+WHERE ID = ? RETURNING id, kz, bezeichnung, system_kz, status
 `
 
 type UpdateTextTypParams struct {
 	Kz          string `json:"kz"`
 	Bezeichnung string `json:"bezeichnung"`
-	System      int64  `json:"system"`
+	SystemKz    int64  `json:"system"`
+	Status      int64  `json:"status"`
 	ID          int64  `json:"id"`
 }
 
@@ -6473,7 +6505,8 @@ func (q *Queries) UpdateTextTyp(ctx context.Context, arg UpdateTextTypParams) (T
 	row := q.db.QueryRowContext(ctx, updateTextTyp,
 		arg.Kz,
 		arg.Bezeichnung,
-		arg.System,
+		arg.SystemKz,
+		arg.Status,
 		arg.ID,
 	)
 	var i TextTypen
@@ -6481,7 +6514,8 @@ func (q *Queries) UpdateTextTyp(ctx context.Context, arg UpdateTextTypParams) (T
 		&i.ID,
 		&i.Kz,
 		&i.Bezeichnung,
-		&i.System,
+		&i.SystemKz,
+		&i.Status,
 	)
 	return i, err
 }

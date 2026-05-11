@@ -4161,30 +4161,23 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Kz          string      `json:"kz" binding:"required"`
 			Bezeichnung string      `json:"bezeichnung"`
 			System      interface{} `json:"system"`
+			Status      interface{} `json:"status"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		sysVal := int64(0)
-		switch v := req.System.(type) {
-		case bool:
-			if v {
-				sysVal = 1
-			}
-		case float64:
-			sysVal = int64(v)
-		case int64:
-			sysVal = v
-		}
+		sysVal := toInt64(req.System)
+		statusVal := toInt64(req.Status)
 
 		kzClean := wailsdb.SanitizeKZ(req.Kz)
 
 		res, err := queries.CreateTextTyp(c, db.CreateTextTypParams{
 			Kz:          kzClean,
 			Bezeichnung: req.Bezeichnung,
-			System:      sysVal,
+			SystemKz:    sysVal,
+			Status:      statusVal,
 		})
 		if err != nil {
 			log.Printf("[API] POST /api/texttypen - DB Error: %v", err)
@@ -4205,6 +4198,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Kz          *string     `json:"kz"`
 			Bezeichnung *string     `json:"bezeichnung"`
 			System      interface{} `json:"system"`
+			Status      interface{} `json:"status"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Printf("[API] PUT /api/texttypen/%d - JSON binding error: %v", id, err)
@@ -4220,17 +4214,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		if req.Bezeichnung != nil {
 			bezVal = *req.Bezeichnung
 		}
-		sysVal := int64(0)
-		switch v := req.System.(type) {
-		case bool:
-			if v {
-				sysVal = 1
-			}
-		case float64:
-			sysVal = int64(v)
-		case int64:
-			sysVal = v
-		}
+		sysVal := toInt64(req.System)
+		statusVal := toInt64(req.Status)
 
 		log.Printf("[API] PUT /api/texttypen/%d - Mapped: KZ=%s, Bez=%s, Sys=%d", id, kzVal, bezVal, sysVal)
 
@@ -4238,7 +4223,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			ID:          id,
 			Kz:          kzVal,
 			Bezeichnung: bezVal,
-			System:      sysVal,
+			SystemKz:    sysVal,
+			Status:      statusVal,
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -4315,6 +4301,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Betreff   string      `json:"betreff"`
 			Inhalt    string      `json:"inhalt"`
 			System    interface{} `json:"system"`
+			Status    interface{} `json:"status"`
 		}
 		lang := c.DefaultQuery("lang", "de")
 		if err := c.ShouldBindJSON(&req); err != nil {
@@ -4322,18 +4309,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		// Convert System to int64 (handles bool or int)
-		sysVal := int64(0)
-		switch v := req.System.(type) {
-		case bool:
-			if v {
-				sysVal = 1
-			}
-		case float64:
-			sysVal = int64(v)
-		case int64:
-			sysVal = v
-		}
+		sysVal := toInt64(req.System)
+		statusVal := toInt64(req.Status)
 
 		tx, err := conn.BeginTx(c, nil)
 		if err != nil {
@@ -4355,7 +4332,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		res, err := qtx.CreateText(c, db.CreateTextParams{
 			TextTypKz: req.TextTypKz,
 			Kz:        kzClean,
-			System:    sysVal,
+			SystemKz:  sysVal,
+			Status:    statusVal,
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Create text failed: " + err.Error()})
@@ -4392,6 +4370,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Betreff   string      `json:"betreff"`
 			Inhalt    string      `json:"inhalt"`
 			System    interface{} `json:"system"`
+			Status    interface{} `json:"status"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Printf("[API] PUT /api/texte/%d - JSON binding error: %v", id, err)
@@ -4399,20 +4378,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		// Convert System to int64 (handles bool or int)
-		sysVal := int64(0)
-		switch v := req.System.(type) {
-		case bool:
-			if v {
-				sysVal = 1
-			}
-		case float64:
-			sysVal = int64(v)
-		case int64:
-			sysVal = v
-		}
+		sysVal := toInt64(req.System)
+		statusVal := toInt64(req.Status)
 
-		log.Printf("[API] PUT /api/texte/%d - Mapped Data: %+v, Final System: %d", id, req, sysVal)
+		log.Printf("[API] PUT /api/texte/%d - Mapped Data: %+v, Final SystemKz: %d", id, req, sysVal)
 
 		tx, err := conn.BeginTx(c, nil)
 		if err != nil {
@@ -4434,7 +4403,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			ID:        id,
 			TextTypKz: req.TextTypKz,
 			Kz:        kzClean,
-			System:    sysVal,
+			SystemKz:  sysVal,
+			Status:    statusVal,
 		})
 		if err != nil {
 			log.Printf("[API] PUT /api/texte/%d - DB Error: %v", id, err)

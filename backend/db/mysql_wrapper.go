@@ -1827,7 +1827,7 @@ func (w *MySQLWrapper) UpdateTabellenkopf(ctx context.Context, arg repo.UpdateTa
 
 func (w *MySQLWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, error) {
 	log.Printf("[DB] ListTextTypen called")
-	rows, err := w.db.QueryContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, `SYSTEM` FROM TEXT_TYPEN")
+	rows, err := w.db.QueryContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS` FROM TEXT_TYPEN")
 	if err != nil {
 		return nil, err
 	}
@@ -1835,7 +1835,7 @@ func (w *MySQLWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, err
 	var items []repo.TextTypen
 	for rows.Next() {
 		var i repo.TextTypen
-		if err := rows.Scan(&i.ID, &i.Kz, &i.Bezeichnung, &i.System); err != nil {
+		if err := rows.Scan(&i.ID, &i.Kz, &i.Bezeichnung, &i.SystemKz, &i.Status); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1845,8 +1845,8 @@ func (w *MySQLWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, err
 
 func (w *MySQLWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] CreateTextTyp called: %s", arg.Kz)
-	query := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM`) VALUES (?, ?, ?)"
-	res, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.System)
+	query := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS`) VALUES (?, ?, ?, ?)"
+	res, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.SystemKz, arg.Status)
 	if err != nil {
 		log.Printf("[DB] CreateTextTyp Error: %v", err)
 		return repo.TextTypen{}, err
@@ -1856,29 +1856,30 @@ func (w *MySQLWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTyp
 		ID:          id,
 		Kz:          arg.Kz,
 		Bezeichnung: arg.Bezeichnung,
-		System:      arg.System,
+		SystemKz:    arg.SystemKz,
+		Status:      arg.Status,
 	}, nil
 }
 
 func (w *MySQLWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] UpdateTextTyp called: %d", arg.ID)
-	query := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, `SYSTEM` = ? WHERE ID = ?"
-	_, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.System, arg.ID)
+	query := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, `SYSTEM_KZ` = ?, `STATUS` = ? WHERE ID = ?"
+	_, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.SystemKz, arg.Status, arg.ID)
 	if err != nil {
 		log.Printf("[DB] UpdateTextTyp Error: %v", err)
 		return repo.TextTypen{}, err
 	}
 	var t repo.TextTypen
-	err = w.db.QueryRowContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, `SYSTEM` FROM TEXT_TYPEN WHERE ID = ?", arg.ID).Scan(
-		&t.ID, &t.Kz, &t.Bezeichnung, &t.System,
+	err = w.db.QueryRowContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS` FROM TEXT_TYPEN WHERE ID = ?", arg.ID).Scan(
+		&t.ID, &t.Kz, &t.Bezeichnung, &t.SystemKz, &t.Status,
 	)
 	return t, err
 }
 
 func (w *MySQLWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] CreateText called for Typ: %s", arg.TextTypKz)
-	query := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM`) VALUES (?, ?, ?)"
-	res, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.System)
+	query := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM_KZ`, `STATUS`) VALUES (?, ?, ?, ?)"
+	res, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.SystemKz, arg.Status)
 	if err != nil {
 		log.Printf("[DB] CreateText Error: %v", err)
 		return repo.Texte{}, err
@@ -1888,22 +1889,23 @@ func (w *MySQLWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams
 		ID:        id,
 		TextTypKz: arg.TextTypKz,
 		Kz:        arg.Kz,
-		System:    arg.System,
+		SystemKz:  arg.SystemKz,
+		Status:    arg.Status,
 	}, nil
 }
 
 func (w *MySQLWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] UpdateText called: %d", arg.ID)
-	query := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, `SYSTEM` = ? WHERE ID = ?"
-	_, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.System, arg.ID)
+	query := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, `SYSTEM_KZ` = ?, `STATUS` = ? WHERE ID = ?"
+	_, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.SystemKz, arg.Status, arg.ID)
 	if err != nil {
 		log.Printf("[DB] UpdateText Error: %v", err)
 		return repo.Texte{}, err
 	}
 	var t repo.Texte
 	var kz interface{}
-	err = w.db.QueryRowContext(ctx, "SELECT ID, TEXT_TYP_KZ, KZ, `SYSTEM` FROM TEXTE WHERE ID = ?", arg.ID).Scan(
-		&t.ID, &t.TextTypKz, &kz, &t.System,
+	err = w.db.QueryRowContext(ctx, "SELECT ID, TEXT_TYP_KZ, KZ, `SYSTEM_KZ`, `STATUS` FROM TEXTE WHERE ID = ?", arg.ID).Scan(
+		&t.ID, &t.TextTypKz, &kz, &t.SystemKz, &t.Status,
 	)
 	t.Kz = toString(kz)
 	return t, err
@@ -1945,7 +1947,7 @@ func (w *MySQLWrapper) UpsertUebersetzung(ctx context.Context, arg repo.UpsertUe
 
 func (w *MySQLWrapper) ListTexte(ctx context.Context, spracheKz string) ([]repo.ListTexteRow, error) {
 	log.Printf("[DB] ListTexte called for Lang: %s", spracheKz)
-	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
+	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM_KZ`" + `, T.` + "`STATUS`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
               FROM TEXTE T 
               LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?`
 	rows, err := w.db.QueryContext(ctx, query, spracheKz)
@@ -1957,7 +1959,7 @@ func (w *MySQLWrapper) ListTexte(ctx context.Context, spracheKz string) ([]repo.
 	for rows.Next() {
 		var i repo.ListTexteRow
 		var kz interface{}
-		if err := rows.Scan(&i.ID, &i.TextTypKz, &kz, &i.System, &i.Betreff, &i.Inhalt); err != nil {
+		if err := rows.Scan(&i.ID, &i.TextTypKz, &kz, &i.SystemKz, &i.Status, &i.Betreff, &i.Inhalt); err != nil {
 			return nil, err
 		}
 		i.Kz = SanitizeKZ(toString(kz))
@@ -1968,7 +1970,7 @@ func (w *MySQLWrapper) ListTexte(ctx context.Context, spracheKz string) ([]repo.
 
 func (w *MySQLWrapper) ListTexteByType(ctx context.Context, arg repo.ListTexteByTypeParams) ([]repo.ListTexteByTypeRow, error) {
 	log.Printf("[DB] ListTexteByType called for Typ: %s, Lang: %s", arg.TextTypKz, arg.SpracheKz)
-	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
+	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM_KZ`" + `, T.` + "`STATUS`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
               FROM TEXTE T 
               LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ? 
               WHERE T.TEXT_TYP_KZ = ?`
@@ -1981,7 +1983,7 @@ func (w *MySQLWrapper) ListTexteByType(ctx context.Context, arg repo.ListTexteBy
 	for rows.Next() {
 		var i repo.ListTexteByTypeRow
 		var kz interface{}
-		if err := rows.Scan(&i.ID, &i.TextTypKz, &kz, &i.System, &i.Betreff, &i.Inhalt); err != nil {
+		if err := rows.Scan(&i.ID, &i.TextTypKz, &kz, &i.SystemKz, &i.Status, &i.Betreff, &i.Inhalt); err != nil {
 			return nil, err
 		}
 		i.Kz = SanitizeKZ(toString(kz))
