@@ -239,16 +239,17 @@
 
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import { useQuasar } from 'quasar';
-import {api} from 'src/boot/api';
-import {onMounted} from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useQuasar, date } from 'quasar';
+import { api } from 'src/boot/api';
 
 import { useSessionStore } from '../stores/session';
 import LoginModal from '../components/LoginModal.vue';
 
 
 const $q = useQuasar();
+const router = useRouter();
 const sessionStore = useSessionStore();
 const session = sessionStore;
 const leftDrawerOpen = ref(false);
@@ -378,9 +379,79 @@ onMounted(async () => {
   // Fallback falls alles fehlschlägt
   if (!success) {
     console.warn('MainLayout: Konnte Auth-Status nicht laden, nutze Default.');
-    // Wenn wir gar keine Antwort bekommen, loggen wir sicherheitshalber ein,
-    // damit der User nicht vor einem leeren Fenster steht.
     sessionStore.setAdminSession();
+  }
+  
+  // Initialer Check nach Programmaufruf (wenn keine Auth oder AdminSession gesetzt wurde)
+  if (!sessionStore.authEnabled || sessionStore.isLoggedIn) {
+    checkAktionen();
+  }
+});
+
+const extractInt = (val: any) => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'object' && 'Int64' in val) return Number(val.Int64) || 0;
+  if (typeof val === 'object' && 'Int32' in val) return Number(val.Int32) || 0;
+  return Number(val) || 0;
+};
+
+async function checkAktionen() {
+  try {
+    const todayStr = date.formatDate(new Date(), 'YYYY-MM-DD');
+    const params = {
+      kz: 'B',
+      status: 0,
+      start: todayStr,
+      end: todayStr,
+      id_user: 0 // Alle abrufen
+    };
+    
+    const res = await api.get('/api/aktionen', { params });
+    const allActions = res.data || [];
+    
+    let relevantActions = [];
+    if (sessionStore.authEnabled && sessionStore.isLoggedIn) {
+      const currentUserId = sessionStore.userId;
+      relevantActions = allActions.filter((a: any) => 
+        extractInt(a.id_user) === currentUserId || extractInt(a.id_user) === 0
+      );
+    } else {
+      // Wenn keine Anmeldung erforderlich, alle Typ B Aktionen anzeigen
+      relevantActions = allActions;
+    }
+    
+    if (relevantActions.length > 0) {
+      $q.dialog({
+        title: 'Offene Aktionen',
+        message: `Es sind ${relevantActions.length} offene Aktionen vom Typ 'B' für heute vorhanden.`,
+        ok: {
+          label: 'Bestätigen',
+          color: 'primary',
+          unelevated: true
+        },
+        persistent: true
+      }).onOk(() => {
+        const todayStr = date.formatDate(new Date(), 'YYYY-MM-DD');
+        router.push({ 
+          path: '/buchungen', 
+          query: { 
+            tab: 'aktionen',
+            filterKz: 'B',
+            filterDate: todayStr,
+            filterUser: 0 // Zeige alle Typ 'B' für heute
+          } 
+        });
+      });
+    }
+  } catch (err) {
+    console.error('MainLayout: Fehler beim Prüfen der Aktionen:', err);
+  }
+}
+
+// Watch für Login
+watch(() => sessionStore.isLoggedIn, (newVal) => {
+  if (newVal) {
+    checkAktionen();
   }
 });
 

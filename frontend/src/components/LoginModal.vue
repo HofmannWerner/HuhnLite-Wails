@@ -1,6 +1,6 @@
 <template>
-  <q-dialog v-model="internalVisible" persistent transition-show="scale" transition-hide="scale">
-    <q-card :dark="sessionStore.darkMode" :class="sessionStore.darkMode ? 'bg-grey-10 text-white' : 'bg-white'" style="width: 400px; max-width: 90vw;" class="q-pa-md shadow-24">
+  <q-dialog v-model="internalVisible" persistent transition-show="scale" transition-hide="scale" @show="setFocus">
+    <q-card v-if="internalVisible" :dark="sessionStore.darkMode" :class="sessionStore.darkMode ? 'bg-grey-10 text-white' : 'bg-white'" style="width: 400px; max-width: 90vw;" class="q-pa-md shadow-24">
       <q-card-section class="flex flex-center j-center">
         <q-avatar size="100px" font-size="52px" color="primary" text-color="white" icon="lock" />
       </q-card-section>
@@ -12,10 +12,12 @@
 
       <q-card-section class="q-gutter-y-md">
         <q-input
+          id="login-username-input"
           ref="usernameInput"
           v-model="username"
           label="Benutzername"
           outlined
+          autocomplete="off"
           :dark="sessionStore.darkMode"
           label-color="primary"
           @keyup.enter="handleLogin"
@@ -29,6 +31,7 @@
           v-model="password"
           label="Passwort"
           outlined
+          autocomplete="new-password"
           :dark="sessionStore.darkMode"
           label-color="primary"
           :type="showPassword ? 'text' : 'password'"
@@ -75,11 +78,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { api } from 'src/boot/api';
 import { useSessionStore } from '../stores/session';
 
 const $q = useQuasar();
+const router = useRouter();
 const sessionStore = useSessionStore();
 const usernameInput = ref<any>(null);
 const username = ref('');
@@ -99,23 +104,36 @@ const setFocus = () => {
   loading.value = false;
   username.value = '';
   password.value = '';
-  // Kleiner Delay für den Fokus
-  setTimeout(() => {
-    if (usernameInput.value) usernameInput.value.focus();
-  }, 100);
+  
+  // "Shotgun"-Ansatz: Wir probieren es 10 mal alle 200ms.
+  // Das fängt Verzögerungen beim App-Start sicher ab.
+  for (let i = 1; i <= 10; i++) {
+    setTimeout(() => {
+      const el = document.getElementById('login-username-input');
+      if (el) {
+        const input = el.querySelector('input');
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }
+      if (usernameInput.value) {
+        usernameInput.value.focus();
+      }
+    }, i * 200);
+  }
 };
 
+// Reset bei jedem Öffnen sicherstellen
 watch(internalVisible, (val) => {
   if (val) {
+    username.value = '';
+    password.value = '';
     setFocus();
   }
 });
 
-onMounted(() => {
-  if (internalVisible.value) {
-    setFocus();
-  }
-});
+// Fokus wird jetzt primär über @show im q-dialog gesteuert
 
 const handleCancel = () => {
   sessionStore.dismissLogin();
@@ -142,6 +160,9 @@ const handleLogin = async () => {
       message: `Willkommen zurück, ${response.data.klarname || response.data.username}!`, 
       icon: 'check' 
     });
+
+    // Direkt in die Aktionen verzweigen (Standard-Ansicht)
+    await router.push({ path: '/buchungen', query: { tab: 'aktionen' } });
   } catch (error: any) {
     const msg = error.response?.data?.error || 'Anmeldung fehlgeschlagen';
     $q.notify({ color: 'negative', message: msg, icon: 'error' });

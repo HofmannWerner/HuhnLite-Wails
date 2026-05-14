@@ -20,6 +20,7 @@ export const useSessionStore = defineStore('session', () => {
   }, { immediate: true });
 
   const username = ref<string | null>(null);
+  const userId = ref<number | null>(null);
   const klarname = ref<string | null>(null);
   const profile_kz = ref<string | null>(null);
   const isLoggedIn = ref(false);
@@ -110,6 +111,7 @@ export const useSessionStore = defineStore('session', () => {
 
   function setSession(data: any) {
     username.value = data.username || data.USERNAME;
+    userId.value = data.id || data.ID;
     klarname.value = data.klarname || data.KLARNAME;
     profile_kz.value = data.profile_kz || data.PROFILE_KZ;
     permissions.value = data.permissions || data.PERMISSIONS || permissions.value;
@@ -122,6 +124,7 @@ export const useSessionStore = defineStore('session', () => {
 
   function logout() {
     username.value = null;
+    userId.value = null;
     klarname.value = null;
     profile_kz.value = null;
     isLoggedIn.value = false;
@@ -157,6 +160,7 @@ export const useSessionStore = defineStore('session', () => {
     selectedLanguage,
     darkMode,
     username,
+    userId,
     klarname,
     profile_kz,
     permissions,

@@ -110,11 +110,11 @@
       <div class="text-grey-6 text-caption">
         Version vom {{ buildTime }}
       </div>
-      <q-badge v-if="dbStatus.engine" :color="dbStatus.engine === 'mysql' ? 'orange-9' : 'blue-8'" class="q-pa-sm text-weight-bold">
-        <q-icon name="database" class="q-mr-xs" />
-        {{ dbStatus.engine === 'mysql' ? 'MariaDB' : 'SQLite' }} Active
+      <q-badge v-if="dbStatus.engine" :color="dbStatus.engine === 'mysql' ? 'orange-9' : (dbStatus.engine === 'sqlite' ? 'blue-8' : 'negative')" class="q-pa-sm text-weight-bold">
+        <q-icon :name="dbStatus.engine === 'offline' ? 'link_off' : 'database'" class="q-mr-xs" />
+        {{ dbStatus.engine === 'mysql' ? 'MariaDB' : (dbStatus.engine === 'sqlite' ? 'SQLite' : 'Offline') }}
         <q-tooltip>
-          Verbindung: {{ dbStatus.host }}
+          {{ dbStatus.engine === 'offline' ? 'FEHLER: ' + (dbStatus.error || 'Keine Verbindung') : 'Verbindung: ' + dbStatus.host }}
         </q-tooltip>
       </q-badge>
     </div>
@@ -134,7 +134,8 @@ const session = sessionStore;
 
 const dbStatus = reactive({
   engine: '',
-  host: ''
+  host: '',
+  error: ''
 });
 
 onMounted(async () => {
@@ -142,6 +143,7 @@ onMounted(async () => {
     const status = await GetDBStatus();
     dbStatus.engine = status.engine;
     dbStatus.host = status.host;
+    dbStatus.error = status.error || '';
   } catch (e) {
     console.error('Failed to get DB status', e);
   }

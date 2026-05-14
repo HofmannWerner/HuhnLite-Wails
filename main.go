@@ -36,37 +36,41 @@ func main() {
 		}
 	}
 
-	if err != nil {
-		log.Fatalf("Could not connect to database after 3 attempts: %v", err)
-	}
-
 	// Create an instance of the app structure
 	app := NewApp(database)
+	if err != nil {
+		app.ConnectionError = err.Error()
+	}
 
 	// Fenstergröße aus DB laden
 	width, height := 1280, 800
-	var savedSize string
-	sizeQuery := "SELECT VALUE FROM USER_STATE WHERE \"KEY\" = 'window_size' ORDER BY ID DESC LIMIT 1"
-	if cfg.DBEngine == "mysql" {
-		sizeQuery = "SELECT VALUE FROM USER_STATE WHERE `KEY` = 'window_size' ORDER BY ID DESC LIMIT 1"
-	}
-	err = database.SQL.QueryRow(sizeQuery).Scan(&savedSize)
-	if err == nil && savedSize != "" {
-		fmt.Sscanf(savedSize, "%dx%d", &width, &height)
-		log.Printf("Restoring window size: %dx%d", width, height)
+	if database != nil {
+		var savedSize string
+		sizeQuery := "SELECT VALUE FROM USER_STATE WHERE \"KEY\" = 'window_size' ORDER BY ID DESC LIMIT 1"
+		if cfg.DBEngine == "mysql" {
+			sizeQuery = "SELECT VALUE FROM USER_STATE WHERE `KEY` = 'window_size' ORDER BY ID DESC LIMIT 1"
+		}
+		err = database.SQL.QueryRow(sizeQuery).Scan(&savedSize)
+		if err == nil && savedSize != "" {
+			fmt.Sscanf(savedSize, "%dx%d", &width, &height)
+			log.Printf("Restoring window size: %dx%d", width, height)
+		}
 	}
 
 	// Maximiert-Status laden
-	startState := options.Maximised
-	var savedMax string
-	maxQuery := "SELECT VALUE FROM USER_STATE WHERE \"KEY\" = 'window_maximized' ORDER BY ID DESC LIMIT 1"
-	if cfg.DBEngine == "mysql" {
-		maxQuery = "SELECT VALUE FROM USER_STATE WHERE `KEY` = 'window_maximized' ORDER BY ID DESC LIMIT 1"
-	}
-	err = database.SQL.QueryRow(maxQuery).Scan(&savedMax)
-	if err == nil {
-		if savedMax == "false" {
-			startState = options.Normal
+	startState := options.Normal // Default to normal if no DB
+	if database != nil {
+		startState = options.Maximised
+		var savedMax string
+		maxQuery := "SELECT VALUE FROM USER_STATE WHERE \"KEY\" = 'window_maximized' ORDER BY ID DESC LIMIT 1"
+		if cfg.DBEngine == "mysql" {
+			maxQuery = "SELECT VALUE FROM USER_STATE WHERE `KEY` = 'window_maximized' ORDER BY ID DESC LIMIT 1"
+		}
+		err = database.SQL.QueryRow(maxQuery).Scan(&savedMax)
+		if err == nil {
+			if savedMax == "false" {
+				startState = options.Normal
+			}
 		}
 	}
 

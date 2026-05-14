@@ -8,6 +8,19 @@ import (
 	"database/sql"
 )
 
+type Aktionen struct {
+	ID               int64          `json:"id"`
+	AktionenKz       interface{}    `json:"aktionen_kz"`
+	IDUser           sql.NullInt64  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt64  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt64  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt64  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+}
+
 type Benutzer struct {
 	ID                int64  `json:"id"`
 	Username          string `json:"username"`

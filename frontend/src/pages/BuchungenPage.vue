@@ -20,6 +20,7 @@
         <q-tab name="eilager" label="Eilager" icon="inventory" />
         <q-tab name="futter" label="Futter" icon="local_shipping" />
         <q-tab name="verkauf" label="Verkauf" icon="shopping_cart" />
+        <q-tab name="aktionen" label="Aktionen" icon="task" />
       </q-tabs>
 
       <q-separator />
@@ -48,21 +49,34 @@
         <q-tab-panel name="verkauf" class="q-pa-none">
           <VerkaufGrid />
         </q-tab-panel>
+
+        <q-tab-panel name="aktionen" class="q-pa-none">
+          <AktionenGrid />
+        </q-tab-panel>
       </q-tab-panels>
     </q-card>
   </q-page>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import LeistungGrid from 'components/LeistungGrid.vue';
 import VerlusteGrid from 'components/VerlusteGrid.vue';
 import TierbewegungenGrid from 'components/TierbewegungenGrid.vue';
 import EilagerBuchungenGrid from 'components/EilagerBuchungenGrid.vue';
 import FutterGrid from 'components/FutterGrid.vue';
 import VerkaufGrid from 'components/VerkaufGrid.vue';
+import AktionenGrid from 'components/AktionenGrid.vue';
 
-const tab = ref('leistung');
+const route = useRoute();
+const tab = ref((route.query.tab as string) || 'leistung');
+
+watch(() => route.query.tab, (newTab) => {
+  if (newTab) {
+    tab.value = newTab as string;
+  }
+});
 </script>
 
 <style scoped>

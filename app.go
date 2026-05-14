@@ -14,8 +14,9 @@ import (
 
 // App struct
 type App struct {
-	ctx      context.Context
-	database *db.DB
+	ctx             context.Context
+	database        *db.DB
+	ConnectionError string
 }
 
 // NewApp creates a new App application struct
@@ -32,6 +33,10 @@ func (a *App) startup(ctx context.Context) {
 
 	// Start the API server in a separate goroutine
 	go func() {
+		if a.database == nil {
+			log.Printf("Skipping API server startup: database is nil")
+			return
+		}
 		engine := api.StartServer(a.database)
 		port := 8080 // Default port
 		if a.database.Config.Port > 0 {
@@ -46,6 +51,9 @@ func (a *App) startup(ctx context.Context) {
 
 // SaveWindowState saves the current window dimensions to the database
 func (a *App) SaveWindowState(ctx context.Context, username string) {
+	if a.database == nil {
+		return
+	}
 	if username == "" {
 		username = "default"
 	}
@@ -88,6 +96,9 @@ func (a *App) SaveWindowState(ctx context.Context, username string) {
 // beforeClose is called when the app is about to close
 func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 	log.Printf("[Wails] OnBeforeClose triggered")
+	if a.database == nil {
+		return false
+	}
 	// Letzten angemeldeten User finden (oder default)
 	var username string
 	query := "SELECT USERNAME FROM USER_STATE WHERE \"KEY\" = 'window_size' ORDER BY ID DESC LIMIT 1"
@@ -107,6 +118,13 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 
 // GetDBStatus returns the current database engine and connection info
 func (a *App) GetDBStatus() map[string]string {
+	if a.database == nil {
+		return map[string]string{
+			"engine": "offline",
+			"host":   "none",
+			"error":  a.ConnectionError,
+		}
+	}
 	return map[string]string{
 		"engine": a.database.Engine,
 		"host":   a.database.Config.DBConnectionString,

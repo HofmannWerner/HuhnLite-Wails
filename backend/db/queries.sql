@@ -1369,3 +1369,44 @@ WHERE ID = ?;
 DELETE
 FROM VERKAUF
 WHERE ID_EILAGERBUCHUNG = ?;
+
+-- name: GetAktion :one
+SELECT *
+FROM AKTIONEN
+WHERE ID = ?;
+
+-- name: ListAktionen :many
+SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, 
+       u1.USERNAME as username,
+       u2.USERNAME as username_erledigt
+FROM AKTIONEN a
+LEFT JOIN BENUTZER u1 ON a.ID_USER = u1.ID
+LEFT JOIN BENUTZER u2 ON a.ID_USER_ERLEDIGT = u2.ID
+WHERE (sqlc.arg(id_user) = 0 OR a.ID_USER = sqlc.arg(id_user))
+  AND (sqlc.arg(start_date) = '' OR a.AKTIONSDATUM >= sqlc.arg(start_date))
+  AND (sqlc.arg(end_date) = '' OR a.AKTIONSDATUM <= sqlc.arg(end_date))
+  AND (sqlc.arg(kz) = '' OR a.AKTIONEN_KZ = sqlc.arg(kz))
+  AND (CAST(sqlc.arg(status) AS INTEGER) = 2 OR COALESCE(a.ERLEDIGT, 0) = CAST(sqlc.arg(status) AS INTEGER))
+ORDER BY a.AKTIONSDATUM DESC;
+
+-- name: CreateAktion :one
+INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *;
+
+-- name: UpdateAktion :one
+UPDATE AKTIONEN
+SET AKTIONEN_KZ       = ?,
+    ID_USER           = ?,
+    AKTIONSDATUM      = ?,
+    BEZEICHNUNG       = ?,
+    INTERVALL_TAGE    = ?,
+    ANZAHL_INTERVALLE = ?,
+    ERLEDIGT          = ?,
+    ID_USER_ERLEDIGT  = ?,
+    ERLEDIGT_AM       = ?
+WHERE ID = ? RETURNING *;
+
+-- name: DeleteAktion :exec
+DELETE
+FROM AKTIONEN
+WHERE ID = ?;

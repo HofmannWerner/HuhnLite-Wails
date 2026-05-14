@@ -2077,3 +2077,110 @@ func (w *MySQLWrapper) ListShowTV(ctx context.Context) ([]repo.Showtv, error) {
 	}
 	return items, nil
 }
+
+func (w *MySQLWrapper) ListAktionen(ctx context.Context, arg repo.ListAktionenParams) ([]repo.ListAktionenRow, error) {
+	res, err := w.mysql.ListAktionen(ctx, repo_mysql.ListAktionenParams{
+		IDUser:    toInt32(arg.IDUser),
+		StartDate: arg.StartDate,
+		EndDate:   arg.EndDate,
+		Kz:        arg.Kz,
+		Status:    int32(arg.Status),
+	})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]repo.ListAktionenRow, len(res))
+	for i, v := range res {
+		items[i] = convertListAktionenRow(v)
+	}
+	return items, nil
+}
+
+func (w *MySQLWrapper) GetAktion(ctx context.Context, id int64) (repo.Aktionen, error) {
+	v, err := w.mysql.GetAktion(ctx, int32(id))
+	if err != nil {
+		return repo.Aktionen{}, err
+	}
+	return convertAktion(v), nil
+}
+
+func (w *MySQLWrapper) CreateAktion(ctx context.Context, arg repo.CreateAktionParams) (repo.Aktionen, error) {
+	log.Printf("[DB] CreateAktion called for: %s", arg.Bezeichnung)
+	res, err := w.mysql.CreateAktion(ctx, repo_mysql.CreateAktionParams{
+		AktionenKz:       toNullString(arg.AktionenKz),
+		IDUser:           toNullInt32(arg.IDUser),
+		Aktionsdatum:     arg.Aktionsdatum,
+		Bezeichnung:      arg.Bezeichnung,
+		IntervallTage:    toNullInt32(arg.IntervallTage),
+		AnzahlIntervalle: toNullInt32(arg.AnzahlIntervalle),
+		Erledigt:         toNullInt32(arg.Erledigt),
+		IDUserErledigt:   toNullInt32(arg.IDUserErledigt),
+		ErledigtAm:       toNullString(arg.ErledigtAm),
+	})
+	if err != nil {
+		log.Printf("[DB] CreateAktion ERROR: %v", err)
+		return repo.Aktionen{}, err
+	}
+	id, _ := res.LastInsertId()
+	log.Printf("[DB] CreateAktion SUCCESS, new ID: %d", id)
+	return w.GetAktion(ctx, id)
+}
+
+func (w *MySQLWrapper) UpdateAktion(ctx context.Context, arg repo.UpdateAktionParams) (repo.Aktionen, error) {
+	log.Printf("[DB] UpdateAktion called for ID: %d", arg.ID)
+	err := w.mysql.UpdateAktion(ctx, repo_mysql.UpdateAktionParams{
+		AktionenKz:       toNullString(arg.AktionenKz),
+		IDUser:           toNullInt32(arg.IDUser),
+		Aktionsdatum:     arg.Aktionsdatum,
+		Bezeichnung:      arg.Bezeichnung,
+		IntervallTage:    toNullInt32(arg.IntervallTage),
+		AnzahlIntervalle: toNullInt32(arg.AnzahlIntervalle),
+		Erledigt:         toNullInt32(arg.Erledigt),
+		IDUserErledigt:   toNullInt32(arg.IDUserErledigt),
+		ErledigtAm:       toNullString(arg.ErledigtAm),
+		ID:               int32(arg.ID),
+	})
+	if err != nil {
+		log.Printf("[DB] UpdateAktion ERROR: %v", err)
+		return repo.Aktionen{}, err
+	}
+	log.Printf("[DB] UpdateAktion SUCCESS for ID: %d", arg.ID)
+	return w.GetAktion(ctx, arg.ID)
+}
+
+func (w *MySQLWrapper) DeleteAktion(ctx context.Context, id int64) error {
+	return w.mysql.DeleteAktion(ctx, int32(id))
+}
+
+func convertAktion(v repo_mysql.Aktionen) repo.Aktionen {
+	return repo.Aktionen{
+		ID:               int64(v.ID),
+		AktionenKz:       v.AktionenKz,
+		IDUser:           sql.NullInt64{Int64: int64(v.IDUser.Int32), Valid: v.IDUser.Valid},
+		Aktionsdatum:     v.Aktionsdatum,
+		Bezeichnung:      v.Bezeichnung,
+		IntervallTage:    sql.NullInt64{Int64: int64(v.IntervallTage.Int32), Valid: v.IntervallTage.Valid},
+		AnzahlIntervalle: sql.NullInt64{Int64: int64(v.AnzahlIntervalle.Int32), Valid: v.AnzahlIntervalle.Valid},
+		Erledigt:         sql.NullInt64{Int64: int64(v.Erledigt.Int32), Valid: v.Erledigt.Valid},
+		IDUserErledigt:   sql.NullInt64{Int64: int64(v.IDUserErledigt.Int32), Valid: v.IDUserErledigt.Valid},
+		ErledigtAm:       v.ErledigtAm,
+	}
+}
+
+func convertListAktionenRow(v repo_mysql.ListAktionenRow) repo.ListAktionenRow {
+	return repo.ListAktionenRow{
+		ID:               int64(v.ID),
+		AktionenKz:       v.AktionenKz,
+		IDUser:           v.IDUser,
+		Aktionsdatum:     v.Aktionsdatum,
+		Bezeichnung:      v.Bezeichnung,
+		IntervallTage:    v.IntervallTage,
+		AnzahlIntervalle: v.AnzahlIntervalle,
+		Erledigt:         v.Erledigt,
+		IDUserErledigt:   v.IDUserErledigt,
+		ErledigtAm:       v.ErledigtAm,
+		Username:         v.Username,
+		UsernameErledigt: v.UsernameErledigt,
+	}
+}
+

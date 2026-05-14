@@ -125,16 +125,29 @@ import { useQuasar } from 'quasar';
 
 interface StockRow {
   CHARGE?: any;
+  charge?: any;
   LAGERPLATZ_BEZEICHNUNG?: any;
+  lagerplatz_bezeichnung?: any;
+  LAGERPLATZ_ID?: any;
+  lagerplatz_id?: any;
   JUMBOS?: any;
+  jumbos?: any;
   XL?: any;
+  xl?: any;
   LARGE?: any;
+  large?: any;
   MEDIUM?: any;
+  medium?: any;
   SMALL?: any;
+  small?: any;
   VOLLEIKG?: any;
+  volleikg?: any;
   EILAGER_KZ?: any;
+  eilager_kz?: any;
   EILAGER_ID?: any;
+  eilager_id?: any;
   EILAGER_BEZEICHNUNG?: any;
+  eilager_bezeichnung?: any;
 }
 
 interface EilagerOption {
@@ -196,8 +209,8 @@ const treeNodes = computed<TreeNode[]>(() => {
 
     if (filterAllTypes && filterAllLagers) return true;
 
-    const rKz = row.EILAGER_KZ;
-    const rId = Number(row.EILAGER_ID ?? row.EILAGER_ID);
+    const rKz = extractString(row.EILAGER_KZ ?? row.eilager_kz);
+    const rId = extractInt(row.EILAGER_ID ?? row.eilager_id);
 
     if (!filterAllLagers && rId !== filterEilager.value) return false;
     if (!filterAllTypes && rKz !== filterLagertyp.value) return false;
@@ -206,8 +219,8 @@ const treeNodes = computed<TreeNode[]>(() => {
   });
 
   filteredRows.forEach(row => {
-    const lName = row.EILAGER_BEZEICHNUNG || 'Unbekanntes Lager';
-    const lIdVal = Number(row.EILAGER_ID ?? row.EILAGER_ID);
+    const lName = extractString(row.EILAGER_BEZEICHNUNG ?? row.eilager_bezeichnung) || 'Unbekanntes Lager';
+    const lIdVal = extractInt(row.EILAGER_ID ?? row.eilager_id);
 
     if (!lagerGroups[lName]) {
       lagerGroups[lName] = {
@@ -220,7 +233,7 @@ const treeNodes = computed<TreeNode[]>(() => {
       };
     }
     const lagerNode = lagerGroups[lName];
-    const chargeName = row.CHARGE || 'Keine Charge';
+    const chargeName = extractString(row.CHARGE ?? row.charge) || 'Keine Charge';
     let chargeNode = (lagerNode.children || []).find(c => c.label === `Charge: ${chargeName}`);
     if (!chargeNode) {
       chargeNode = {
@@ -234,7 +247,7 @@ const treeNodes = computed<TreeNode[]>(() => {
       lagerNode.children?.push(chargeNode);
     }
 
-    const lpLabel = row.LAGERPLATZ_BEZEICHNUNG || 'Ohne Lagerplatz';
+    const lpLabel = extractString(row.LAGERPLATZ_BEZEICHNUNG ?? row.lagerplatz_bezeichnung) || 'Ohne Lagerplatz';
 
     const extractVal = (v: any) => {
       if (v === null || v === undefined) return 0;
@@ -245,12 +258,12 @@ const treeNodes = computed<TreeNode[]>(() => {
     };
 
     const lpSums = {
-      JUMBOS: extractVal(row.JUMBOS),
-      XL: extractVal(row.XL),
-      LARGE: extractVal(row.LARGE),
-      MEDIUM: extractVal(row.MEDIUM),
-      SMALL: extractVal(row.SMALL),
-      VOLLEIKG: extractVal(row.VOLLEIKG)
+      JUMBOS: extractVal(row.JUMBOS ?? row.jumbos),
+      XL: extractVal(row.XL ?? row.xl),
+      LARGE: extractVal(row.LARGE ?? row.large),
+      MEDIUM: extractVal(row.MEDIUM ?? row.medium),
+      SMALL: extractVal(row.SMALL ?? row.small),
+      VOLLEIKG: extractVal(row.VOLLEIKG ?? row.volleikg)
     };
 
     const lpTotal = Object.values(lpSums).reduce((a, b) => a + b, 0);

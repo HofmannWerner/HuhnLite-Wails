@@ -103,9 +103,11 @@ func LoadConfig() Config {
 
 	if execPath != "" {
 		fullPath := strings.ToLower(execPath)
+		log.Printf("ExecPath: %s", execPath)
 		if strings.Contains(fullPath, "mariadb") {
-			configFiles = append(configFiles, "settings_mariadb.json")
-			log.Printf("MariaDB-Modus als Fallback erkannt")
+			// Prioritize MariaDB settings if the binary name suggests it
+			configFiles = []string{"settings_mariadb.json", "settings.json"}
+			log.Printf("MariaDB-Modus erkannt, priorisiere settings_mariadb.json")
 		}
 	}
 
@@ -130,6 +132,11 @@ func LoadConfig() Config {
 					log.Printf("Konfiguration aus %s geladen (Engine: %s)", p, cfg.DBEngine)
 					// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
 					if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
+						// Clean up Mac-style paths that might have been incorrectly treated as relative on Windows
+						if strings.HasPrefix(cfg.DBConnectionString, "/Users/") || strings.HasPrefix(cfg.DBConnectionString, "Users/") {
+							cfg.DBConnectionString = filepath.Base(cfg.DBConnectionString)
+							log.Printf("Bereinigter Mac-Pfad zu: %s", cfg.DBConnectionString)
+						}
 						cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
 					}
 					return cfg

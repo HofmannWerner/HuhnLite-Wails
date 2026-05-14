@@ -657,7 +657,6 @@ SELECT T.ID,
        T.TEXT_TYP_KZ,
        T.KZ,
        T.`SYSTEM_KZ`, T.`STATUS`,
-       T.`STATUS`,
        COALESCE(U.BETREFF, '') AS BETREFF,
        COALESCE(U.INHALT, '')  AS INHALT
 FROM TEXTE T
@@ -1364,3 +1363,44 @@ WHERE ID = ?;
 DELETE
 FROM VERKAUF
 WHERE ID_EILAGERBUCHUNG = ?;
+
+-- name: GetAktion :one
+SELECT *
+FROM AKTIONEN
+WHERE ID = ?;
+
+-- name: ListAktionen :many
+SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, 
+       u1.USERNAME as username,
+       u2.USERNAME as username_erledigt
+FROM AKTIONEN a
+LEFT JOIN BENUTZER u1 ON a.ID_USER = u1.ID
+LEFT JOIN BENUTZER u2 ON a.ID_USER_ERLEDIGT = u2.ID
+WHERE (? = 0 OR a.ID_USER = ?)
+  AND (? = '' OR a.AKTIONSDATUM >= ?)
+  AND (? = '' OR a.AKTIONSDATUM <= ?)
+  AND (? = '' OR a.AKTIONEN_KZ = ?)
+  AND (? = 2 OR COALESCE(a.ERLEDIGT, 0) = ?)
+ORDER BY a.AKTIONSDATUM DESC;
+
+-- name: CreateAktion :execresult
+INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: UpdateAktion :exec
+UPDATE AKTIONEN
+SET AKTIONEN_KZ       = ?,
+    ID_USER           = ?,
+    AKTIONSDATUM      = ?,
+    BEZEICHNUNG       = ?,
+    INTERVALL_TAGE    = ?,
+    ANZAHL_INTERVALLE = ?,
+    ERLEDIGT          = ?,
+    ID_USER_ERLEDIGT  = ?,
+    ERLEDIGT_AM       = ?
+WHERE ID = ?;
+
+-- name: DeleteAktion :exec
+DELETE
+FROM AKTIONEN
+WHERE ID = ?;

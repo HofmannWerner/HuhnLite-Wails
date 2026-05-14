@@ -868,31 +868,45 @@ func (q *Queries) CreateTabellenkopf(ctx context.Context, arg CreateTabellenkopf
 }
 
 const createText = `-- name: CreateText :execresult
-insert into texte (text_typ_kz, kz)
-values (?, ?)
+insert into texte (text_typ_kz, kz, SYSTEM_KZ, STATUS)
+values (?, ?, ?, ?)
 `
 
 type CreateTextParams struct {
 	TextTypKz string `json:"text_typ_kz"`
 	Kz        string `json:"kz"`
+	SystemKz  int32  `json:"system_kz"`
+	Status    int32  `json:"status"`
 }
 
 func (q *Queries) CreateText(ctx context.Context, arg CreateTextParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createText, arg.TextTypKz, arg.Kz)
+	return q.db.ExecContext(ctx, createText,
+		arg.TextTypKz,
+		arg.Kz,
+		arg.SystemKz,
+		arg.Status,
+	)
 }
 
 const createTextTyp = `-- name: CreateTextTyp :execresult
-insert into text_typen (kz, bezeichnung)
-values (?, ?)
+insert into text_typen (kz, bezeichnung, SYSTEM_KZ, STATUS)
+values (?, ?, ?, ?)
 `
 
 type CreateTextTypParams struct {
 	Kz          string `json:"kz"`
 	Bezeichnung string `json:"bezeichnung"`
+	SystemKz    int32  `json:"system_kz"`
+	Status      int32  `json:"status"`
 }
 
 func (q *Queries) CreateTextTyp(ctx context.Context, arg CreateTextTypParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, createTextTyp, arg.Kz, arg.Bezeichnung)
+	return q.db.ExecContext(ctx, createTextTyp,
+		arg.Kz,
+		arg.Bezeichnung,
+		arg.SystemKz,
+		arg.Status,
+	)
 }
 
 const createTierbewegung = `-- name: CreateTierbewegung :execresult
@@ -4112,7 +4126,7 @@ func (q *Queries) ListTabellenkopfByType(ctx context.Context, tabellentyp string
 }
 
 const listTextTypen = `-- name: ListTextTypen :many
-select id, kz, bezeichnung, ` + "`" + `system` + "`" + `
+select id, kz, bezeichnung, SYSTEM_KZ, STATUS
 from text_typen
 `
 
@@ -4129,7 +4143,8 @@ func (q *Queries) ListTextTypen(ctx context.Context) ([]TextTypen, error) {
 			&i.ID,
 			&i.Kz,
 			&i.Bezeichnung,
-			&i.System,
+			&i.SystemKz,
+			&i.Status,
 		); err != nil {
 			return nil, err
 		}
@@ -4148,6 +4163,8 @@ const listTexte = `-- name: ListTexte :many
 select t.id,
        t.text_typ_kz,
        t.kz,
+       t.SYSTEM_KZ,
+       t.STATUS,
        coalesce(u.betreff, '') as betreff,
        coalesce(u.inhalt, '')  as inhalt
 from texte t
@@ -4158,6 +4175,8 @@ type ListTexteRow struct {
 	ID        int32  `json:"id"`
 	TextTypKz string `json:"text_typ_kz"`
 	Kz        string `json:"kz"`
+	SystemKz  int32  `json:"system_kz"`
+	Status    int32  `json:"status"`
 	Betreff   string `json:"betreff"`
 	Inhalt    string `json:"inhalt"`
 }
@@ -4175,6 +4194,8 @@ func (q *Queries) ListTexte(ctx context.Context, spracheKz string) ([]ListTexteR
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4195,6 +4216,8 @@ const listTexteByKZ = `-- name: ListTexteByKZ :many
 select t.id,
        t.text_typ_kz,
        t.kz,
+       t.SYSTEM_KZ,
+       t.STATUS,
        coalesce(u.betreff, '') as betreff,
        coalesce(u.inhalt, '')  as inhalt
 from texte t
@@ -4211,6 +4234,8 @@ type ListTexteByKZRow struct {
 	ID        int32  `json:"id"`
 	TextTypKz string `json:"text_typ_kz"`
 	Kz        string `json:"kz"`
+	SystemKz  int32  `json:"system_kz"`
+	Status    int32  `json:"status"`
 	Betreff   string `json:"betreff"`
 	Inhalt    string `json:"inhalt"`
 }
@@ -4228,6 +4253,8 @@ func (q *Queries) ListTexteByKZ(ctx context.Context, arg ListTexteByKZParams) ([
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4248,6 +4275,8 @@ const listTexteByType = `-- name: ListTexteByType :many
 select t.id,
        t.text_typ_kz,
        t.kz,
+       t.SYSTEM_KZ,
+       t.STATUS,
        coalesce(u.betreff, '') as betreff,
        coalesce(u.inhalt, '')  as inhalt
 from texte t
@@ -4264,6 +4293,8 @@ type ListTexteByTypeRow struct {
 	ID        int32  `json:"id"`
 	TextTypKz string `json:"text_typ_kz"`
 	Kz        string `json:"kz"`
+	SystemKz  int32  `json:"system_kz"`
+	Status    int32  `json:"status"`
 	Betreff   string `json:"betreff"`
 	Inhalt    string `json:"inhalt"`
 }
@@ -4281,6 +4312,8 @@ func (q *Queries) ListTexteByType(ctx context.Context, arg ListTexteByTypeParams
 			&i.ID,
 			&i.TextTypKz,
 			&i.Kz,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 			&i.Inhalt,
 		); err != nil {
@@ -4464,6 +4497,8 @@ const listVerwendungsTexte = `-- name: ListVerwendungsTexte :many
 select t.id,
        t.kz,
        t.text_typ_kz,
+       t.SYSTEM_KZ,
+       t.STATUS,
        u.betreff
 from texte t
          inner join uebersetzungen u on t.id = u.id_texte
@@ -4476,6 +4511,8 @@ type ListVerwendungsTexteRow struct {
 	ID        int32  `json:"id"`
 	Kz        string `json:"kz"`
 	TextTypKz string `json:"text_typ_kz"`
+	SystemKz  int32  `json:"system_kz"`
+	Status    int32  `json:"status"`
 	Betreff   string `json:"betreff"`
 }
 
@@ -4492,6 +4529,8 @@ func (q *Queries) ListVerwendungsTexte(ctx context.Context, spracheKz string) ([
 			&i.ID,
 			&i.Kz,
 			&i.TextTypKz,
+			&i.SystemKz,
+			&i.Status,
 			&i.Betreff,
 		); err != nil {
 			return nil, err
@@ -5625,35 +5664,55 @@ func (q *Queries) UpdateTabellenkopf(ctx context.Context, arg UpdateTabellenkopf
 const updateText = `-- name: UpdateText :execresult
 update texte
 set text_typ_kz = ?,
-    kz          = ?
+    kz          = ?,
+    SYSTEM_KZ = ?,
+    STATUS    = ?
 where id = ?
 `
 
 type UpdateTextParams struct {
 	TextTypKz string `json:"text_typ_kz"`
 	Kz        string `json:"kz"`
+	SystemKz  int32  `json:"system_kz"`
+	Status    int32  `json:"status"`
 	ID        int32  `json:"id"`
 }
 
 func (q *Queries) UpdateText(ctx context.Context, arg UpdateTextParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, updateText, arg.TextTypKz, arg.Kz, arg.ID)
+	return q.db.ExecContext(ctx, updateText,
+		arg.TextTypKz,
+		arg.Kz,
+		arg.SystemKz,
+		arg.Status,
+		arg.ID,
+	)
 }
 
 const updateTextTyp = `-- name: UpdateTextTyp :execresult
 update text_typen
 set kz          = ?,
-    bezeichnung = ?
+    bezeichnung = ?,
+    SYSTEM_KZ = ?,
+    STATUS    = ?
 where id = ?
 `
 
 type UpdateTextTypParams struct {
 	Kz          string `json:"kz"`
 	Bezeichnung string `json:"bezeichnung"`
+	SystemKz    int32  `json:"system_kz"`
+	Status      int32  `json:"status"`
 	ID          int32  `json:"id"`
 }
 
 func (q *Queries) UpdateTextTyp(ctx context.Context, arg UpdateTextTypParams) (sql.Result, error) {
-	return q.db.ExecContext(ctx, updateTextTyp, arg.Kz, arg.Bezeichnung, arg.ID)
+	return q.db.ExecContext(ctx, updateTextTyp,
+		arg.Kz,
+		arg.Bezeichnung,
+		arg.SystemKz,
+		arg.Status,
+		arg.ID,
+	)
 }
 
 const updateTierbewegung = `-- name: UpdateTierbewegung :execresult
@@ -5827,4 +5886,196 @@ func (q *Queries) UpsertUebersetzung(ctx context.Context, arg UpsertUebersetzung
 		arg.Betreff,
 		arg.Inhalt,
 	)
+}
+
+const createAktion = `-- name: CreateAktion :execresult
+INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type CreateAktionParams struct {
+	AktionenKz       sql.NullString `json:"aktionen_kz"`
+	IDUser           sql.NullInt32  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt32  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt32  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt32  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt32  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+}
+
+func (q *Queries) CreateAktion(ctx context.Context, arg CreateAktionParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, createAktion,
+		arg.AktionenKz,
+		arg.IDUser,
+		arg.Aktionsdatum,
+		arg.Bezeichnung,
+		arg.IntervallTage,
+		arg.AnzahlIntervalle,
+		arg.Erledigt,
+		arg.IDUserErledigt,
+		arg.ErledigtAm,
+	)
+}
+
+const deleteAktion = `-- name: DeleteAktion :exec
+DELETE FROM AKTIONEN WHERE ID = ?
+`
+
+func (q *Queries) DeleteAktion(ctx context.Context, id int32) error {
+	_, err := q.db.ExecContext(ctx, deleteAktion, id)
+	return err
+}
+
+const getAktion = `-- name: GetAktion :one
+SELECT id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+FROM AKTIONEN
+WHERE ID = ?
+`
+
+func (q *Queries) GetAktion(ctx context.Context, id int32) (Aktionen, error) {
+	row := q.db.QueryRowContext(ctx, getAktion, id)
+	var i Aktionen
+	err := row.Scan(
+		&i.ID,
+		&i.AktionenKz,
+		&i.IDUser,
+		&i.Aktionsdatum,
+		&i.Bezeichnung,
+		&i.IntervallTage,
+		&i.AnzahlIntervalle,
+		&i.Erledigt,
+		&i.IDUserErledigt,
+		&i.ErledigtAm,
+	)
+	return i, err
+}
+
+const listAktionen = `-- name: ListAktionen :many
+SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, 
+       u1.USERNAME as username,
+       u2.USERNAME as username_erledigt
+FROM AKTIONEN a
+LEFT JOIN BENUTZER u1 ON a.ID_USER = u1.ID
+LEFT JOIN BENUTZER u2 ON a.ID_USER_ERLEDIGT = u2.ID
+WHERE (? = 0 OR a.ID_USER = ?)
+  AND (? = '' OR a.AKTIONSDATUM >= ?)
+  AND (? = '' OR a.AKTIONSDATUM <= ?)
+  AND (? = '' OR a.AKTIONEN_KZ = ?)
+  AND (? = 2 OR COALESCE(a.ERLEDIGT, 0) = ?)
+ORDER BY a.AKTIONSDATUM DESC
+`
+
+type ListAktionenParams struct {
+	IDUser    interface{} `json:"id_user"`
+	StartDate interface{} `json:"start_date"`
+	EndDate   interface{} `json:"end_date"`
+	Kz        interface{} `json:"kz"`
+	Status    int32       `json:"status"`
+}
+
+type ListAktionenRow struct {
+	ID               int64          `json:"id"`
+	AktionenKz       interface{}    `json:"aktionen_kz"`
+	IDUser           sql.NullInt64  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt64  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt64  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt64  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Username         sql.NullString `json:"username"`
+	UsernameErledigt sql.NullString `json:"username_erledigt"`
+}
+
+func (q *Queries) ListAktionen(ctx context.Context, arg ListAktionenParams) ([]ListAktionenRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAktionen,
+		arg.IDUser,
+		arg.IDUser,
+		arg.StartDate,
+		arg.StartDate,
+		arg.EndDate,
+		arg.EndDate,
+		arg.Kz,
+		arg.Kz,
+		arg.Status,
+		arg.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAktionenRow
+	for rows.Next() {
+		var i ListAktionenRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AktionenKz,
+			&i.IDUser,
+			&i.Aktionsdatum,
+			&i.Bezeichnung,
+			&i.IntervallTage,
+			&i.AnzahlIntervalle,
+			&i.Erledigt,
+			&i.IDUserErledigt,
+			&i.ErledigtAm,
+			&i.Username,
+			&i.UsernameErledigt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateAktion = `-- name: UpdateAktion :exec
+UPDATE AKTIONEN
+SET AKTIONEN_KZ       = ?,
+    ID_USER           = ?,
+    AKTIONSDATUM      = ?,
+    BEZEICHNUNG       = ?,
+    INTERVALL_TAGE    = ?,
+    ANZAHL_INTERVALLE = ?,
+    ERLEDIGT          = ?,
+    ID_USER_ERLEDIGT  = ?,
+    ERLEDIGT_AM       = ?
+WHERE ID = ?
+`
+
+type UpdateAktionParams struct {
+	AktionenKz       sql.NullString `json:"aktionen_kz"`
+	IDUser           sql.NullInt32  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt32  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt32  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt32  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt32  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	ID               int32          `json:"id"`
+}
+
+func (q *Queries) UpdateAktion(ctx context.Context, arg UpdateAktionParams) error {
+	_, err := q.db.ExecContext(ctx, updateAktion,
+		arg.AktionenKz,
+		arg.IDUser,
+		arg.Aktionsdatum,
+		arg.Bezeichnung,
+		arg.IntervallTage,
+		arg.AnzahlIntervalle,
+		arg.Erledigt,
+		arg.IDUserErledigt,
+		arg.ErledigtAm,
+		arg.ID,
+	)
+	return err
 }

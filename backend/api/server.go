@@ -319,6 +319,7 @@ func doAutomaticEilagerBuchung(ctx context.Context, conn *sql.DB, queries db.Que
 }
 
 func StartServer(database *wailsdb.DB) *gin.Engine {
+	log.Printf("[DEBUG] StartServer called with engine: %s", database.Engine)
 	conn := database.SQL
 	queries := database.Repo
 	currentDBPath := database.Config.DBConnectionString
@@ -7021,6 +7022,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		c.JSON(http.StatusOK, gin.H{
+			"id":          user.ID,
 			"username":    user.Username,
 			"klarname":    user.Klarname,
 			"profile_kz":  profile.ProfilKz,
@@ -7117,6 +7119,188 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Status gespeichert"})
+	})
+
+	r.GET("/api/aktionen", func(c *gin.Context) {
+		idUser, _ := strconv.ParseInt(c.Query("id_user"), 10, 64)
+		start := c.Query("start")
+		end := c.Query("end")
+		kz := c.Query("kz")
+		
+		showErledigtRaw := c.Query("show_erledigt")
+		
+		// Status filter mapping:
+		// showErledigtRaw = "0" -> status = 0 (Open)
+		// showErledigtRaw = "1" -> status = 1 (Completed)
+		// showErledigtRaw = "2" -> status = 2 (All)
+		// If frontend sends true/false, we might need to map it carefully.
+		// The previous logic was: checkbox unchecked -> 0 (Open). checked -> 1 (All).
+		// Now we want: unchecked -> 0 (Open). checked -> 1 (Completed). or maybe the frontend will be updated to send 0, 1, 2.
+		// Let's support 0, 1, 2 directly.
+		statusInt := 0
+		if showErledigtRaw == "1" || showErledigtRaw == "true" {
+			statusInt = 1
+		} else if showErledigtRaw == "2" {
+			statusInt = 2
+		}
+		
+		fmt.Printf("[API] GET /api/aktionen: user=%d, start='%s', end='%s', kz='%s', raw_erledigt='%s' -> status=%d\n", 
+			idUser, start, end, kz, showErledigtRaw, statusInt)
+
+		res, err := queries.ListAktionen(c, db.ListAktionenParams{
+			IDUser:    idUser,
+			StartDate: start,
+			EndDate:   end,
+			Kz:        kz,
+			Status:    int64(statusInt),
+		})
+		if err != nil {
+			fmt.Printf("[API] Error ListAktionen: %v\n", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		type AktionenResponse struct {
+			ID               int64  `json:"id"`
+			AktionenKz       string `json:"aktionen_kz"`
+			IDUser           int64  `json:"id_user"`
+			Aktionsdatum     string `json:"aktionsdatum"`
+			Bezeichnung      string `json:"bezeichnung"`
+			IntervallTage    int64  `json:"intervall_tage"`
+			AnzahlIntervalle int64  `json:"anzahl_intervalle"`
+			Erledigt         int64  `json:"erledigt"`
+			IDUserErledigt   int64  `json:"id_user_erledigt"`
+			Username         string `json:"username"`
+			UsernameErledigt string `json:"username_erledigt"`
+			ErledigtAm       string `json:"erledigt_am"`
+		}
+
+		formatted := make([]AktionenResponse, len(res))
+		for i, r := range res {
+			kzStr := ""
+			if s, ok := r.AktionenKz.(string); ok {
+				kzStr = s
+			} else if b, ok := r.AktionenKz.([]byte); ok {
+				kzStr = string(b)
+			}
+
+			formatted[i] = AktionenResponse{
+				ID:               r.ID,
+				AktionenKz:       kzStr,
+				IDUser:           r.IDUser.Int64,
+				Aktionsdatum:     r.Aktionsdatum.String,
+				Bezeichnung:      r.Bezeichnung.String,
+				IntervallTage:    r.IntervallTage.Int64,
+				AnzahlIntervalle: r.AnzahlIntervalle.Int64,
+				Erledigt:         r.Erledigt.Int64,
+				IDUserErledigt:   r.IDUserErledigt.Int64,
+				Username:         r.Username.String,
+				UsernameErledigt: r.UsernameErledigt.String,
+				ErledigtAm:       r.ErledigtAm.String,
+			}
+		}
+
+		fmt.Printf("[API] ListAktionen returned %d rows\n", len(res))
+		c.JSON(http.StatusOK, formatted)
+	})
+
+	r.POST("/api/aktionen", func(c *gin.Context) {
+		var req struct {
+			AktionenKz       string `json:"aktionen_kz"`
+			IDUser           int64  `json:"id_user"`
+			Aktionsdatum     string `json:"aktionsdatum"`
+			Bezeichnung      string `json:"bezeichnung"`
+			IntervallTage    int64  `json:"intervall_tage"`
+			AnzahlIntervalle int64  `json:"anzahl_intervalle"`
+			Erledigt         int64  `json:"erledigt"`
+			IDUserErledigt   int64  `json:"id_user_erledigt"`
+			ErledigtAm       string `json:"erledigt_am"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if req.Erledigt == 1 && req.ErledigtAm == "" {
+			req.ErledigtAm = time.Now().Format("2006-01-02 15:04:05")
+		}
+
+		res, err := queries.CreateAktion(c, db.CreateAktionParams{
+			AktionenKz:       toNullString(req.AktionenKz),
+			IDUser:           toNullInt64(req.IDUser),
+			Aktionsdatum:     toNullString(req.Aktionsdatum),
+			Bezeichnung:      toNullString(req.Bezeichnung),
+			IntervallTage:    toNullInt64(req.IntervallTage),
+			AnzahlIntervalle: toNullInt64(req.AnzahlIntervalle),
+			Erledigt:         toNullInt64(req.Erledigt),
+			IDUserErledigt:   toNullInt64(req.IDUserErledigt),
+			ErledigtAm:       toNullString(req.ErledigtAm),
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, res)
+	})
+
+	r.PUT("/api/aktionen/:id", func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
+			return
+		}
+		var req struct {
+			AktionenKz       string `json:"aktionen_kz"`
+			IDUser           int64  `json:"id_user"`
+			Aktionsdatum     string `json:"aktionsdatum"`
+			Bezeichnung      string `json:"bezeichnung"`
+			IntervallTage    int64  `json:"intervall_tage"`
+			AnzahlIntervalle int64  `json:"anzahl_intervalle"`
+			Erledigt         int64  `json:"erledigt"`
+			IDUserErledigt   int64  `json:"id_user_erledigt"`
+			ErledigtAm       string `json:"erledigt_am"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		if req.Erledigt == 1 && req.ErledigtAm == "" {
+			req.ErledigtAm = time.Now().Format("2006-01-02 15:04:05")
+		} else if req.Erledigt == 0 {
+			req.ErledigtAm = ""
+		}
+
+		res, err := queries.UpdateAktion(c, db.UpdateAktionParams{
+			ID:               id,
+			AktionenKz:       toNullString(req.AktionenKz),
+			IDUser:           toNullInt64(req.IDUser),
+			Aktionsdatum:     toNullString(req.Aktionsdatum),
+			Bezeichnung:      toNullString(req.Bezeichnung),
+			IntervallTage:    toNullInt64(req.IntervallTage),
+			AnzahlIntervalle: toNullInt64(req.AnzahlIntervalle),
+			Erledigt:         toNullInt64(req.Erledigt),
+			IDUserErledigt:   toNullInt64(req.IDUserErledigt),
+			ErledigtAm:       toNullString(req.ErledigtAm),
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, res)
+	})
+
+	r.DELETE("/api/aktionen/:id", func(c *gin.Context) {
+		id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
+			return
+		}
+		if err := queries.DeleteAktion(c, id); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
 	})
 
 	return r
@@ -7965,6 +8149,32 @@ func migrateDB(database *wailsdb.DB) {
 	}
 	_, err = db.Exec(firmenTable)
 
+	// 1f. AKTIONEN Tabelle sicherstellen
+	aktionenTable := `CREATE TABLE IF NOT EXISTS AKTIONEN (
+		ID INTEGER PRIMARY KEY AUTOINCREMENT,
+		AKTIONEN_KZ CHAR (1),
+		ID_USER INTEGER DEFAULT (0),
+		AKTIONSDATUM TEXT DEFAULT ('0001-01-01'),
+		BEZEICHNUNG TEXT,
+		INTERVALL_TAGE INTEGER DEFAULT (0),
+		ERLEDIGT INTEGER DEFAULT (0)
+	)`
+	if database.Engine == "mysql" {
+		aktionenTable = `CREATE TABLE IF NOT EXISTS AKTIONEN (
+			ID INTEGER PRIMARY KEY AUTO_INCREMENT,
+			AKTIONEN_KZ CHAR (1),
+			ID_USER INTEGER DEFAULT (0),
+			AKTIONSDATUM VARCHAR(25) DEFAULT ('0001-01-01'),
+			BEZEICHNUNG TEXT,
+			INTERVALL_TAGE INTEGER DEFAULT (0),
+			ERLEDIGT INTEGER DEFAULT (0)
+		)`
+	}
+	_, err = db.Exec(aktionenTable)
+	if err != nil {
+		log.Printf("Fehler beim Erstellen der Tabelle AKTIONEN: %v", err)
+	}
+
 	// 2. Fehlende Spalten hinzufügen
 	cols := []struct {
 		table    string
@@ -8041,11 +8251,27 @@ func migrateDB(database *wailsdb.DB) {
 }
 
 func syncDataFromSQLite(database *wailsdb.DB) {
-	// SQLite öffnen (hartcodierter Pfad für diesen Workspace)
-	sqlitePath := "/Users/wernerhofmann/Projekte/HuhnLite-Wails/HuhnLite.db"
+	// SQLite öffnen (Suche nach HuhnLite.db in verschiedenen Pfaden)
+	sqlitePath := "HuhnLite.db"
+	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
+		// Pfad relativ zur Executable versuchen
+		if execPath, err := os.Executable(); err == nil {
+			sqlitePath = filepath.Join(filepath.Dir(execPath), "HuhnLite.db")
+		}
+	}
+	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
+		// Fallback auf AppData Verzeichnis
+		if configDir, err := os.UserConfigDir(); err == nil {
+			sqlitePath = filepath.Join(configDir, "HuhnLite-Wails", "HuhnLite.db")
+		}
+	}
+	// Letzter Versuch: macOS Pfad (aus altem Code)
+	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
+		sqlitePath = "/Users/wernerhofmann/Projekte/HuhnLite-Wails/HuhnLite.db"
+	}
 
 	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
-		log.Printf("Synchronisation ABGEBROCHEN: SQLite-Datei nicht gefunden unter %s", sqlitePath)
+		log.Printf("Synchronisation ABGEBROCHEN: SQLite-Datei nicht gefunden (CWD, ExecDir oder AppData)")
 		return
 	}
 
@@ -8057,7 +8283,34 @@ func syncDataFromSQLite(database *wailsdb.DB) {
 	}
 	defer sqliteConn.Close()
 
-	tables := []string{"TABELLENKOPF", "GEWICHTTABELLE", "EIERPREISE", "RASSE", "STALL", "PERSON", "SILO", "EILAGER", "FUTTERSORTEN", "SYSTEMSETTINGS"}
+	// Rename SYSTEM to SYSTEM_KZ in SQLite if it still exists
+	for _, t := range []string{"TEXTE", "TEXT_TYPEN"} {
+		var hasSystem bool
+		rows, err := sqliteConn.Query(fmt.Sprintf("PRAGMA table_info(%s)", t))
+		if err == nil {
+			for rows.Next() {
+				var cid int
+				var name, dtype string
+				var notnull, pk int
+				var dflt_value interface{}
+				if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == "SYSTEM" {
+					hasSystem = true
+				}
+			}
+			rows.Close()
+		}
+		if hasSystem {
+			log.Printf("Synchronisation: Benenne Spalte SYSTEM in %s (SQLite) nach SYSTEM_KZ um...", t)
+			sqliteConn.Exec(fmt.Sprintf("ALTER TABLE %s RENAME COLUMN `SYSTEM` TO SYSTEM_KZ", t))
+		}
+	}
+
+	// Reihenfolge beachten wegen Fremdschlüsseln (TEXT_TYPEN vor TEXTE vor UEBERSETZUNGEN)
+	tables := []string{
+		"TABELLENKOPF", "GEWICHTTABELLE", "EIERPREISE", "RASSE", "STALL", "PERSON", "SILO", "EILAGER", "FUTTERSORTEN", "SYSTEMSETTINGS",
+		"MWST", "KLASSIFIZIERUNG", "KOSTENTABKOPF", "SHOWTV", "FELD_KATALOG", "TRANSLATEFELDNAMEN", "DYNAMISCHE_SQL",
+		"BENUTZERPROFILE", "BENUTZER", "TEXT_TYPEN", "TEXTE", "UEBERSETZUNGEN", "AKTIONEN",
+	}
 
 	for _, table := range tables {
 		// Prüfen, ob die Tabelle in MariaDB Daten hat
@@ -8109,5 +8362,12 @@ func syncDataFromSQLite(database *wailsdb.DB) {
 		}
 		rows.Close()
 		log.Printf("Synchronisation: %d Zeilen in %s kopiert.", count, table)
+
+		// AUTO_INCREMENT immer sicherstellen, damit neue Inserts nicht mit importierten IDs kollidieren
+		var maxId int
+		err = database.SQL.QueryRow(fmt.Sprintf("SELECT MAX(ID) FROM %s", table)).Scan(&maxId)
+		if err == nil && maxId > 0 {
+			_, _ = database.SQL.Exec(fmt.Sprintf("ALTER TABLE %s AUTO_INCREMENT = %d", table, maxId+1))
+		}
 	}
 }

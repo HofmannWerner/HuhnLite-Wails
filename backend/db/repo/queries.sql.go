@@ -100,6 +100,51 @@ func (q *Queries) AdjustHerdeStock(ctx context.Context, arg AdjustHerdeStockPara
 	return err
 }
 
+const createAktion = `-- name: CreateAktion :one
+INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+`
+
+type CreateAktionParams struct {
+	AktionenKz       interface{}    `json:"aktionen_kz"`
+	IDUser           sql.NullInt64  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt64  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt64  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt64  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+}
+
+func (q *Queries) CreateAktion(ctx context.Context, arg CreateAktionParams) (Aktionen, error) {
+	row := q.db.QueryRowContext(ctx, createAktion,
+		arg.AktionenKz,
+		arg.IDUser,
+		arg.Aktionsdatum,
+		arg.Bezeichnung,
+		arg.IntervallTage,
+		arg.AnzahlIntervalle,
+		arg.Erledigt,
+		arg.IDUserErledigt,
+		arg.ErledigtAm,
+	)
+	var i Aktionen
+	err := row.Scan(
+		&i.ID,
+		&i.AktionenKz,
+		&i.IDUser,
+		&i.Aktionsdatum,
+		&i.Bezeichnung,
+		&i.IntervallTage,
+		&i.AnzahlIntervalle,
+		&i.Erledigt,
+		&i.IDUserErledigt,
+		&i.ErledigtAm,
+	)
+	return i, err
+}
+
 const createBenutzer = `-- name: CreateBenutzer :one
 INSERT INTO BENUTZER (USERNAME, PASSWORT, ID_BENUTZER_PROFILE, KLARNAME)
 VALUES (?, ?, ?, ?) RETURNING id, username, passwort, klarname, id_benutzer_profile
@@ -1430,6 +1475,17 @@ func (q *Queries) CreateVerkauf(ctx context.Context, arg CreateVerkaufParams) (V
 	return i, err
 }
 
+const deleteAktion = `-- name: DeleteAktion :exec
+DELETE
+FROM AKTIONEN
+WHERE ID = ?
+`
+
+func (q *Queries) DeleteAktion(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteAktion, id)
+	return err
+}
+
 const deleteBenutzer = `-- name: DeleteBenutzer :exec
 DELETE
 FROM BENUTZER
@@ -1722,6 +1778,30 @@ WHERE ID_EILAGERBUCHUNG = ?
 func (q *Queries) DeleteVerkaufByEilagerbuchung(ctx context.Context, idEilagerbuchung int64) error {
 	_, err := q.db.ExecContext(ctx, deleteVerkaufByEilagerbuchung, idEilagerbuchung)
 	return err
+}
+
+const getAktion = `-- name: GetAktion :one
+SELECT id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+FROM AKTIONEN
+WHERE ID = ?
+`
+
+func (q *Queries) GetAktion(ctx context.Context, id int64) (Aktionen, error) {
+	row := q.db.QueryRowContext(ctx, getAktion, id)
+	var i Aktionen
+	err := row.Scan(
+		&i.ID,
+		&i.AktionenKz,
+		&i.IDUser,
+		&i.Aktionsdatum,
+		&i.Bezeichnung,
+		&i.IntervallTage,
+		&i.AnzahlIntervalle,
+		&i.Erledigt,
+		&i.IDUserErledigt,
+		&i.ErledigtAm,
+	)
+	return i, err
 }
 
 const getBenutzerByUsername = `-- name: GetBenutzerByUsername :one
@@ -3043,6 +3123,86 @@ type IncreaseHerdeStockByIdParams struct {
 func (q *Queries) IncreaseHerdeStockById(ctx context.Context, arg IncreaseHerdeStockByIdParams) error {
 	_, err := q.db.ExecContext(ctx, increaseHerdeStockById, arg.Anfangsbestand, arg.ID)
 	return err
+}
+
+const listAktionen = `-- name: ListAktionen :many
+SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, 
+       u1.USERNAME as username,
+       u2.USERNAME as username_erledigt
+FROM AKTIONEN a
+LEFT JOIN BENUTZER u1 ON a.ID_USER = u1.ID
+LEFT JOIN BENUTZER u2 ON a.ID_USER_ERLEDIGT = u2.ID
+WHERE (?1 = 0 OR a.ID_USER = ?1)
+  AND (?2 = '' OR a.AKTIONSDATUM >= ?2)
+  AND (?3 = '' OR a.AKTIONSDATUM <= ?3)
+  AND (?4 = '' OR a.AKTIONEN_KZ = ?4)
+  AND (CAST(?5 AS INTEGER) = 2 OR COALESCE(a.ERLEDIGT, 0) = CAST(?5 AS INTEGER))
+ORDER BY a.AKTIONSDATUM DESC
+`
+
+type ListAktionenParams struct {
+	IDUser    interface{} `json:"id_user"`
+	StartDate interface{} `json:"start_date"`
+	EndDate   interface{} `json:"end_date"`
+	Kz        interface{} `json:"kz"`
+	Status    int64       `json:"status"`
+}
+
+type ListAktionenRow struct {
+	ID               int64          `json:"id"`
+	AktionenKz       interface{}    `json:"aktionen_kz"`
+	IDUser           sql.NullInt64  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt64  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt64  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt64  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Username         sql.NullString `json:"username"`
+	UsernameErledigt sql.NullString `json:"username_erledigt"`
+}
+
+func (q *Queries) ListAktionen(ctx context.Context, arg ListAktionenParams) ([]ListAktionenRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAktionen,
+		arg.IDUser,
+		arg.StartDate,
+		arg.EndDate,
+		arg.Kz,
+		arg.Status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAktionenRow
+	for rows.Next() {
+		var i ListAktionenRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.AktionenKz,
+			&i.IDUser,
+			&i.Aktionsdatum,
+			&i.Bezeichnung,
+			&i.IntervallTage,
+			&i.AnzahlIntervalle,
+			&i.Erledigt,
+			&i.IDUserErledigt,
+			&i.ErledigtAm,
+			&i.Username,
+			&i.UsernameErledigt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listBenutzer = `-- name: ListBenutzer :many
@@ -5015,6 +5175,62 @@ func (q *Queries) ListZuechter(ctx context.Context) ([]Person, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateAktion = `-- name: UpdateAktion :one
+UPDATE AKTIONEN
+SET AKTIONEN_KZ       = ?,
+    ID_USER           = ?,
+    AKTIONSDATUM      = ?,
+    BEZEICHNUNG       = ?,
+    INTERVALL_TAGE    = ?,
+    ANZAHL_INTERVALLE = ?,
+    ERLEDIGT          = ?,
+    ID_USER_ERLEDIGT  = ?,
+    ERLEDIGT_AM       = ?
+WHERE ID = ? RETURNING id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+`
+
+type UpdateAktionParams struct {
+	AktionenKz       interface{}    `json:"aktionen_kz"`
+	IDUser           sql.NullInt64  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt64  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt64  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt64  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	ID               int64          `json:"id"`
+}
+
+func (q *Queries) UpdateAktion(ctx context.Context, arg UpdateAktionParams) (Aktionen, error) {
+	row := q.db.QueryRowContext(ctx, updateAktion,
+		arg.AktionenKz,
+		arg.IDUser,
+		arg.Aktionsdatum,
+		arg.Bezeichnung,
+		arg.IntervallTage,
+		arg.AnzahlIntervalle,
+		arg.Erledigt,
+		arg.IDUserErledigt,
+		arg.ErledigtAm,
+		arg.ID,
+	)
+	var i Aktionen
+	err := row.Scan(
+		&i.ID,
+		&i.AktionenKz,
+		&i.IDUser,
+		&i.Aktionsdatum,
+		&i.Bezeichnung,
+		&i.IntervallTage,
+		&i.AnzahlIntervalle,
+		&i.Erledigt,
+		&i.IDUserErledigt,
+		&i.ErledigtAm,
+	)
+	return i, err
 }
 
 const updateBenutzer = `-- name: UpdateBenutzer :exec

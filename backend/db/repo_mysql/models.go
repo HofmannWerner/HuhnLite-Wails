@@ -8,6 +8,19 @@ import (
 	"database/sql"
 )
 
+type Aktionen struct {
+	ID               int32          `json:"id"`
+	AktionenKz       sql.NullString `json:"aktionen_kz"`
+	IDUser           sql.NullInt32  `json:"id_user"`
+	Aktionsdatum     sql.NullString `json:"aktionsdatum"`
+	Bezeichnung      sql.NullString `json:"bezeichnung"`
+	IntervallTage    sql.NullInt32  `json:"intervall_tage"`
+	AnzahlIntervalle sql.NullInt32  `json:"anzahl_intervalle"`
+	Erledigt         sql.NullInt32  `json:"erledigt"`
+	IDUserErledigt   sql.NullInt32  `json:"id_user_erledigt"`
+	ErledigtAm       sql.NullString `json:"erledigt_am"`
+}
+
 type Benutzer struct {
 	ID                int32  `json:"id"`
 	Username          string `json:"username"`
@@ -391,14 +404,16 @@ type TextTypen struct {
 	ID          int32  `json:"id"`
 	Kz          string `json:"kz"`
 	Bezeichnung string `json:"bezeichnung"`
-	System      int32  `json:"system"`
+	SystemKz    int32  `json:"system"`
+	Status      int32  `json:"status"`
 }
 
 type Texte struct {
 	ID        int32  `json:"id"`
 	TextTypKz string `json:"text_typ_kz"`
 	Kz        string `json:"kz"`
-	System    int32  `json:"system"`
+	SystemKz  int32  `json:"system"`
+	Status    int32  `json:"status"`
 }
 
 type Tierbewegungen struct {

@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	AddEilagerBuchung(ctx context.Context, arg AddEilagerBuchungParams) (Eilagerbuchung, error)
 	AdjustHerdeStock(ctx context.Context, arg AdjustHerdeStockParams) error
+	CreateAktion(ctx context.Context, arg CreateAktionParams) (Aktionen, error)
 	CreateBenutzer(ctx context.Context, arg CreateBenutzerParams) (Benutzer, error)
 	CreateBenutzerProfil(ctx context.Context, arg CreateBenutzerProfilParams) (Benutzerprofile, error)
 	CreateBuchung(ctx context.Context, arg CreateBuchungParams) (Buchung, error)
@@ -39,6 +40,7 @@ type Querier interface {
 	CreateTierbewegung(ctx context.Context, arg CreateTierbewegungParams) (Tierbewegungen, error)
 	CreateUebersetzung(ctx context.Context, arg CreateUebersetzungParams) (Uebersetzungen, error)
 	CreateVerkauf(ctx context.Context, arg CreateVerkaufParams) (Verkauf, error)
+	DeleteAktion(ctx context.Context, id int64) error
 	DeleteBenutzer(ctx context.Context, id int64) error
 	DeleteBenutzerProfil(ctx context.Context, profilKz interface{}) error
 	DeleteBuchung(ctx context.Context, id int64) error
@@ -66,6 +68,7 @@ type Querier interface {
 	DeleteTierbewegung(ctx context.Context, id int64) error
 	DeleteVerkauf(ctx context.Context, id int64) error
 	DeleteVerkaufByEilagerbuchung(ctx context.Context, idEilagerbuchung int64) error
+	GetAktion(ctx context.Context, id int64) (Aktionen, error)
 	GetBenutzerByUsername(ctx context.Context, username string) (Benutzer, error)
 	GetBenutzerProfilByID(ctx context.Context, id int64) (Benutzerprofile, error)
 	GetBenutzerProfilByKZ(ctx context.Context, profilKz interface{}) (Benutzerprofile, error)
@@ -104,6 +107,7 @@ type Querier interface {
 	GetVerkaufByEilagerbuchung(ctx context.Context, idEilagerbuchung int64) (Verkauf, error)
 	IncreaseHerdeStockAndCosts(ctx context.Context, arg IncreaseHerdeStockAndCostsParams) error
 	IncreaseHerdeStockById(ctx context.Context, arg IncreaseHerdeStockByIdParams) error
+	ListAktionen(ctx context.Context, arg ListAktionenParams) ([]ListAktionenRow, error)
 	ListBenutzer(ctx context.Context) ([]ListBenutzerRow, error)
 	ListBenutzerProfile(ctx context.Context) ([]Benutzerprofile, error)
 	ListBuchungen(ctx context.Context) ([]ListBuchungenRow, error)
@@ -142,6 +146,7 @@ type Querier interface {
 	ListVerkauf(ctx context.Context) ([]Verkauf, error)
 	ListVerwendungsTexte(ctx context.Context, spracheKz string) ([]ListVerwendungsTexteRow, error)
 	ListZuechter(ctx context.Context) ([]Person, error)
+	UpdateAktion(ctx context.Context, arg UpdateAktionParams) (Aktionen, error)
 	UpdateBenutzer(ctx context.Context, arg UpdateBenutzerParams) error
 	UpdateBenutzerProfil(ctx context.Context, arg UpdateBenutzerProfilParams) (Benutzerprofile, error)
 	UpdateBuchung(ctx context.Context, arg UpdateBuchungParams) (Buchung, error)
