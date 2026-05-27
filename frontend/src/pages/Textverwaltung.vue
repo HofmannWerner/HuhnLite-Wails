@@ -156,7 +156,7 @@
               stack-label
               :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
               :rules="[val => !!val || 'Pflichtfeld']"
-              :readonly="!!editTypeData.id && !isAdmin"
+              :readonly="(editTypeData.system === 1 && !canEditSystem) || (!!editTypeData.id && !isAdmin)"
             />
             <q-input
               v-model="editTypeData.bezeichnung"
@@ -164,11 +164,11 @@
               filled
               stack-label
               :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
-              :readonly="!!editTypeData.id && !isAdmin"
+              :readonly="(editTypeData.system === 1 && !canEditSystem) || (!!editTypeData.id && !isAdmin)"
             />
 
             <q-checkbox
-              v-if="isAdmin"
+              v-if="canEditSystem"
               v-model="editTypeData.system"
               :false-value="0"
               :true-value="1"
@@ -180,7 +180,7 @@
               <q-btn ref="typeCancelBtn" label="Abbrechen" color="negative" outline rounded v-close-popup
                      padding="xs lg"/>
               <q-btn ref="typeSaveBtn" label="Speichern" type="submit" color="primary" rounded unelevated
-                     padding="xs xl"/>
+                     padding="xs xl" :disable="!!editTypeData.id && editTypeData.system === 1 && !canEditSystem"/>
             </div>
           </q-form>
         </q-card-section>
@@ -221,7 +221,7 @@
                   maxlength="1"
                   stack-label
                   :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
-                  :readonly="!!editTextData.id && !isAdmin"
+                  :readonly="(editTextData.system === 1 && !canEditSystem) || (!!editTextData.id && !isAdmin)"
                 />
               </div>
               <div class="col-8">
@@ -231,6 +231,7 @@
                   filled
                   stack-label
                   :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
+                  :readonly="editTextData.system === 1 && !canEditSystem"
                 />
               </div>
             </div>
@@ -241,10 +242,11 @@
               filled
               stack-label
               :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
+              :readonly="editTextData.system === 1 && !canEditSystem"
             />
 
             <q-checkbox
-              v-if="isAdmin"
+              v-if="canEditSystem"
               v-model="editTextData.system"
               :false-value="0"
               :true-value="1"
@@ -256,7 +258,7 @@
               <q-btn ref="textCancelBtn" label="Abbrechen" color="negative" outline rounded v-close-popup
                      padding="xs lg"/>
               <q-btn ref="textSaveBtn" label="Speichern" type="submit" color="primary" rounded unelevated
-                     padding="xs xl"/>
+                     padding="xs xl" :disable="!!editTextData.id && editTextData.system === 1 && !canEditSystem"/>
             </div>
           </q-form>
         </q-card-section>
@@ -290,6 +292,7 @@ const extractInt = (val: any) => {
 };
 
 const isAdmin = computed(() => sessionStore.profile_kz === 'A');
+const canEditSystem = computed(() => sessionStore.systemEditEnabled);
 
 // Grid Typen
 const typenRows = ref<any[]>([]);
@@ -391,8 +394,19 @@ onMounted(async () => {
   await loadTexte();
 });
 
+async function fetchConfig() {
+  try {
+    const res = await api.get('/api/config');
+    sessionStore.authEnabled = res.data.auth_enabled;
+    sessionStore.systemEditEnabled = res.data.system_edit_enabled;
+  } catch (err) {
+    console.warn('fetchConfig error:', err);
+  }
+}
+
 async function loadTypen() {
   loadingTypen.value = true;
+  await fetchConfig();
   try {
     const res = await api.get('/api/texttypen');
     typenRows.value = res.data || [];
@@ -409,6 +423,7 @@ async function loadTypen() {
 
 async function loadTexte() {
   loadingTexte.value = true;
+  await fetchConfig();
   try {
     const res = await api.get('/api/texte');
     texteRows.value = res.data || [];
@@ -423,7 +438,8 @@ function onTypeClick(row: any) {
   selectedTypeKz.value = extractString(row.kz);
 }
 
-function openTypeDialog(row: any = null) {
+async function openTypeDialog(row: any = null) {
+  await fetchConfig();
   if (row) {
     editTypeData.id = extractInt(row.id);
     editTypeData.kz = extractString(row.kz);
@@ -439,8 +455,13 @@ function openTypeDialog(row: any = null) {
 }
 
 async function saveType() {
+  await fetchConfig();
   try {
-    if (!isAdmin.value) editTypeData.system = 0;
+    if (editTypeData.id && editTypeData.system === 1 && !canEditSystem.value) {
+      $q.notify({ type: 'negative', message: 'System-Einträge können nicht geändert werden (Einstellungen prüfen).' });
+      return;
+    }
+    if (!canEditSystem.value && !editTypeData.id) editTypeData.system = 0;
     if (editTypeData.id) {
       await api.put(`/api/texttypen/${editTypeData.id}`, editTypeData);
     } else {
@@ -454,9 +475,16 @@ async function saveType() {
   }
 }
 
-function deleteType(row: any) {
+async function deleteType(row: any) {
+  await fetchConfig();
   const rowId = extractInt(row.id);
   const rowKz = extractString(row.kz);
+  
+  if (extractInt(row.system) === 1 && !canEditSystem.value) {
+    $q.notify({color: 'negative', message: 'System-Einträge können nicht gelöscht werden (Einstellungen prüfen).'});
+    return;
+  }
+  
   $q.dialog({
     title: 'Löschen',
     message: `Soll der Texttyp "${rowKz}" wirklich gelöscht werden?`,
@@ -476,7 +504,8 @@ function deleteType(row: any) {
   });
 }
 
-function openTextDialog(row: any = null) {
+async function openTextDialog(row: any = null) {
+  await fetchConfig();
   if (row) {
     editTextData.id = extractInt(row.id);
     editTextData.text_typ_kz = extractString(row.text_typ_kz);
@@ -496,8 +525,13 @@ function openTextDialog(row: any = null) {
 }
 
 async function saveText() {
+  await fetchConfig();
   try {
-    if (!isAdmin.value) editTextData.system = 0;
+    if (editTextData.id && editTextData.system === 1 && !canEditSystem.value) {
+      $q.notify({ type: 'negative', message: 'System-Einträge können nicht geändert werden (Einstellungen prüfen).' });
+      return;
+    }
+    if (!canEditSystem.value && !editTextData.id) editTextData.system = 0;
     if (editTextData.id) {
       await api.put(`/api/texte/${editTextData.id}`, editTextData);
     } else {
@@ -511,8 +545,15 @@ async function saveText() {
   }
 }
 
-function deleteText(row: any) {
+async function deleteText(row: any) {
+  await fetchConfig();
   const rowId = extractInt(row.id);
+
+  if (extractInt(row.system) === 1 && !canEditSystem.value) {
+    $q.notify({color: 'negative', message: 'System-Einträge können nicht gelöscht werden (Einstellungen prüfen).'});
+    return;
+  }
+
   $q.dialog({
     title: 'Löschen',
     message: 'Soll dieser Text wirklich gelöscht werden?',

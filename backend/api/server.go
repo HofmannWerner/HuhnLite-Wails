@@ -28,6 +28,7 @@ import (
 
 	wailsdb "huhnlite-wails/backend/db"
 	db "huhnlite-wails/backend/db/repo"
+	appconfig "huhnlite-wails/backend/config"
 )
 
 func toInt64(i interface{}) int64 {
@@ -378,8 +379,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			log.Printf("[API] /api/config - auth_required not found in DB, using default: %v", authEnabled)
 		}
 
+		cfg := appconfig.LoadConfig()
+		database.Config = cfg // Update in-memory config
+
 		c.JSON(http.StatusOK, gin.H{
 			"auth_enabled": authEnabled,
+			"system_edit_enabled": cfg.System == 1,
 		})
 	})
 
@@ -2928,7 +2933,6 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Liste der Updates mit exaktem Schema-Casing
-		// Liste der Updates mit exaktem Schema-Casing
 		updates := []struct {
 			sql      string
 			mysqlSql string
@@ -2978,6 +2982,16 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				"UPDATE TABELLENKOPF SET Anlagedatum = date(Anlagedatum, ? || ' days'), DATUM = date(DATUM, ? || ' days')",
 				"UPDATE TABELLENKOPF SET Anlagedatum = DATE(DATE_ADD(Anlagedatum, INTERVAL ? DAY)), DATUM = DATE(DATE_ADD(DATUM, INTERVAL ? DAY))",
 				[]interface{}{days, days},
+			},
+			{
+				"UPDATE AKTIONEN SET AKTIONSDATUM = date(AKTIONSDATUM, ? || ' days')",
+				"UPDATE AKTIONEN SET AKTIONSDATUM = DATE(DATE_ADD(AKTIONSDATUM, INTERVAL ? DAY))",
+				[]interface{}{days},
+			},
+			{
+				"UPDATE VERKAUF SET BUCHUNGSDATUM = date(BUCHUNGSDATUM, ? || ' days')",
+				"UPDATE VERKAUF SET BUCHUNGSDATUM = DATE(DATE_ADD(BUCHUNGSDATUM, INTERVAL ? DAY))",
+				[]interface{}{days},
 			},
 		}
 
@@ -4195,6 +4209,20 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
+
+		if appconfig.LoadConfig().System == 0 {
+			items, err := queries.ListTextTypen(c)
+			if err == nil {
+				for _, item := range items {
+					if item.ID == id && item.SystemKz == 1 {
+						log.Printf("[API] PUT /api/texttypen/%d - Blocked by system=0 lock", id)
+						c.JSON(http.StatusForbidden, gin.H{"error": "System-Einträge können nicht geändert werden (system=0 in settings.json)."})
+						return
+					}
+				}
+			}
+		}
+
 		var req struct {
 			Kz          *string     `json:"kz"`
 			Bezeichnung *string     `json:"bezeichnung"`
@@ -4241,6 +4269,20 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
+
+		if appconfig.LoadConfig().System == 0 {
+			items, err := queries.ListTextTypen(c)
+			if err == nil {
+				for _, item := range items {
+					if item.ID == id && item.SystemKz == 1 {
+						log.Printf("[API] DELETE /api/texttypen/%d - Blocked by system=0 lock", id)
+						c.JSON(http.StatusForbidden, gin.H{"error": "System-Einträge können nicht gelöscht werden (system=0 in settings.json)."})
+						return
+					}
+				}
+			}
+		}
+
 		if err := queries.DeleteTextTyp(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4364,6 +4406,19 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
+		if appconfig.LoadConfig().System == 0 {
+			items, err := queries.ListTexte(c, "de")
+			if err == nil {
+				for _, item := range items {
+					if item.ID == id && item.SystemKz == 1 {
+						log.Printf("[API] PUT /api/texte/%d - Blocked by system=0 lock", id)
+						c.JSON(http.StatusForbidden, gin.H{"error": "System-Einträge können nicht geändert werden (system=0 in settings.json)."})
+						return
+					}
+				}
+			}
+		}
+
 		lang := c.DefaultQuery("lang", "de")
 		var req struct {
 			TextTypKz string      `json:"text_typ_kz"`
@@ -4440,6 +4495,20 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
+
+		if appconfig.LoadConfig().System == 0 {
+			items, err := queries.ListTexte(c, "de")
+			if err == nil {
+				for _, item := range items {
+					if item.ID == id && item.SystemKz == 1 {
+						log.Printf("[API] DELETE /api/texte/%d - Blocked by system=0 lock", id)
+						c.JSON(http.StatusForbidden, gin.H{"error": "System-Einträge können nicht gelöscht werden (system=0 in settings.json)."})
+						return
+					}
+				}
+			}
+		}
+
 		if err := queries.DeleteText(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5376,6 +5445,19 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige Report-ID: " + idStr})
 			return
 		}
+
+		if appconfig.LoadConfig().System == 0 {
+			item, err := queries.GetDynamischeSQL(c, id)
+			if err == nil {
+				sysStr := strings.TrimSpace(item.SystemKz)
+				if sysStr != "" && sysStr != "0" && strings.ToLower(sysStr) != "false" {
+					log.Printf("[API] PUT /api/reports/%d - Blocked by system=0 lock", id)
+					c.JSON(http.StatusForbidden, gin.H{"error": "System-Einträge können nicht geändert werden (system=0 in settings.json)."})
+					return
+				}
+			}
+		}
+
 		var req struct {
 			Beschreibung       string      `json:"BESCHREIBUNG"`
 			Sqlstatement       string      `json:"SQLSTATEMENT"`
@@ -5445,6 +5527,19 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige Report-ID: " + idStr})
 			return
 		}
+
+		if appconfig.LoadConfig().System == 0 {
+			item, err := queries.GetDynamischeSQL(c, id)
+			if err == nil {
+				sysStr := strings.TrimSpace(item.SystemKz)
+				if sysStr != "" && sysStr != "0" && strings.ToLower(sysStr) != "false" {
+					log.Printf("[API] DELETE /api/reports/%d - Blocked by system=0 lock", id)
+					c.JSON(http.StatusForbidden, gin.H{"error": "System-Einträge können nicht gelöscht werden (system=0 in settings.json)."})
+					return
+				}
+			}
+		}
+
 		if err := queries.DeleteDynamischeSQL(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

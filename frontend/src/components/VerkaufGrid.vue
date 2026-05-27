@@ -96,21 +96,21 @@
 
               <!-- Preise (EDITABLE) -->
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.PREISSMALL" type="number" step="0.01" label="Preis S" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" @update:model-value="calcGesamt" :readonly="form.VERBUCHT" />
+                <q-input :model-value="formatCurrency(form.PREISSMALL)" @change="val => { form.PREISSMALL = parseCurrency(val); calcGesamt(); }" type="text" label="Preis S" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.PREISMEDIUM" type="number" step="0.01" label="Preis M" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" @update:model-value="calcGesamt" :readonly="form.VERBUCHT" />
+                <q-input :model-value="formatCurrency(form.PREISMEDIUM)" @change="val => { form.PREISMEDIUM = parseCurrency(val); calcGesamt(); }" type="text" label="Preis M" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.PREISLARGE" type="number" step="0.01" label="Preis L" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" @update:model-value="calcGesamt" :readonly="form.VERBUCHT" />
+                <q-input :model-value="formatCurrency(form.PREISLARGE)" @change="val => { form.PREISLARGE = parseCurrency(val); calcGesamt(); }" type="text" label="Preis L" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.PREISXL" type="number" step="0.01" label="Preis XL" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" @update:model-value="calcGesamt" :readonly="form.VERBUCHT" />
+                <q-input :model-value="formatCurrency(form.PREISXL)" @change="val => { form.PREISXL = parseCurrency(val); calcGesamt(); }" type="text" label="Preis XL" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
 
               <div class="col-12">
                 <div class="row items-center q-gutter-sm">
-                  <q-input v-model.number="form.GESAMTPREIS" type="number" step="0.01" label="Gesamtpreis (€)" filled stack-label class="col" :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" @update:model-value="onGesamtpreisManualChange" />
+                  <q-input :model-value="formatCurrency(form.GESAMTPREIS)" @change="val => { form.GESAMTPREIS = parseCurrency(val); onGesamtpreisManualChange(form.GESAMTPREIS); }" type="text" label="Gesamtpreis (€)" filled stack-label class="col" :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right text-bold" />
                   <q-btn flat round icon="calculate" color="primary" @click="calcGesamt" :disable="form.VERBUCHT">
                     <q-tooltip>Neu berechnen</q-tooltip>
                   </q-btn>
@@ -148,6 +148,20 @@ import { useQuasar } from 'quasar';
 import { api } from 'src/boot/api';
 import type { QTableProps } from 'quasar';
 import { useResizableColumns } from '../composables/useResizableColumns';
+
+function formatCurrency(val: any) {
+  if (val === null || val === undefined) return '0,00';
+  const num = typeof val === 'string' ? Number(val.replace(',', '.')) : Number(val);
+  if (isNaN(num)) return '0,00';
+  return num.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function parseCurrency(val: any) {
+  if (!val) return 0;
+  const str = String(val).replace(/\./g, '').replace(',', '.');
+  const num = Number(str);
+  return isNaN(num) ? 0 : num;
+}
 
 const $q = useQuasar();
 const { columnWidths, startResize, initWidths, isResizing } = useResizableColumns('Verkauf');

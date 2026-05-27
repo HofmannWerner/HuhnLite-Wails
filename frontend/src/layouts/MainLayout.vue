@@ -356,14 +356,14 @@ onMounted(async () => {
   console.log('MainLayout: Starte Initialisierung...');
   
   let success = false;
-  let retries = 5;
+  let retries = 10;
 
   while (!success && retries > 0) {
     try {
-      const res = await api.get('/api/system-settings/auth_required');
-      const val = res.data.value;
-      sessionStore.authEnabled = (val === true || val === 'true' || val === '1');
-      console.log('MainLayout: Auth-Status geladen:', sessionStore.authEnabled);
+      const res = await api.get('/api/config');
+      sessionStore.authEnabled = res.data.auth_enabled;
+      sessionStore.systemEditEnabled = res.data.system_edit_enabled;
+      console.log('MainLayout: Config geladen:', { auth: sessionStore.authEnabled, system: sessionStore.systemEditEnabled });
       
       if (!sessionStore.authEnabled) {
         sessionStore.setAdminSession();
@@ -372,7 +372,7 @@ onMounted(async () => {
     } catch (err) {
       console.log(`MainLayout: Server noch nicht bereit, Retry (${retries})...`);
       retries--;
-      if (retries > 0) await new Promise(resolve => setTimeout(resolve, 500));
+      if (retries > 0) await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
@@ -380,11 +380,6 @@ onMounted(async () => {
   if (!success) {
     console.warn('MainLayout: Konnte Auth-Status nicht laden, nutze Default.');
     sessionStore.setAdminSession();
-  }
-  
-  // Initialer Check nach Programmaufruf (wenn keine Auth oder AdminSession gesetzt wurde)
-  if (!sessionStore.authEnabled || sessionStore.isLoggedIn) {
-    checkAktionen();
   }
 });
 
@@ -395,50 +390,84 @@ const extractInt = (val: any) => {
   return Number(val) || 0;
 };
 
+const extractString = (val: any) => {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'object' && 'String' in val) return String(val.String);
+  return String(val);
+};
+
+let aktionenChecked = false;
+
 async function checkAktionen() {
+  if (aktionenChecked) return;
+  aktionenChecked = true;
+
   try {
     const todayStr = date.formatDate(new Date(), 'YYYY-MM-DD');
     const params = {
       kz: 'B',
-      status: 0,
-      start: todayStr,
+      show_erledigt: 0, // Nur offene
+      // Wir lassen 'start' leer, um auch alle vergangenen offenen Aktionen zu sehen
       end: todayStr,
       id_user: 0 // Alle abrufen
     };
     
+    console.log('[DEBUG] MainLayout checkAktionen params:', params);
     const res = await api.get('/api/aktionen', { params });
     const allActions = res.data || [];
     
     let relevantActions = [];
+    const currentUserId = sessionStore.userId || 0;
+    const isAdmin = sessionStore.profile_kz === 'A';
+    
     if (sessionStore.authEnabled && sessionStore.isLoggedIn) {
-      const currentUserId = sessionStore.userId;
-      relevantActions = allActions.filter((a: any) => 
-        extractInt(a.id_user) === currentUserId || extractInt(a.id_user) === 0
-      );
+      if (isAdmin) {
+        // Administratoren sehen alle offenen Aktionen
+        relevantActions = allActions;
+      } else {
+        // Reguläre Benutzer sehen eigene + allgemeine (ID 0) Aktionen
+        relevantActions = allActions.filter((a: any) => {
+          const actionUserId = extractInt(a.id_user);
+          return actionUserId === currentUserId || actionUserId === 0;
+        });
+      }
     } else {
       // Wenn keine Anmeldung erforderlich, alle Typ B Aktionen anzeigen
       relevantActions = allActions;
     }
     
     if (relevantActions.length > 0) {
+      let oldestDateStr = todayStr;
+      relevantActions.forEach((a: any) => {
+        const d = extractString(a.aktionsdatum);
+        if (d && d < oldestDateStr) {
+          oldestDateStr = d;
+        }
+      });
+
       $q.dialog({
         title: 'Offene Aktionen',
-        message: `Es sind ${relevantActions.length} offene Aktionen vom Typ 'B' für heute vorhanden.`,
+        message: `Es sind ${relevantActions.length} offene Aktionen vom Typ 'B' (fällig bis heute) vorhanden.`,
         ok: {
-          label: 'Bestätigen',
+          label: 'Anzeigen',
           color: 'primary',
           unelevated: true
         },
+        cancel: {
+          label: 'Später',
+          flat: true,
+          color: 'grey-7'
+        },
         persistent: true
       }).onOk(() => {
-        const todayStr = date.formatDate(new Date(), 'YYYY-MM-DD');
         router.push({ 
           path: '/buchungen', 
           query: { 
             tab: 'aktionen',
             filterKz: 'B',
-            filterDate: todayStr,
-            filterUser: 0 // Zeige alle Typ 'B' für heute
+            filterStartDate: oldestDateStr,
+            filterEndDate: todayStr,
+            filterUser: currentUserId // Zeige Aktionen für diesen User (oder alle Typ B für heute)
           } 
         });
       });
@@ -452,6 +481,8 @@ async function checkAktionen() {
 watch(() => sessionStore.isLoggedIn, (newVal) => {
   if (newVal) {
     checkAktionen();
+  } else {
+    aktionenChecked = false;
   }
 });
 

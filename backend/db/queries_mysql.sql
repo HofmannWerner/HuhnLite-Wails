@@ -1376,7 +1376,7 @@ SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.interval
 FROM AKTIONEN a
 LEFT JOIN BENUTZER u1 ON a.ID_USER = u1.ID
 LEFT JOIN BENUTZER u2 ON a.ID_USER_ERLEDIGT = u2.ID
-WHERE (? = 0 OR a.ID_USER = ?)
+WHERE (? = 0 OR a.ID_USER = ? OR a.ID_USER = 0)
   AND (? = '' OR a.AKTIONSDATUM >= ?)
   AND (? = '' OR a.AKTIONSDATUM <= ?)
   AND (? = '' OR a.AKTIONEN_KZ = ?)

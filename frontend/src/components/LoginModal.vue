@@ -79,7 +79,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
+import { useQuasar, date } from 'quasar';
 import { api } from 'src/boot/api';
 import { useSessionStore } from '../stores/session';
 
@@ -161,8 +161,61 @@ const handleLogin = async () => {
       icon: 'check' 
     });
 
-    // Direkt in die Aktionen verzweigen (Standard-Ansicht)
-    await router.push({ path: '/buchungen', query: { tab: 'aktionen' } });
+    // Direkt in die Aktionen verzweigen (Standard-Ansicht für den Benutzer)
+    const todayStr = date.formatDate(new Date(), 'YYYY-MM-DD');
+    let oldestDateStr = todayStr;
+    try {
+      const currentUserId = response.data.id || 0;
+      const isAdmin = response.data.profile_kz === 'A';
+      const res = await api.get('/api/aktionen', {
+        params: {
+          kz: 'B',
+          show_erledigt: 0,
+          end: todayStr,
+          id_user: 0
+        }
+      });
+      const allActions = res.data || [];
+      let relevantActions = [];
+      if (isAdmin) {
+        relevantActions = allActions;
+      } else {
+        relevantActions = allActions.filter((a: any) => {
+          const val = a.id_user;
+          let actionUserId = 0;
+          if (val !== null && val !== undefined) {
+            if (typeof val === 'object' && 'Int64' in val) actionUserId = Number(val.Int64) || 0;
+            else if (typeof val === 'object' && 'Int32' in val) actionUserId = Number(val.Int32) || 0;
+            else actionUserId = Number(val) || 0;
+          }
+          return actionUserId === currentUserId || actionUserId === 0;
+        });
+      }
+      relevantActions.forEach((a: any) => {
+        const val = a.aktionsdatum;
+        let d = '';
+        if (val !== null && val !== undefined) {
+          if (typeof val === 'object' && 'String' in val) d = String(val.String);
+          else d = String(val);
+        }
+        if (d && d < oldestDateStr) {
+          oldestDateStr = d;
+        }
+      });
+    } catch (err) {
+      console.error('Fehler beim Ermitteln des ältesten Aktionsdatums in LoginModal:', err);
+    }
+
+    await router.push({ 
+      path: '/buchungen', 
+      query: { 
+        tab: 'aktionen',
+        filterKz: 'B',
+        filterStartDate: oldestDateStr,
+        filterEndDate: todayStr,
+        filterUser: response.data.id || 0
+      } 
+    });
   } catch (error: any) {
     const msg = error.response?.data?.error || 'Anmeldung fehlgeschlagen';
     $q.notify({ color: 'negative', message: msg, icon: 'error' });

@@ -281,6 +281,7 @@ import { useQuasar } from 'quasar';
 import { api } from '../boot/api';
 import type { QTableProps } from 'quasar';
 import { useResizableColumns } from '../composables/useResizableColumns';
+import TierbewegungDialog from './TierbewegungDialog.vue';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

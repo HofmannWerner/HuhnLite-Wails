@@ -373,10 +373,10 @@
                     icon="delete" 
                     color="negative" 
                     size="sm" 
-                    :disable="getBool(getP(prop.node.data, 'SYSTEM_KZ')) && !isAdmin"
+                    :disable="getBool(getP(prop.node.data, 'SYSTEM_KZ')) && !canEditSystem"
                     @click.stop="onDelete(prop.node.data)"
                   >
-                    <q-tooltip>{{ (getBool(getP(prop.node.data, 'SYSTEM_KZ')) && !isAdmin) ? 'System-Eintrag (gesperrt)' : 'Löschen' }}</q-tooltip>
+                    <q-tooltip>{{ (getBool(getP(prop.node.data, 'SYSTEM_KZ')) && !canEditSystem) ? 'System-Eintrag (gesperrt)' : 'Löschen' }}</q-tooltip>
                   </q-btn>
                 </div>
               </div>
@@ -697,7 +697,7 @@
                         v-model="configForm.SYSTEM_KZ" 
                         label="System-Eintrag" 
                         color="red"
-                        :disable="!isAdmin"
+                        :disable="!canEditSystem"
                       />
                     </div>
 
@@ -1136,6 +1136,7 @@
                       icon="save" 
                       @click="onConfigSubmit" 
                       rounded unelevated
+                      :disable="isSystemLocked"
                     />
                   </q-stepper-navigation>
                 </template>
@@ -2878,6 +2879,7 @@ interface Report {
 
 // --- Shared Data ---
 const reportRows = ref<Report[]>([]);
+const originalSystemKz = ref(false);
 
 // --- Global Form State ---
 const configForm = reactive({
@@ -2963,11 +2965,11 @@ function onMasterRowClick(_evt: any, row: any) {
 }
 
 const isAdmin = computed(() => sessionStore.profile_kz === 'A');
+const canEditSystem = computed(() => sessionStore.systemEditEnabled);
 
 // Removed duplicate computed/watch
 const isSystemLocked = computed(() => {
-  const val = typeof configForm.SYSTEM_KZ === 'boolean' ? configForm.SYSTEM_KZ : (configForm.SYSTEM_KZ as any)?.Bool || false;
-  return val && !isAdmin.value;
+  return originalSystemKz.value && !canEditSystem.value;
 });
 
 // --- Backtick Definition State ---
@@ -3094,8 +3096,19 @@ function filterDetailsForMaster(masterRow: any) {
   });
 }
 
+async function fetchConfig() {
+  try {
+    const res = await api.get('/api/config');
+    sessionStore.authEnabled = res.data.auth_enabled;
+    sessionStore.systemEditEnabled = res.data.system_edit_enabled;
+  } catch (err) {
+    console.warn('fetchConfig error:', err);
+  }
+}
+
 async function loadReports() {
   console.log('Starte API-Request zu /api/reports...');
+  await fetchConfig();
   try {
     // Cache-Buster um sicherzugehen dass wir die aktuellsten DB-Stände erhalten
     const res = await api.get(`/api/reports?t=${Date.now()}`);
@@ -3178,6 +3191,13 @@ const getBool = (v: any): boolean => {
   if (v === null || v === undefined) return false;
   if (typeof v === 'boolean') return v;
   if (typeof v === 'object' && 'Bool' in v) return !!v.Bool;
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase();
+    return s === '1' || s === 'true';
+  }
+  if (typeof v === 'number') {
+    return v === 1;
+  }
   return !!v;
 };
 
@@ -4050,7 +4070,8 @@ const configCols: QTableProps['columns'] = [
 // Form state moved up to Shared Data section
 
 
-function openCreate() {
+async function openCreate() {
+  await fetchConfig();
   isEditing.value = false;
   currentEditId.value = null;
   configForm.BESCHREIBUNG = '';
@@ -4067,6 +4088,7 @@ function openCreate() {
   configForm.SUMMENZEILE = '';
   tempSummenSql.value = '';
   configForm.IST_SUMMENZEILE = false;
+  originalSystemKz.value = false;
   
   configStep.value = 1; // Reset Wizard
   showConfigDialog.value = true;
@@ -4074,6 +4096,7 @@ function openCreate() {
 
 async function onEdit(row: Report) {
   loadingConfig.value = true;
+  await fetchConfig();
   try {
     const rowId = getP(row, 'ID');
     console.log('onEdit: row =', row, 'rowId =', rowId);
@@ -4104,6 +4127,7 @@ async function onEdit(row: Report) {
 
 async function onCopy(row: Report) {
   loadingConfig.value = true;
+  await fetchConfig();
   try {
     const rowId = getP(row, 'ID');
     const res = await api.get(`/api/reports/${rowId}`);
@@ -4114,6 +4138,7 @@ async function onCopy(row: Report) {
       configForm.ID = 0; // WICHTIG: Die ID muss für eine Kopie genullt werden
       configForm.BESCHREIBUNG += ' (Kopie)';
       configForm.SYSTEM_KZ = false; // Kopie ist kein System-Eintrag
+      originalSystemKz.value = false;
       configStep.value = 1; // Reset Wizard
       showConfigDialog.value = true;
       
@@ -4154,6 +4179,7 @@ function mapReportToForm(data: any) {
   configForm.SUMMENZEILE = getVal(getP(data, 'SUMMENZEILE'));
   tempSummenSql.value = configForm.SUMMENZEILE;
   configForm.IST_SUMMENZEILE = getBool(getP(data, 'IST_SUMMENZEILE'));
+  originalSystemKz.value = getBool(getP(data, 'SYSTEM_KZ'));
 }
 
 function onExplorerAppend(content: string) {
@@ -4266,6 +4292,11 @@ function exportNativeSql() {
 }
 
 async function onConfigSubmit() {
+  await fetchConfig();
+  if (isSystemLocked.value) {
+    $q.notify({ type: 'negative', message: 'System-Einträge können nicht gespeichert werden (Einstellungen prüfen).' });
+    return;
+  }
   if (!configForm.BESCHREIBUNG) {
     $q.notify({ type: 'warning', message: 'Bitte eine Beschreibung angeben' });
     return;
@@ -4365,12 +4396,13 @@ async function onConfigSubmit() {
 }
 
 async function onDelete(row: Report) {
+  await fetchConfig();
   const rowId = getP(row, 'ID');
   const systemKz = getP(row, 'SYSTEM_KZ');
   const beschreibung = getVal(getP(row, 'BESCHREIBUNG'));
 
-  if (getBool(systemKz) && !isAdmin.value) {
-    $q.notify({ type: 'warning', message: 'System-Einträge können nur von Administratoren gelöscht werden.' });
+  if (getBool(systemKz) && !canEditSystem.value) {
+    $q.notify({ type: 'warning', message: 'System-Einträge können nicht gelöscht werden (Einstellungen prüfen).' });
     return;
   }
 

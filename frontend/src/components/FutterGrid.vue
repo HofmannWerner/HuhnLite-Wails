@@ -12,8 +12,8 @@
         <q-select
           v-model="filterSilo"
           :options="siloOptions"
-          option-value="ID"
-          option-label="LABEL"
+          option-value="id"
+          option-label="label"
           emit-value
           map-options
           clearable
@@ -326,7 +326,7 @@ interface Futter {
 }
 
 const rows = ref<Futter[]>([]);
-const siloOptions = ref<{ LABEL: string; ID: number; SILONUMMER?: number }[]>([]);
+const siloOptions = ref<{ label: string; id: number; silonummer?: number }[]>([]);
 const personOptions = ref<{ LABEL: string; ID: number }[]>([]);
 const mwstOptions = ref<{ LABEL: string; MWSTKZ: string; PROZENT: number }[]>([]);
 const filterSilo = ref<number | null>(null);
@@ -489,9 +489,9 @@ async function fetchMwst() {
 }
 
 function onSiloChange(val: number) {
-  const selected = siloOptions.value.find(s => s.ID === val);
+  const selected = siloOptions.value.find(s => s.id === val);
   if (selected) {
-    form.SILONUMMER = selected.SILONUMMER;
+    form.SILONUMMER = selected.silonummer;
   }
 }
 

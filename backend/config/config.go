@@ -15,6 +15,7 @@ type Config struct {
 	DBEngine           string `json:"db_engine"`     // "sqlite" or "mysql"
 	DBConnectionString string `json:"db_connection"` // e.g. "HuhnLite.db" or "user:pass@tcp(127.0.0.1:3306)/dbname"
 	Port               int    `json:"port"`          // HTTP Port for server mode or standalone Gin server
+	System             int    `json:"system"`        // 1 = Erlaube Bearbeiten von System-Einträgen
 }
 
 func LoadConfig() Config {
@@ -94,6 +95,7 @@ func LoadConfig() Config {
 		DBEngine:           "sqlite",
 		DBConnectionString: defaultDB,
 		Port:               8080,
+		System:             0,
 	}
 
 	// Name der Einstellungsdatei basierend auf dem Programm-Namen bestimmen

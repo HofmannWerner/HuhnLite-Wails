@@ -642,17 +642,20 @@ const applyQueryFilters = () => {
   if (route.query.tab === 'aktionen' && route.query.filterKz) {
     filterKz.value = route.query.filterKz as string;
     filterUser.value = Number(route.query.filterUser) || 0;
-    if (route.query.filterDate) {
+    if (route.query.filterStartDate && route.query.filterEndDate) {
+      const from = (route.query.filterStartDate as string).replace(/-/g, '/');
+      const to = (route.query.filterEndDate as string).replace(/-/g, '/');
+      filterDateRange.value = { from, to };
+    } else if (route.query.filterDate) {
       const d = (route.query.filterDate as string).replace(/-/g, '/');
       filterDateRange.value = { from: d, to: d };
     }
     filterStatus.value = 0; // Offen
   } else if (route.query.tab === 'aktionen' && !route.query.filterKz) {
-    // Wenn kein Filter in der URL, Standard-Ansicht (Alle Typen, Heute, Offen)
+    // Wenn kein Filter in der URL, Standard-Ansicht (Alle Typen, Alle Zeiträume, Offen)
     filterKz.value = null;
     filterStatus.value = 0;
-    const today = date.formatDate(new Date(), 'YYYY/MM/DD');
-    filterDateRange.value = { from: today, to: today };
+    filterDateRange.value = null; // Zeige alles Offene
   }
 };
 

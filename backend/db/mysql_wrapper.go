@@ -1788,6 +1788,70 @@ func (w *MySQLWrapper) GetDynamischeSQL(ctx context.Context, id int64) (repo.Dyn
 	return i, nil
 }
 
+func (w *MySQLWrapper) CreateDynamischeSQL(ctx context.Context, arg repo.CreateDynamischeSQLParams) (repo.DynamischeSql, error) {
+	log.Printf("[DB] CreateDynamischeSQL called for Beschreibung: %s", arg.Beschreibung)
+	res, err := w.mysql.CreateDynamischeSQL(ctx, repo_mysql.CreateDynamischeSQLParams{
+		Beschreibung:       arg.Beschreibung,
+		Sqlstatement:       arg.Sqlstatement,
+		KategorieKz:        toString(arg.KategorieKz),
+		GruppenKz:          toString(arg.GruppenKz),
+		TypKz:              toString(arg.TypKz),
+		TemplateName:       arg.TemplateName,
+		ParamDef:           arg.ParamDef,
+		DetailSql:          arg.DetailSql,
+		LinkLogic:          arg.LinkLogic,
+		GroupField:         arg.GroupField,
+		RowsPerPage:        int32(arg.RowsPerPage),
+		PageOrientation:    arg.PageOrientation,
+		ShowMasterGrid:     int32(arg.ShowMasterGrid),
+		ShowDetailGrid:     int32(arg.ShowDetailGrid),
+		SystemKz:           arg.SystemKz,
+		SqlstatementNative: arg.SqlstatementNative,
+		DetailSqlNative:    arg.DetailSqlNative,
+		RootKz:             toString(arg.RootKz),
+		Summenzeile:        arg.Summenzeile,
+		IstSummenzeile:     int32(arg.IstSummenzeile),
+	})
+	if err != nil {
+		log.Printf("[DB] CreateDynamischeSQL Error: %v", err)
+		return repo.DynamischeSql{}, err
+	}
+	id, _ := res.LastInsertId()
+	return w.GetDynamischeSQL(ctx, id)
+}
+
+func (w *MySQLWrapper) UpdateDynamischeSQL(ctx context.Context, arg repo.UpdateDynamischeSQLParams) (repo.DynamischeSql, error) {
+	log.Printf("[DB] UpdateDynamischeSQL called for ID: %d", arg.ID)
+	_, err := w.mysql.UpdateDynamischeSQL(ctx, repo_mysql.UpdateDynamischeSQLParams{
+		Beschreibung:       arg.Beschreibung,
+		Sqlstatement:       arg.Sqlstatement,
+		KategorieKz:        toString(arg.KategorieKz),
+		GruppenKz:          toString(arg.GruppenKz),
+		TypKz:              toString(arg.TypKz),
+		TemplateName:       arg.TemplateName,
+		ParamDef:           arg.ParamDef,
+		DetailSql:          arg.DetailSql,
+		LinkLogic:          arg.LinkLogic,
+		GroupField:         arg.GroupField,
+		RowsPerPage:        int32(arg.RowsPerPage),
+		PageOrientation:    arg.PageOrientation,
+		ShowMasterGrid:     int32(arg.ShowMasterGrid),
+		ShowDetailGrid:     int32(arg.ShowDetailGrid),
+		SystemKz:           arg.SystemKz,
+		SqlstatementNative: arg.SqlstatementNative,
+		DetailSqlNative:    arg.DetailSqlNative,
+		RootKz:             toString(arg.RootKz),
+		Summenzeile:        arg.Summenzeile,
+		IstSummenzeile:     int32(arg.IstSummenzeile),
+		ID:                 int32(arg.ID),
+	})
+	if err != nil {
+		log.Printf("[DB] UpdateDynamischeSQL Error: %v", err)
+		return repo.DynamischeSql{}, err
+	}
+	return w.GetDynamischeSQL(ctx, arg.ID)
+}
+
 func (w *MySQLWrapper) CreateTabellenkopf(ctx context.Context, arg repo.CreateTabellenkopfParams) (repo.Tabellenkopf, error) {
 	log.Printf("[DB] CreateTabellenkopf called for Typ: %s, Nr: %d", arg.Tabellentyp, arg.Tabellennummer)
 	query := `INSERT INTO TABELLENKOPF (TABELLENTYP, TABELLENNUMMER, BEZEICHNUNG, ANLAGEDATUM, DATUM) VALUES (?, ?, ?, ?, ?)`

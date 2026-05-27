@@ -25,6 +25,7 @@ export const useSessionStore = defineStore('session', () => {
   const profile_kz = ref<string | null>(null);
   const isLoggedIn = ref(false);
   const authEnabled = ref(localStorage.getItem('authEnabled') !== 'false');
+  const systemEditEnabled = ref(false); // Secure by default, wird beim Start vom Server geladen
   const loginDismissed = ref(false);
 
   // Synchronisiere authEnabled mit localStorage
@@ -166,6 +167,7 @@ export const useSessionStore = defineStore('session', () => {
     permissions,
     isLoggedIn,
     authEnabled,
+    systemEditEnabled,
     loginDismissed,
     can,
     setTimestamp,

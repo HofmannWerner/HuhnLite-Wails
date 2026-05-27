@@ -1382,7 +1382,7 @@ SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.interval
 FROM AKTIONEN a
 LEFT JOIN BENUTZER u1 ON a.ID_USER = u1.ID
 LEFT JOIN BENUTZER u2 ON a.ID_USER_ERLEDIGT = u2.ID
-WHERE (sqlc.arg(id_user) = 0 OR a.ID_USER = sqlc.arg(id_user))
+WHERE (sqlc.arg(id_user) = 0 OR a.ID_USER = sqlc.arg(id_user) OR a.ID_USER = 0)
   AND (sqlc.arg(start_date) = '' OR a.AKTIONSDATUM >= sqlc.arg(start_date))
   AND (sqlc.arg(end_date) = '' OR a.AKTIONSDATUM <= sqlc.arg(end_date))
   AND (sqlc.arg(kz) = '' OR a.AKTIONEN_KZ = sqlc.arg(kz))
