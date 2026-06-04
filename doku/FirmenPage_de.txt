@@ -1,0 +1,162 @@
+Dokumentation FirmenPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "FirmenPage.vue" dient der zentralen Verwaltung grundlegender System- und Firmeneinstellungen. 
+Die Ansicht unterteilt sich in drei Hauptbereiche:
+- System-Sicherheit: Konfiguration der Login-Pflicht für die Applikation.
+- Firmenstammdaten: Erfassung allgemeiner Informationen zum Betrieb (Name, Adresse, Kontakt und Firmenlogo).
+- Globale Parameter (Defaults): Definition weitreichender Standardwerte (Default-Werte), die primär für die Neuanlage von Herden und die Steuerung von Erfassungs- und Buchungslogiken (z.B. Leistungsbuchung, Chargengenerierung) verwendet werden.
+
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+BEREICH 0: SYSTEM-SICHERHEIT
+- authRequired
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Legt fest, ob beim Start der Anwendung ein Login erzwungen wird.
+  Plausibilität/Regeln: Nur aktivierbar/deaktivierbar, wenn der angemeldete Benutzer Administrator-Rechte besitzt (session.profile_kz === 'A').
+
+
+BEREICH 1: FIRMENSTAMMDATEN
+- FOTO
+  Syntax: Bild (Base64 kodiert)
+  Bedeutung: Firmenlogo, Anzeige als Avatar, Dateiauswahl über Dateimanager.
+- NAME
+  Syntax: String (Textfeld)
+  Bedeutung: Hauptname der Firma. Pflichtfeld (sichtbar als "Name *").
+- FIRMA
+  Syntax: String (Textfeld)
+  Bedeutung: Firmenzusatz.
+- STRASSE
+  Syntax: String (Textfeld)
+  Bedeutung: Straßenname und Hausnummer.
+- PLZ
+  Syntax: String (Textfeld)
+  Bedeutung: Postleitzahl.
+- ORT
+  Syntax: String (Textfeld)
+  Bedeutung: Ortsname.
+- MOBILTELEPHON
+  Syntax: String (Textfeld)
+  Bedeutung: Mobiltelefonnummer.
+- EMAIL
+  Syntax: String (Textfeld)
+  Bedeutung: E-Mail-Adresse.
+
+
+BEREICH 2: GLOBALE PARAMETER (DEFAULTS)
+
+a) Numerische Basis-Werte & Dropdowns
+- MASSVOLLEI
+  Syntax: String/Zahl (Textfeld)
+  Bedeutung: Maß für Vollei.
+- ANZAHLKONTROLLW
+  Syntax: Integer (Nummer-Feld)
+  Bedeutung: Standardanzahl für Kontrollwiegungen.
+- LAUFZEITWOCHEN
+  Syntax: Integer (Nummer-Feld)
+  Bedeutung: Standard-Laufzeit der Produktion in Wochen.
+- PRODUKTIONSDAUER
+  Syntax: Integer (Nummer-Feld)
+  Bedeutung: Produktionsdauer in Tagen/Wochen (abhängig vom Kontext).
+- LEGEBEGINN_LW
+  Syntax: Integer (Nummer-Feld)
+  Bedeutung: Lebenswoche, in der der Legebeginn typischerweise startet. Standardwert ist oft 18.
+- BIO
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Gibt an, ob standardmäßig Bio-Produktion vorliegt.
+- BIOAUFSCHLAG
+  Syntax: Float (Nummer-Feld, Erlaubt Dezimalstellen)
+  Bedeutung: Preisaufschlag für Bio in Euro (€).
+- HALTUNGSTYP
+  Syntax: String (Dropdown / q-select)
+  Bedeutung: Auswahl des Haltungstyps. 
+  Plausibilität: Wird Wert '0' gewählt, wird das Feld BIO automatisch auf 'true' (aktiviert) gesetzt.
+- VERPACKUNGKG
+  Syntax: Float (Nummer-Feld)
+  Bedeutung: Standardgewicht der Verpackung in Kilogramm.
+- MAXTAGEVERMITTELN
+  Syntax: Integer (Nummer-Feld)
+  Bedeutung: Maximale Anzahl von Tagen für Vermittlungsbuchungen.
+- ID_TABELLEALTER
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Referenz/ID auf eine standardmäßige Alterstabelle (Lookup-Daten Typ 'A').
+- ID_TABELLEGEWICHT
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Referenz/ID auf eine standardmäßige Gewichtstabelle (Lookup-Daten Typ 'G').
+
+b) Chargen-Einstellungen
+- CHARGEPREFIXFIRMA
+  Syntax: String (Textfeld)
+  Bedeutung: Präfix der Firma, das zur Chargengenerierung herangezogen wird.
+- CHARGETRENNUNG
+  Syntax: String (Textfeld, max. 1 Zeichen)
+  Bedeutung: Trennzeichen innerhalb einer Charge.
+  Plausibilität: Regex-Prüfung /^[.\-_/ ]$/ – Erlaubte Zeichen sind Punkt (.), Bindestrich (-), Unterstrich (_), Schrägstrich (/) oder Leerzeichen.
+- CHARGELAGERNUMMER
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Lagernummer in die generierte Charge einbeziehen.
+- CHARGEPREFIXHERDENNUMMER
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Herdennummer als Teil der Charge verwenden.
+- CHARGEDATUM
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Aktuelles Datum in die Charge einbeziehen.
+- CHARGEJUMBOS, CHARGEXL, CHARGELARGE, CHARGEMEDIUM, CHARGESMALL, CHARGEVOLLEI
+  Syntax: Boolean (Checkboxen)
+  Bedeutung: Bestimmt für welche Größenklassen die generierte Charge angewendet werden soll.
+
+c) Optionen (Logikschalter)
+- JUMBOS
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Jumbos standardmäßig erfassen.
+- KLASSENERFASSEN
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Sollen Gewichtsklassen erfasst werden?
+  Plausibilität: Aktivierung setzt KLASSEAERFASSEN auf false.
+- KLASSEAERFASSEN
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Nur Klasse A erfassen?
+  Plausibilität: Aktivierung setzt KLASSENERFASSEN und KLASSEAERRECHNEN auf false.
+- KLASSEAERRECHNEN
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Klasse A automatisch errechnen.
+  Plausibilität: Aktivierung setzt KLASSEAERFASSEN auf false.
+- KLASSEAVERMITTELN
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Vermitteln von Klasse A standardmäßig ermöglichen.
+- ERFASSESCHMUTZEI, ERFASSEKNICKEI, ERFASSEBRUCHEI
+  Syntax: Boolean (Checkboxen)
+  Bedeutung: Bestimmt, ob Schmutz-, Knick- und Brucheier im Standard erfasst werden sollen.
+- ERFASSEVOLLEI
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Vollei in Stück erfassen.
+- ERFASSEVOLLEIKG
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Vollei in Kilogramm erfassen.
+- AUFTEILUNGGEWICHT
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Aufteilung primär nach Gewicht.
+  Plausibilität: Aktivierung setzt AUFTEILUNGALTER auf false.
+- AUFTEILUNGALTER
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Aufteilung primär nach Alter.
+  Plausibilität: Aktivierung setzt AUFTEILUNGGEWICHT auf false.
+- KONTROLLWIEGUNG
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Standardmäßige Aktivierung der Kontrollwiegung.
+- VERLUSTEBEIBUCHUNG
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Verluste (z.B. tote Tiere) direkt bei der Erfassung der Leistungsbuchung abfragen/buchen.
+- LAGERBUCHUNGBEIBUCHUNG
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Lagerbuchungen (Zugang/Abgang) bei Leistungserfassung automatisch mitausführen.
+- BEIVERMITTELNDATUMAKTUELL
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Soll beim Vorgang 'Vermitteln' standardmäßig das aktuelle Datum vorausgefüllt werden.
+- PSEUDOLAGER
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Nutzung eines PseudoLagers erlauben.

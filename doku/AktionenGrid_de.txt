@@ -1,0 +1,56 @@
+Dokumentation AktionenGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "AktionenGrid.vue" ist ein Modul für das Aufgaben- und Aktionsmanagement (eine Art integriertes ToDo- und Wiedervorlage-System).
+Es ermöglicht die Erstellung von einmaligen Aufgaben (Aktionstyp 'B') und wiederkehrenden Aufgaben (Aktionstyp 'W'). 
+Besondere Logik: Bei wiederkehrenden Aktionen ('W') kann ein Intervall (in Tagen) und eine Anzahl definiert werden. Über einen speziellen Button werden dann im Hintergrund automatisch Einzelaufgaben ('B') für die zukünftigen Termine generiert, und das Datum der Haupt-Wiederholungsaufgabe wird in die Zukunft verschoben.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTER- BZW. STEUERFELDER (Übersicht)
+- filterUser (Benutzer)
+  Bedeutung: Filtert Aktionen nach der zuständigen Person (oder "Alle").
+- filterKz (Aktionstyp)
+  Bedeutung: Filtert nach dem Typ der Aktion (z.B. Einmalig, Wiederkehrend). Zieht seine Optionen aus Lookup-Tabelle Typ 'A'.
+- filterDateRangeText (Zeitraum)
+  Syntax: Date-Picker Range
+  Bedeutung: Filtert Aktionen basierend auf ihrem Fälligkeitsdatum.
+- filterStatus (Status)
+  Bedeutung: Schaltet zwischen "Offen" (0), "Erledigt" (1) und "Alle" (2) um. Standard ist Offen.
+
+B) FORMULAR "NEUE AKTION" / "AKTION BEARBEITEN"
+- AKTIONEN_KZ
+  Syntax: String (Dropdown / q-select)
+  Bedeutung: Der Typ der Aktion. 'W' steht in der Regel für "Wiederkehrend" (löst zusätzliche Logik aus), 'B' für eine Einzelbuchung/Aktion.
+  Plausibilität: Pflichtfeld.
+- AKTIONSDATUM
+  Syntax: Date (Datumsfeld)
+  Bedeutung: Das geplante Fälligkeits- bzw. Ausführungsdatum der Aktion.
+  Plausibilität: Pflichtfeld.
+- ID_USER
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Der zuständige Benutzer, dem diese Aufgabe zugewiesen ist (0 = Alle/Keiner spezifisch).
+- BEZEICHNUNG
+  Syntax: String (Textarea)
+  Bedeutung: Detaillierte Beschreibung der Aufgabe.
+  Plausibilität: Pflichtfeld.
+- INTERVALL_TAGE
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Anzahl der Tage zwischen den Intervallen.
+  Plausibilität: Ist NUR aktivierbar/bearbeitbar, wenn AKTIONEN_KZ auf 'W' (Wiederkehrend) steht. Ansonsten deaktiviert.
+- ANZAHL_INTERVALLE
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Definiert, wie viele zukünftige Einzel-Aktionen auf einmal im Voraus generiert werden sollen.
+  Plausibilität: Nur bei AKTIONEN_KZ = 'W'.
+- ERLEDIGT_BOOL
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Markiert die Aktion als erledigt. Speichert im Backend automatisch, *wer* (ID_USER_ERLEDIGT aus der aktuellen Session) sie erledigt hat und *wann*.
+  Plausibilität: Deaktiviert bei AKTIONEN_KZ = 'W', da wiederkehrende "Mutter-Aktionen" nicht direkt abgehakt werden, sondern die daraus generierten Einzelaufgaben ('B').
+
+C) SPEZIAL-BUTTON: "Erstelle Anzahl Intervalle"
+Sichtbar, wenn AKTIONEN_KZ = 'W'.
+Bedeutung: Führt eine Backend-Operation aus. Generiert N (Anzahl) neue Aufgaben vom Typ 'B' im definierten Tages-Intervall und verschiebt anschließend das "AKTIONSDATUM" der 'W'-Aufgabe an das Ende der neu generierten Kette. 
+Plausibilität: Nur klickbar, wenn sowohl ANZAHL_INTERVALLE > 0 als auch INTERVALL_TAGE > 0 sind.

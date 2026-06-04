@@ -1,0 +1,33 @@
+Dokumentation BestandsUebersicht.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "BestandsUebersicht.vue" liefert eine detaillierte, hierarchische Ansicht des aktuellen Eier-Lagerbestands.
+Die Daten werden als Baumstruktur (Tree View) dargestellt, welche sich wie folgt aufbaut:
+- Ebene 1: Eilager (Physisches Gebäude/Lager)
+- Ebene 2: Charge (Chargennummer)
+- Ebene 3: Lagerplatz (Spezifischer Platz im Lager)
+
+Die Ansicht summiert dabei automatisch auf jeder Ebene die Bestände für die jeweiligen Größenklassen (Jumbos, XL, L, M, S, Vollei) sowie die Gesamtsumme.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTER- BZW. STEUERFELDER
+- filterLagertyp (1. Filter: Lager-KZ)
+  Syntax: String (Dropdown / q-select)
+  Bedeutung: Filtert die Ansicht nach dem Lagertyp-Kennzeichen (z.B. Hauptlager, Zwischenlager). Die Optionen stammen aus der Lookup-Tabelle (Systemtexte, Typ 'L'). "0" bedeutet "ALLE Kennzeichen".
+  Plausibilität: Bei Änderung dieses Filters wird der zweite Filter ("Eierlager") automatisch auf "0" (Alle) zurückgesetzt.
+- filterEilager (2. Filter: Eierlager)
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Erlaubt die Auswahl eines spezifischen Eilagers. Die Auswahlliste wird durch den ersten Filter vorselektiert.
+
+B) ANZEIGEFELDER (Spalten im Tree-Header)
+Diese Felder stellen aggregierte Summen dar und sind rein informativ (nicht editierbar):
+- Jumbos, XL, L (Large), M (Medium), S (Small)
+  Bedeutung: Aktueller Stück-Bestand der jeweiligen Gewichtsklasse.
+- Vollei (kg)
+  Bedeutung: Aktueller Bestand an Vollei in Kilogramm.
+- Summe
+  Bedeutung: Mathematische Gesamtsumme aller Stückzahlen und kg dieses Knotens (z.B. Gesamtbestand einer Charge über alle Lagerplätze hinweg).

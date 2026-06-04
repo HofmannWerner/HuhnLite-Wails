@@ -5,42 +5,33 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="4a0c9cd8-f3a3-4f2f-89aa-4b3d00debda6" name="Changes" comment="Alle Funktionen bei MariaDB Version getestet und OK">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/HuhnLite.db" beforeDir="false" afterPath="$PROJECT_DIR$/HuhnLite.db" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HuhnLite.db-shm" beforeDir="false" afterPath="$PROJECT_DIR$/HuhnLite.db-shm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/HuhnLite.db-wal" beforeDir="false" afterPath="$PROJECT_DIR$/HuhnLite.db-wal" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.go" beforeDir="false" afterPath="$PROJECT_DIR$/app.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/api/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/api/server.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/config/config.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/config/config.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/database.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/database.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/mysql_wrapper.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/mysql_wrapper.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/queries.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/queries.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/queries_mysql.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/queries_mysql.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db/repo/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/repo/db.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db/queries_mysql_test.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/queries_mysql_test.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/repo/models.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/repo/models.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db/repo/querier.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/repo/querier.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/repo/queries.sql.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/repo/queries.sql.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/repo_mysql/models.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/repo_mysql/models.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/db/repo_mysql/querier.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/repo_mysql/querier.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/repo_mysql/queries_mysql.sql.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/repo_mysql/queries_mysql.sql.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/schema_mysql.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/schema_mysql.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/db/schema_sqlite.sql" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/schema_sqlite.sql" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/package.json.md5" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json.md5" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/BestandsUebersicht.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/BestandsUebersicht.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/LoginModal.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/LoginModal.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/layouts/MainLayout.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/MainLayout.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/BuchungenPage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/BuchungenPage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/buildall.ps1" beforeDir="false" afterPath="$PROJECT_DIR$/buildall.ps1" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/FutterGrid.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/FutterGrid.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/DynamicReportPage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/DynamicReportPage.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/FirmenPage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/FirmenPage.vue" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/IndexPage.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/IndexPage.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/stores/session.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/stores/session.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/go/main/App.js" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/runtime/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/runtime/package.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.d.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/wailsjs/runtime/runtime.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/main.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/settings.json" beforeDir="false" afterPath="$PROJECT_DIR$/settings.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/settings_mariadb.json" beforeDir="false" afterPath="$PROJECT_DIR$/settings_mariadb.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/wails.json" beforeDir="false" afterPath="$PROJECT_DIR$/wails.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,7 +39,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="EmbeddingIndexingInfo">
-    <option name="cachedIndexableFilesCount" value="171" />
+    <option name="cachedIndexableFilesCount" value="203" />
     <option name="fileBasedEmbeddingIndicesEnabled" value="true" />
   </component>
   <component name="GOROOT" url="file:///opt/homebrew/opt/go/libexec" />

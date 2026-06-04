@@ -1,0 +1,20 @@
+Dokumentation EinrichtungenPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "EinrichtungenPage.vue" ist keine eigenständige Datenmaske, sondern dient als übergeordnete Navigations- und Layout-Hülle (Tab-Container) für die Verwaltung der physischen Betriebseinrichtungen.
+Sie bündelt verschiedene fachliche Stammdaten-Grids an einem logischen Ort, um die Menüstruktur der Applikation übersichtlich zu halten.
+
+2. Enthaltene Module und Tab-Struktur
+--------------------------------------------------------------------------------
+
+A) HAUPT-TABS
+- Silos: Lädt die Komponente "SiloGrid.vue" zur Verwaltung der Futtersilos.
+- Ställe: Lädt die Komponente "StallGrid.vue" zur Verwaltung der Haltungsställe.
+- Eilager: Öffnet eine weitere, verschachtelte Tab-Ebene für logistische Lagerthemen.
+
+B) UNTER-TABS (im Bereich "Eilager")
+- Eilager: Lädt die Komponente "EilagerGrid.vue" (Hauptlager).
+- Lagerplatzverwaltung: Lädt die Komponente "LagerplatzVerwaltung.vue" (Unterstruktur der Eilager).
+- Bestandsübersicht: Lädt die Komponente "BestandsUebersicht.vue" (Live-Anzeige der aktuellen Eibestände).

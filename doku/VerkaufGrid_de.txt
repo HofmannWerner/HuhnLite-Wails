@@ -1,0 +1,48 @@
+Dokumentation VerkaufGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "VerkaufGrid.vue" ist ein Modul zur kaufmännischen Abwicklung und Dokumentation von Eierverkäufen.
+Verkäufe werden in der Regel nicht hier manuell angelegt, sondern entstehen als Folgeprozess aus der Maske "EilagerBuchungenGrid" (wenn dort bei einer Lagerentnahme das Häkchen "Verkauf anlegen" gesetzt wurde).
+Das VerkaufGrid übernimmt dann die physischen Eimengen (schreibgeschützt) und berechnet basierend auf den hinterlegten "Eierpreisen" (Stammdaten) und eventuellen Bio-Aufschlägen (Firmenparameter) automatisch die Einzel- und Gesamtpreise.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "VERKAUF BEARBEITEN"
+1. Kopfdaten & Herkunft
+- BUCHUNGSDATUM
+  Syntax: Date
+  Bedeutung: Das Datum des Verkaufs.
+  Plausibilität: Schreibgeschützt, sobald das Feld "VERBUCHT" aktiv ist.
+- ID Eilagerbuchung / ID Leistung (ID_EILAGERBUCHUNG / ID_BUCHUNG)
+  Syntax: Integer (Schreibgeschützt)
+  Bedeutung: Dienen als Referenz, aus welcher physischen Lagerentnahme oder Legeleistung dieser Verkauf entstanden ist.
+- Charge (CHARGE)
+  Syntax: String (Schreibgeschützt)
+  Bedeutung: Die referenzierte Chargennummer für die Rückverfolgbarkeit.
+
+2. Mengen (Read-Only)
+- Menge S, M, L, XL (MENGESMALL, MENGEMEDIUM, MENGELARGE, MENGEXL)
+  Syntax: Integer (Schreibgeschützte Nummern-Felder)
+  Bedeutung: Die verkauften Stückzahlen je Größenklasse. Werden aus der verknüpften Lagerbuchung übernommen und können hier nicht verändert werden.
+
+3. Kaufmännische Daten (Preise & Rabatte)
+- Preis S, M, L, XL (PREISSMALL, PREISMEDIUM, PREISLARGE, PREISXL)
+  Syntax: Float (Nummern-Feld)
+  Bedeutung: Der Einzelpreis je Ei in der jeweiligen Klasse.
+  Plausibilität: Werden beim Laden automatisch mit den Standardpreisen (inkl. evtl. Bio-Aufschlag und abzüglich Rabatt) vorbelegt, können aber manuell überschrieben werden.
+- Gesamtpreis (€) (GESAMTPREIS)
+  Syntax: Float (Nummern-Feld)
+  Bedeutung: Summe aus (Menge * Preis) über alle Klassen.
+  Plausibilität: Kann manuell überschrieben werden. Wird hier manuell ein abweichender Gesamtpreis eingetragen, berechnet das System rückwärts einen theoretischen Rabatt ("RABATTPROZENT") und passt die Einzelpreise entsprechend an.
+- Rabatt (%) (RABATTPROZENT)
+  Syntax: Float (Nummern-Feld)
+  Bedeutung: Prozentualer Preisnachlass. Ändert man diesen Wert, werden die Einzel- und Gesamtpreise sofort neu durchgerechnet.
+- Bio-Ware (BIO)
+  Syntax: Boolean (Toggle)
+  Bedeutung: Wenn aktiviert, wird auf die Basis-Einzelpreise der in den Firmenparametern hinterlegte Bio-Aufschlag addiert.
+- Bereits verbucht (VERBUCHT)
+  Syntax: Boolean (Toggle)
+  Bedeutung: Sperrt den Datensatz gegen weitere kaufmännische Veränderungen (z.B. nach Übergabe an eine externe Buchhaltungssoftware). Schaltet alle relevanten Felder auf "readonly".

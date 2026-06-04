@@ -3,6 +3,7 @@
     <div class="row items-center justify-between q-mb-md">
       <div class="row q-gutter-md">
         <q-btn color="primary" icon="add" label="Neue Futterbuchung" @click="openCreate" rounded unelevated />
+        <q-btn v-if="futterinventurActive" color="secondary" icon="assignment" label="Futterinventur" @click="openInventur" rounded unelevated />
       </div>
       <div class="text-h6 text-primary">Futter-Buchung</div>
     </div>
@@ -256,6 +257,57 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <!-- Futterinventur Dialog -->
+    <q-dialog v-model="showInventurDialog" persistent>
+      <q-card style="min-width: 400px; max-width: 500px; border-radius: 16px;">
+        <q-card-section class="row items-center q-pb-none bg-secondary text-white q-pa-md">
+          <div class="text-h6 text-weight-bold">Futterinventur</div>
+          <q-space />
+          <q-btn icon="close" round dense v-close-popup unelevated color="white" flat />
+        </q-card-section>
+
+        <q-card-section class="q-pa-lg">
+          <q-form @submit="onSubmitInventur" class="q-gutter-md">
+            <q-select
+              v-model="inventurForm.ID_SILO"
+              :options="siloOptions"
+              option-value="id"
+              option-label="label"
+              emit-value
+              map-options
+              label="Silo *"
+              filled
+              stack-label
+              :rules="[val => !!val || 'Erforderlich']"
+            />
+            
+            <q-input
+              v-model="inventurForm.INVENTURDATUMNEU"
+              type="date"
+              label="Inventurdatum *"
+              filled
+              stack-label
+              :rules="[val => !!val || 'Erforderlich']"
+            />
+
+            <q-input
+              v-model.number="inventurForm.INVENTURFUELLMENGE"
+              type="number"
+              label="Inventurmenge (kg) *"
+              filled
+              stack-label
+              :rules="[val => val !== null && val !== '' || 'Erforderlich']"
+            />
+
+            <div class="row justify-end q-mt-xl q-gutter-x-sm">
+              <q-btn label="Abbrechen" color="negative" outline rounded v-close-popup />
+              <q-btn label="Speichern" type="submit" color="primary" rounded unelevated padding="xs xl" />
+            </div>
+          </q-form>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -327,6 +379,19 @@ interface Futter {
 
 const rows = ref<Futter[]>([]);
 const siloOptions = ref<{ label: string; id: number; silonummer?: number }[]>([]);
+const rawSilos = ref<any[]>([]);
+const firmenparameter = ref<any>(null);
+const futterinventurActive = computed(() => {
+  if (!firmenparameter.value) return false;
+  const p = firmenparameter.value.data || firmenparameter.value;
+  return extractInt(p.futterinventur || p.FUTTERINVENTUR) === 1;
+});
+const showInventurDialog = ref(false);
+const inventurForm = reactive({
+  ID_SILO: null as number | null,
+  INVENTURDATUMNEU: '',
+  INVENTURFUELLMENGE: null as number | null
+});
 const personOptions = ref<{ LABEL: string; ID: number }[]>([]);
 const mwstOptions = ref<{ LABEL: string; MWSTKZ: string; PROZENT: number }[]>([]);
 const filterSilo = ref<number | null>(null);
@@ -423,6 +488,8 @@ onMounted(async () => {
   initWidths(columns);
   try {
     await Promise.all([loadData(), fetchSilos(), fetchPersonen(), fetchMwst(), fetchFutterSorten()]);
+    const resF = await api.get('/api/firmenparameter/get-or-create/-1');
+    firmenparameter.value = resF.data;
   } catch (err) {
     console.error('Initial load failed:', err);
   }
@@ -464,7 +531,8 @@ async function loadData() {
 
 async function fetchSilos() {
   const res = await api.get('/api/silo');
-  siloOptions.value = (res.data || []).map((s: any) => ({
+  rawSilos.value = res.data || [];
+  siloOptions.value = rawSilos.value.map((s: any) => ({
     label: `${s.silonummer || s.SILONUMMER || '?'}: ${s.bezeichnung || s.BEZEICHNUNG || ''}`,
     id: s.id || s.ID,
     silonummer: s.silonummer || s.SILONUMMER
@@ -491,7 +559,7 @@ async function fetchMwst() {
 function onSiloChange(val: number) {
   const selected = siloOptions.value.find(s => s.id === val);
   if (selected) {
-    form.SILONUMMER = selected.silonummer;
+    form.SILONUMMER = selected.silonummer ?? null;
   }
 }
 
@@ -617,6 +685,40 @@ async function onSubmit() {
   } catch (err) {
     console.error('Error saving:', err);
     $q.notify({ type: 'negative', message: 'Fehler beim Speichern' });
+  }
+}
+
+function openInventur() {
+  inventurForm.ID_SILO = null;
+  const workingDate = (sessionStore.workingTimestamp ?? '').split(' ')[0];
+  const fallbackDate = new Date().toISOString().split('T')[0] || '';
+  inventurForm.INVENTURDATUMNEU = workingDate || fallbackDate;
+  inventurForm.INVENTURFUELLMENGE = null;
+  showInventurDialog.value = true;
+}
+
+async function onSubmitInventur() {
+  try {
+    const silo = rawSilos.value.find(s => (s.id || s.ID) === inventurForm.ID_SILO);
+    if (!silo) {
+      $q.notify({ type: 'negative', message: 'Silo nicht gefunden' });
+      return;
+    }
+
+    const payload = {
+      INVENTURDATUMNEU: inventurForm.INVENTURDATUMNEU || '0001-01-01',
+      INVENTURFUELLMENGE: Number(inventurForm.INVENTURFUELLMENGE)
+    };
+
+    await api.post(`/api/silo/${silo.id || silo.ID}/inventur`, payload);
+    $q.notify({ type: 'positive', message: 'Futterinventur erfolgreich gespeichert und berechnet' });
+    showInventurDialog.value = false;
+    await fetchSilos();
+    void loadData();
+  } catch (err: any) {
+    console.error('Error saving Futterinventur:', err);
+    const msg = err.response?.data?.error || err.message || 'Fehler beim Speichern der Futterinventur';
+    $q.notify({ type: 'negative', message: msg });
   }
 }
 </script>

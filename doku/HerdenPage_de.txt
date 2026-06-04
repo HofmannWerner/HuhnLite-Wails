@@ -1,0 +1,15 @@
+Dokumentation HerdenPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "HerdenPage.vue" fungiert als Container- und Übersichtsseite für die Verwaltung von Herden und Rassen. Sie enthält keine eigene komplexe Geschäftslogik, sondern strukturiert die untergeordneten Komponenten ("HerdeGrid.vue" und "RasseGrid.vue") mithilfe von Tabs (Reitern).
+Wird im Reiter "Rassen" eine Änderung vorgenommen (z.B. neue Rasse angelegt), empfängt diese Komponente das Event und aktualisiert automatisch die Ansicht im Herden-Stamm.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+Diese Komponente besitzt keine eigenen Datenerfassungsfelder, sondern steuert lediglich das Tab-Menü:
+
+- tab
+  Syntax: String (Ref)
+  Bedeutung: Aktiver Tab. Standardmäßig 'herden' (Herden-Stamm). Alternativer Wert: 'rassen' (Rassen).

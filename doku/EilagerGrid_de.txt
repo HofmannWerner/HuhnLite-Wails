@@ -1,0 +1,37 @@
+Dokumentation EilagerGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "EilagerGrid.vue" dient der Stammdaten-Verwaltung der physischen oder logischen Eierlager (z.B. Hauptlager, Zwischenlager, Kühlraum).
+Die Liste zeigt neben den Stammdaten auch direkt den aktuellen aggregierten Gesamtlagerbestand je Lager an. Diese Bestände sind jedoch rein informativ (Read-Only) und können in dieser Maske nicht manuell verändert werden. Bestandsveränderungen erfolgen ausschließlich über Buchungen (Leistungserfassung oder Eilagerbuchungen).
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTERFELDER (Übersichtsliste)
+- searchTerm (Suchen...)
+  Syntax: String
+  Bedeutung: Volltextsuche, filtert nach Lagernummer oder Bezeichnung.
+- kzFilter (Typ Filter)
+  Syntax: String (Dropdown)
+  Bedeutung: Filtert die angezeigten Läger nach ihrem Lagertyp-Kennzeichen (KZ).
+
+B) FORMULAR "NEUES EIERLAGER" / "EIERLAGER BEARBEITEN"
+1. Stammdaten (Editierbar)
+- LAGERNUMMER
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Eindeutige Identifikationsnummer des Lagers.
+  Plausibilität: Pflichtfeld.
+- KZ (Lagertyp)
+  Syntax: String (Dropdown / q-select)
+  Bedeutung: Kategorisiert das Lager (z.B. Reguläres Eilager, Pseudo-Lager für anderweitige Verwendungen). Zieht Daten aus der Text-Tabelle Typ 'L'.
+  Plausibilität: Pflichtfeld.
+- BEZEICHNUNG
+  Syntax: String (Textfeld)
+  Bedeutung: Sprechender Name des Lagers.
+
+2. Bestände (Read-Only)
+- JUMBOS, XL, L, M, S, VOLLEIKG
+  Syntax: Integer/Float (schreibgeschützte Nummern-Felder)
+  Bedeutung: Zeigt den aktuell berechneten Bestand der jeweiligen Größenklasse für genau dieses Lager an. Diese Felder können nicht bearbeitet werden, sie dienen lediglich der Information im Bearbeitungs-Dialog.

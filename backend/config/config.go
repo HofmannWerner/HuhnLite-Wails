@@ -150,3 +150,36 @@ func LoadConfig() Config {
 	log.Printf("Warnung: settings.json nicht gefunden, verwende Defaults (DB: %s)", cfg.DBConnectionString)
 	return cfg
 }
+
+// UnmarshalJSON implements a custom JSON unmarshaler to handle multiple types for the "system" field.
+func (c *Config) UnmarshalJSON(data []byte) error {
+	type Alias Config
+	aux := &struct {
+		System interface{} `json:"system"`
+		*Alias
+	}{
+		Alias: (*Alias)(c),
+	}
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	if aux.System != nil {
+		switch v := aux.System.(type) {
+		case float64:
+			c.System = int(v)
+		case string:
+			if v == "1" || strings.ToLower(v) == "true" {
+				c.System = 1
+			} else {
+				c.System = 0
+			}
+		case bool:
+			if v {
+				c.System = 1
+			} else {
+				c.System = 0
+			}
+		}
+	}
+	return nil
+}

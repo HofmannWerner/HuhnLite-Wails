@@ -1,0 +1,43 @@
+Dokumentation SiloGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "SiloGrid.vue" ist ein Stammdaten-Modul zur Anlage und Verwaltung der physischen Futtersilos.
+Jedes Silo kann dabei mit Kapazitätsgrenzen, Inventurdaten und standardmäßig verknüpften Lieferanten gepflegt werden. Die hier angelegten Silos stehen in der "FutterGrid" (Futterbuchungen) als Zielorte für Lieferungen zur Auswahl.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "NEUES SILO" / "SILO BEARBEITEN"
+1. Stammdaten
+- Silonummer (SILONUMMER)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Eindeutige, logische Nummer des Silos auf dem Betriebsgelände.
+  Plausibilität: Pflichtfeld.
+- Bezeichnung (BEZEICHNUNG)
+  Syntax: String (Textfeld)
+  Bedeutung: Beschreibender Name für das Silo (z.B. "Silo Halle 3").
+  Plausibilität: Pflichtfeld.
+
+2. Bestands- und Inventurdaten
+- Inventur Datum Alt / Neu (INVENTURDATUMALT / INVENTURDATUMNEU)
+  Syntax: Date
+  Bedeutung: Dokumentiert die Stichtage der letzten Bestandsüberprüfungen.
+- Maximale Füllmenge (MAXFUELLMENGE)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Gesamtkapazität des Silos in Kilogramm (kg).
+- Minimale Füllmenge (MINFUELLMENGE)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Warnschwelle oder Restmenge in Kilogramm (kg).
+- Inventur Füllmenge (INVENTURFUELLMENGE)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Der tatsächlich gemessene/festgestellte Futterbestand zum letzten Inventur-Datum (in kg).
+
+3. Verknüpfungen
+- Personennummer (PERSONENNUMMER)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Direkte Verknüpfung zu einer Personen-ID (kann verwendet werden, falls ein Silo von einem bestimmten Lieferanten verwaltet/gemietet wird).
+- ID Lieferant (ID_LIEFERANT)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Die interne Datenbank-ID des Standard-Lieferanten für dieses Silo.

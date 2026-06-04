@@ -1,0 +1,65 @@
+Dokumentation EilagerBuchungenGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "EilagerBuchungenGrid.vue" ist zuständig für die Verwaltung und Übersicht aller manuellen und automatischen Bewegungen im Eier-Bestand (Eilagerbuchungen).
+Das System unterscheidet zwischen verschiedenen Buchungstypen (z.B. Zugang aus Leistung, Abgang, Umbuchung in ein anderes Lager, Verkauf). Über diese Maske können z.B. Korrekturbuchungen vorgenommen, Bestände zwischen Lagern verschoben (Umbuchung) oder Verkäufe ausgelöst werden.
+Eine Besonderheit ist die automatische Validierung bei Bezug auf eine Legeleistungs-Buchung: Das System prüft die dort erfassten Eimengen und verhindert, dass mehr Eier ins Lager gebucht werden, als tatsächlich gelegt wurden (Restmengen-Prüfung).
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTERFELDER (Übersichtsliste)
+- selectedLagerId (Lager wählen)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Filtert die angezeigten Buchungen auf ein spezifisches Eilager.
+- kzFilter (Typ Filter)
+  Syntax: String (Dropdown)
+  Bedeutung: Filtert die angezeigten Buchungen nach der Kategorie des Lagers (z.B. 'E' für echtes Eilager, 'V' für Verkaufslager).
+
+B) AKTIONEN (Zeilenebene)
+- Bearbeiten (Edit)
+- Verkaufen/Umbuchen (Oranges Icon): Kopiert die Bestandsdaten der Zeile in eine neue Verkaufs-/Umbuchungsmaske.
+- Löschen
+
+C) FORMULAR "NEUE BUCHUNG" / "BUCHUNG BEARBEITEN"
+1. Kopfdaten
+- BUCHUNGSDATUM
+  Syntax: Date
+  Bedeutung: Das Datum der Bestandsveränderung.
+- BUCHUNGSTYP
+  Syntax: String (Dropdown)
+  Bedeutung: Die Art der Buchung. Typischerweise 'U' (Umbuchung), 'V' (Verkauf), 'A' (Abgang), 'K' (Korrektur). Bei 'U' und 'V' wird automatisch ein Ziel-Lager gefordert.
+
+2. Lager-Zuordnung
+- ID_EILAGER (Lager)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Das primäre Lager, welches bebucht wird (bei Abgang/Verkauf das Quell-Lager).
+- ID_FREMDESLAGER (Ziel-Lager)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Nur sichtbar bei Typ 'U' oder 'V'. Definiert, in welches Lager der Bestand verschoben wird.
+- ID_LAGERPLATZ
+  Syntax: Integer (Dropdown)
+  Bedeutung: Optionaler physischer Platz innerhalb des Lagers.
+- ID_BUCHUNG (Bezug zur Legeleistung)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Optionale Verknüpfung zu einem Leistungsprotokoll (LeistungGrid).
+  Plausibilität: Wenn ausgewählt, lädt das System die noch "offenen" Restmengen aus dieser Leistung und validiert die folgenden Mengeneingaben strikt dagegen.
+
+3. Mengen
+- JUMBOS, XL, L, M, S, VOLLEIKG
+  Syntax: Integer/Float (Nummern-Felder)
+  Bedeutung: Zu buchende Mengen der Größenklassen.
+  Plausibilität: Wenn eine `ID_BUCHUNG` verknüpft ist, dürfen diese Werte nicht höher sein als der im System verfügbare Restbestand dieser Leistungsbuchung. Negative Salden werfen einen Fehler ("Eingabe übersteigt Bestand").
+- SCHMUTZ, KNICKEIER, BRUCHEIER
+  Syntax: Integer (Nummern-Felder)
+  Bedeutung: Erfassung von defekten Eiern.
+
+4. Abschluss
+- CHARGE
+  Syntax: String (Textfeld)
+  Bedeutung: Chargennummer für die Nachverfolgbarkeit.
+- VERKAUF
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Flag, ob automatisch ein Verkaufs-Vorgang für das ERP/Rechnungswesen angelegt werden soll.

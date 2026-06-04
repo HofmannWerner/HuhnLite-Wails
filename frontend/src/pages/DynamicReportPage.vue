@@ -3744,7 +3744,7 @@ async function saveQuickParams() {
 
   try {
     $q.loading.show({ message: 'Speichere Parameter...' });
-    await api.post('/api/reports/save', configForm);
+    await api.put(`/api/reports/${currentReportId.value}`, configForm);
     
     // Lokale Daten aktualisieren
     report.PARAM_DEF = configForm.PARAM_DEF;
@@ -3754,9 +3754,10 @@ async function saveQuickParams() {
     
     $q.notify({ color: 'positive', message: 'Konfiguration erfolgreich aktualisiert', icon: 'check' });
     showQuickParamEdit.value = false;
-  } catch(e) {
-    console.error('Save error', e);
-    $q.notify({ color: 'negative', message: 'Fehler beim Speichern' });
+  } catch (err: any) {
+    console.error('Save error:', err);
+    const msg = err.response?.data?.error || err.message || 'Fehler beim Speichern';
+    $q.notify({ color: 'negative', message: msg });
   } finally {
     $q.loading.hide();
   }
@@ -4388,8 +4389,10 @@ async function onConfigSubmit() {
     }
     showConfigDialog.value = false;
     setTimeout(loadReports, 150);
-  } catch (_err) {
-    $q.notify({ type: 'negative', message: 'Fehler beim Speichern des Berichts' });
+  } catch (err: any) {
+    console.error('Save error:', err);
+    const msg = err.response?.data?.error || err.message || 'Fehler beim Speichern des Berichts';
+    $q.notify({ type: 'negative', message: msg });
   } finally {
     loadingConfig.value = false;
   }

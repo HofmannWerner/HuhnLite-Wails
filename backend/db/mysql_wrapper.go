@@ -17,6 +17,7 @@ type MySQLWrapper struct {
 	*repo.Queries
 	mysql *repo_mysql.Queries
 	db    *sql.DB
+	tx    *sql.Tx
 }
 
 func NewMySQLWrapper(sqlite *repo.Queries, mysql *repo_mysql.Queries, db *sql.DB) *MySQLWrapper {
@@ -32,7 +33,22 @@ func (w *MySQLWrapper) WithTx(tx *sql.Tx) *MySQLWrapper {
 		Queries: w.Queries.WithTx(tx),
 		mysql:   w.mysql.WithTx(tx),
 		db:      w.db,
+		tx:      tx,
 	}
+}
+
+func (w *MySQLWrapper) queryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	if w.tx != nil {
+		return w.tx.QueryRowContext(ctx, query, args...)
+	}
+	return w.db.QueryRowContext(ctx, query, args...)
+}
+
+func (w *MySQLWrapper) query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	if w.tx != nil {
+		return w.tx.QueryContext(ctx, query, args...)
+	}
+	return w.db.QueryContext(ctx, query, args...)
 }
 
 // Hilfsfunktionen für Typ-Konvertierung
@@ -242,7 +258,7 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 		SELECT B.ID, B.ID_HERDEN, B.LW, B.HERDENNUMMER, B.BUCHUNGSDATUM, B.GEWICHTPROBE, B.KONTROLLGEWICHT, 
 		       B.KLASSEA, B.VERLUSTE, B.EIMASSE, B.SCHMUTZ, B.KNICKEIER, B.VOLLEI, B.BRUCHEIER, 
 		       B.TIERBESTAND, B.ID_EITABELLE, B.ID_DGEWICHTTAB, B.FUTTERKTAG, B.SILONR, B.KL6, 
-		       B.VERMITTELTAM, B.SMALL, B.LARGE, B.MEDIUM, B.XL, B.ZEITSTEMPEL, B.DGEWICHTEI, B.AW, B.VERMITTELT,
+		       B.VERMITTELTAM, B.SMALL, B.LARGE, B.MEDIUM, B.XL, B.ZEITSTEMPEL, B.DGEWICHTEI, B.AW, B.VERMITTELT, B.FUTTERVERBRAUCHTIER,
 		       H.HERDENNUMMER AS HERDEN_NUMMER_REL, H.BEZEICHNUNG AS HERDEN_BEZEICHNUNG_REL, 
 		       H.ID_EILAGER AS HERDEN_ID_EILAGER, H.AKTIV AS HERDEN_AKTIV_REL
 		FROM BUCHUNG B
@@ -250,7 +266,7 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 		WHERE B.VERMITTELT != 'S'
 		ORDER BY B.BUCHUNGSDATUM DESC
 	`
-	rows, err := w.db.QueryContext(ctx, query)
+	rows, err := w.query(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -259,14 +275,14 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 	var items []repo.ListBuchungenRow
 	for rows.Next() {
 		var i repo.ListBuchungenRow
-		var id, idh, lw, hnr, ka, v, s, k, vo, b, tb, idet, idgt, sn, sm, l, m, xl, aw, hnr_r, h_ide, h_akt int32
+		var id, idh, lw, hnr, ka, v, s, k, vo, b, tb, idet, idgt, sn, sm, l, m, xl, aw, hnr_r, h_ide, h_akt, fvt int32
 		var gp, kg, em, fk, dge interface{}
 		var bdat, kl6, vam, zst, h_bez_r sql.NullString
 		if err := rows.Scan(
 			&id, &idh, &lw, &hnr, &bdat, &gp, &kg,
 			&ka, &v, &em, &s, &k, &vo, &b,
 			&tb, &idet, &idgt, &fk, &sn, &kl6,
-			&vam, &sm, &l, &m, &xl, &zst, &dge, &aw, &i.Vermittelt,
+			&vam, &sm, &l, &m, &xl, &zst, &dge, &aw, &i.Vermittelt, &fvt,
 			&hnr_r, &h_bez_r, &h_ide, &h_akt,
 		); err != nil {
 			return nil, err
@@ -299,6 +315,7 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 		i.Zeitstempel = zst.String
 		i.Dgewichtei = toFloat(dge)
 		i.Aw = int64(aw)
+		i.Futterverbrauchtier = int64(fvt)
 		i.HerdenNummerRel = sql.NullInt64{Int64: int64(hnr_r), Valid: true}
 		i.HerdenBezeichnungRel = h_bez_r
 		i.HerdenIDEilager = sql.NullInt64{Int64: int64(h_ide), Valid: true}
@@ -309,42 +326,64 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 }
 
 func (w *MySQLWrapper) GetBuchung(ctx context.Context, id int64) (repo.Buchung, error) {
-	v, err := w.mysql.GetBuchung(ctx, int32(id))
+	query := `
+		SELECT B.ID, B.ID_HERDEN, B.LW, B.HERDENNUMMER, B.BUCHUNGSDATUM, B.GEWICHTPROBE, B.KONTROLLGEWICHT, 
+		       B.KLASSEA, B.VERLUSTE, B.EIMASSE, B.SCHMUTZ, B.KNICKEIER, B.VOLLEI, B.BRUCHEIER, 
+		       B.TIERBESTAND, B.ID_EITABELLE, B.ID_DGEWICHTTAB, B.FUTTERKTAG, B.SILONR, B.KL6, 
+		       B.VERMITTELTAM, B.SMALL, B.LARGE, B.MEDIUM, B.XL, B.ZEITSTEMPEL, B.DGEWICHTEI, B.AW, B.VERMITTELT, B.FUTTERVERBRAUCHTIER
+		FROM BUCHUNG B
+		WHERE B.ID = ?
+	`
+	row := w.queryRow(ctx, query, id)
+	var idVal, idh, lw, hnr, ka, v, s, k, vo, b, tb, idet, idgt, sn, sm, l, m, xl, aw, fvt int32
+	var gp, kg, em, fk, dge interface{}
+	var bdat, kl6, vam, zst sql.NullString
+	var vermittelt string
+
+	err := row.Scan(
+		&idVal, &idh, &lw, &hnr, &bdat, &gp, &kg,
+		&ka, &v, &em, &s, &k, &vo, &b,
+		&tb, &idet, &idgt, &fk, &sn, &kl6,
+		&vam, &sm, &l, &m, &xl, &zst, &dge, &aw, &vermittelt, &fvt,
+	)
 	if err != nil {
 		return repo.Buchung{}, err
 	}
+
 	return repo.Buchung{
-		ID:              int64(v.ID),
-		IDHerden:        int64(v.IDHerden),
-		Lw:              int64(v.Lw),
-		Herdennummer:    int64(v.Herdennummer),
-		Buchungsdatum:   v.Buchungsdatum,
-		Gewichtprobe:    int64(v.Gewichtprobe),
-		Kontrollgewicht: v.Kontrollgewicht,
-		Klassea:         int64(v.Klassea),
-		Verluste:        int64(v.Verluste),
-		Eimasse:         v.Eimasse,
-		Schmutz:         int64(v.Schmutz),
-		Knickeier:       int64(v.Knickeier),
-		Vollei:          v.Vollei,
-		Brucheier:       int64(v.Brucheier),
-		Tierbestand:     int64(v.Tierbestand),
-		IDEitabelle:     int64(v.IDEitabelle),
-		IDDgewichttab:   int64(v.IDDgewichttab),
-		Futterktag:      int64(v.Futterktag),
-		Silonr:          int64(v.Silonr),
-		Kl6:             int64(v.Kl6),
-		Vermitteltam:    v.Vermitteltam,
-		Small:           int64(v.Small),
-		Large:           int64(v.Large),
-		Medium:          int64(v.Medium),
-		Xl:              int64(v.Xl),
-		Zeitstempel:     v.Zeitstempel,
-		Dgewichtei:      v.Dgewichtei,
-		Aw:              int64(v.Aw),
-		Vermittelt:      v.Vermittelt,
+		ID:              int64(idVal),
+		IDHerden:        int64(idh),
+		Lw:              int64(lw),
+		Herdennummer:    int64(hnr),
+		Buchungsdatum:   bdat.String,
+		Gewichtprobe:    int64(toFloat(gp)),
+		Kontrollgewicht: toFloat(kg),
+		Klassea:         int64(ka),
+		Verluste:        int64(v),
+		Eimasse:         toFloat(em),
+		Schmutz:         int64(s),
+		Knickeier:       int64(k),
+		Vollei:          toFloat(vo),
+		Brucheier:       int64(b),
+		Tierbestand:     int64(tb),
+		IDEitabelle:     int64(idet),
+		IDDgewichttab:   int64(idgt),
+		Futterktag:      int64(toFloat(fk)),
+		Silonr:          int64(sn),
+		Kl6:             int64(toInt64(kl6.String)),
+		Vermitteltam:    vam.String,
+		Small:           int64(sm),
+		Large:           int64(l),
+		Medium:          int64(m),
+		Xl:              int64(xl),
+		Zeitstempel:     zst.String,
+		Dgewichtei:      toFloat(dge),
+		Aw:              int64(aw),
+		Vermittelt:      vermittelt,
+		Futterverbrauchtier: int64(fvt),
 	}, nil
 }
+
 
 func (w *MySQLWrapper) CreateBuchung(ctx context.Context, arg repo.CreateBuchungParams) (repo.Buchung, error) {
 	res, err := w.mysql.CreateBuchung(ctx, repo_mysql.CreateBuchungParams{
@@ -376,6 +415,7 @@ func (w *MySQLWrapper) CreateBuchung(ctx context.Context, arg repo.CreateBuchung
 		Zeitstempel:     arg.Zeitstempel,
 		Aw:              int32(arg.Aw),
 		Vermittelt:      toString(arg.Vermittelt),
+		Futterverbrauchtier: int32(arg.Futterverbrauchtier),
 	})
 	if err != nil {
 		return repo.Buchung{}, err
@@ -413,6 +453,7 @@ func (w *MySQLWrapper) UpdateBuchung(ctx context.Context, arg repo.UpdateBuchung
 		Zeitstempel:     arg.Zeitstempel,
 		Aw:              int32(arg.Aw),
 		Vermittelt:      toString(arg.Vermittelt),
+		Futterverbrauchtier: int32(arg.Futterverbrauchtier),
 		ID:              int32(arg.ID),
 	})
 	if err != nil {
@@ -1102,6 +1143,7 @@ func (w *MySQLWrapper) UpdateFirmenparameter(ctx context.Context, arg repo.Updat
 		Bio:                       int32(arg.Bio),
 		Haltungstyp:               toString(arg.Haltungstyp),
 		Bioaufschlag:              toFloat(arg.Bioaufschlag),
+		Futterinventur:            int32(arg.Futterinventur),
 	})
 	if err != nil {
 		return repo.Firmenparameter{}, err
@@ -1165,6 +1207,7 @@ func convertFirmenparameter(v repo_mysql.Firmenparameter) repo.Firmenparameter {
 		Haltungstyp:               v.Haltungstyp,
 		Bioaufschlag:              v.Bioaufschlag,
 		Aw:                        int64(v.Aw),
+		Futterinventur:            int64(v.Futterinventur),
 	}
 }
 

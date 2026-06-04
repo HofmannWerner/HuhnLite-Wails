@@ -1,0 +1,23 @@
+Dokumentation MwstPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "MwstPage.vue" dient der isolierten Verwaltung der Mehrwertsteuer-Sätze.
+Hinweis: Diese Funktionalität ist redundant/identisch zu dem "Mehrwertsteuer" Reiter innerhalb der "MistPage.vue" (Tabellen-Verwaltung). Sie ermöglicht das Anlegen und Bearbeiten von MwSt-Kennzeichen, die im System (z.B. bei Futterbuchungen oder Rechnungen) verwendet werden.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "NEUER STEUERSATZ" / "STEUERSATZ BEARBEITEN"
+- MwSt-Kennzeichen (mwstkz)
+  Syntax: String (Textfeld, maxlength 1)
+  Bedeutung: Ein einstelliges Kürzel für den Steuersatz (z.B. "A" für den regulären Satz, "B" für ermäßigt).
+  Plausibilität: Pflichtfeld.
+- Prozentsatz (%) (prozent)
+  Syntax: Float (Nummern-Feld)
+  Bedeutung: Der eigentliche Steuersatz in Prozent (z.B. 19.00 oder 7.00).
+  Plausibilität: Pflichtfeld.
+- Konto (konto)
+  Syntax: String (Textfeld)
+  Bedeutung: Optionales Sach- oder Erlöskonto für die Finanzbuchhaltung.

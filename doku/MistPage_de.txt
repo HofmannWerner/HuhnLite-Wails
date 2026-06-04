@@ -1,0 +1,45 @@
+Dokumentation MistPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "MistPage.vue" (intern oft als "Tabellen" bezeichnet) ist eine zentrale Administrationsseite für verschiedene systemweite Stammdaten, Referenzwerte und Konfigurationstabellen.
+Die Seite ist in mehrere Reiter (Tabs) unterteilt, um verschiedene Fachbereiche voneinander abzugrenzen.
+Hinweis: Der Name "Mist" stammt historisch vermutlich von "Miscellaneous" (Verschiedenes) oder ist ein projektspezifisches Kürzel.
+
+2. Auflistung der Tabs und ihrer Felder/Funktionen
+--------------------------------------------------------------------------------
+
+A) TAB: ALTERSTABELLE (Referenzwerte für das Alter)
+Verwaltet Vorgabewerte für Hühner abhängig von ihrer Lebenswoche. Diese Tabellen können als Vorlage zur Bewertung der tatsächlichen Herdenleistung dienen.
+- Kopfdaten: Tabellennummer, Bezeichnung, Anlagedatum, Gültigkeit.
+- Zeilendaten: Lebenswoche, Ei-Gewicht Woche (g), Legerate AH (%), Legerate DH (%), Ei-Gewicht Kum. (g), Ei-Masse Woche/Kum., Eier Kum.
+
+B) TAB: GEWICHTSTABELLE (Referenzwerte für die Größensortierung)
+Definiert, wie sich Eier bei einem bestimmten Durchschnittsgewicht statistisch auf die Größenklassen verteilen.
+- Kopfdaten: Tabellennummer, Bezeichnung, Anlagedatum, Gültigkeit.
+- Zeilendaten: Ei-Gewicht (g), und die prozentuale Verteilung auf die Klassen XL, L1, L2, M1, M2, S1, S2 (muss in Summe 100% ergeben).
+
+C) TAB: MEHRWERTSTEUER
+Verwaltung der gültigen Steuersätze für das Rechnungswesen.
+- Kennzeichen (z.B. A) (MWSTKZ)
+- Prozentsatz (%) (PROZENT)
+- Konto (KONTO) - Optionales FiBu-Konto.
+
+D) TAB: PREISTABELLE (Eierpreise)
+Zentrale Verwaltung der Verkaufspreise für Eier, unterschieden nach Haltungstyp und Gewicht/Klasse.
+- Haltungstyp (z.B. Bio, Freiland, Bodenhaltung) (KZ_HALTUNGSTYP)
+- Eierklasse (z.B. XL, L, M, S) (EIERKLASSE)
+- Gewicht von/bis (g) (GEWICHT_VON / GEWICHT_BIS)
+- Preis von/bis (€) (PREIS_VON / PREIS_BIS)
+
+E) TAB: FUTTERSORTEN
+Verwaltung der lieferbaren Futtersorten (z.B. für das FutterGrid).
+- Bezeichnung (BEZEICHNUNG)
+
+F) TAB: FELD-KONFIGURATION
+Tiefgreifende Systemfunktion zur Übersetzung technischer Datenbankfelder in lesbare Frontend-Bezeichnungen (Übersetzungs-Tabelle).
+- Technischer Name (FELDNAME)
+- Anzeige-Name / Übersetzung (INHALT)
+- Kurztitel / Betreff (BETREFF)
+- Feld existiert in Datenbank-Tabelle (NAMEINDB) - Flag, ob es sich um eine echte DB-Spalte oder ein berechnetes Feld (Alias) handelt.

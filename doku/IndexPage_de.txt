@@ -1,0 +1,24 @@
+Dokumentation IndexPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "IndexPage.vue" ist die Startseite (Dashboard) der HuhnLite-Anwendung.
+Sie dient als zentraler Einstiegspunkt und Hauptmenü für den Benutzer nach dem Start der Applikation.
+Das Dashboard verwendet ein kartenbasiertes Kachel-Design (Cards) zur intuitiven Navigation in die Hauptbereiche des Programms.
+
+2. Enthaltene Kacheln und Statusanzeigen
+--------------------------------------------------------------------------------
+
+A) NAVIGATION KACHELN
+- Stammdaten: Navigiert zur Seite "/herden". (Sichtbar, wenn Berechtigung 'herden_verwalten' vorliegt).
+- Bewegungsdaten: Navigiert zur Seite "/buchungen". Hier werden die täglichen Erfassungen getätigt. (Sichtbar, wenn Berechtigung 'buchungen_erfassen' vorliegt).
+- Tabellen: Navigiert zur Seite "/mist". Zentrale Verwaltung für Konfigurations- und Stammtabellen. (Sichtbar, wenn Berechtigung 'tabellen_anzeigen' vorliegt).
+- Reports: Navigiert zur Seite "/reports". Führt zum dynamischen Report-Generator. (Sichtbar, wenn Berechtigung 'auswertungen_anzeigen' vorliegt).
+
+B) SYSTEM & LOGIN KACHEL
+- Anmelden / Sitzung beenden: Zeigt den Namen des aktuell eingeloggten Benutzers an und ermöglicht den Login-Dialog bzw. das Abmelden.
+
+C) STATUSANZEIGE (Footer)
+- Version: Zeigt das Kompilierdatum (Build Time) der Anwendung an.
+- Datenbank-Status: Zeigt farblich markiert an, ob die Applikation aktuell mit einer MariaDB (Orange), einer SQLite (Blau) oder Offline (Rot) läuft. Ein Tooltip bietet bei Fehlern genauere technische Informationen.

@@ -1,0 +1,20 @@
+Dokumentation RestorePage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "RestorePage.vue" stellt eine Notfall-Administrationsoberfläche zur Verfügung, um den aktuellen Datenbankbestand durch ein zuvor erstelltes Backup zu ersetzen (Disaster Recovery).
+Hinweis: Diese Funktion ist primär für die SQLite-Laufzeitumgebung konzipiert.
+
+2. Funktionalität und Ablauf
+--------------------------------------------------------------------------------
+
+- Backup-Auswahl: Beim Laden der Seite fragt das System das Backend nach verfügbaren Backup-Dateien (typischerweise `.db` Dateien aus einem `/backups` Verzeichnis) ab und listet diese absteigend sortiert auf. Die aktuell genutzte Datenbank wird aus der Liste gefiltert.
+- Wiederherstellung anstoßen: Wählt der Anwender ein Backup und klickt auf "Wiederherstellen", erscheint zunächst ein Bestätigungs-Dialog, da dieser Vorgang destruktiv ist.
+- Sicherheits-Kopie: Bevor das Backend die aktuelle Datenbank überschreibt, erstellt es vollautomatisch ein Sicherheits-Backup (Safety-Copy) des aktuellen Ist-Zustandes, falls der Anwender die falsche Datei gewählt hat.
+- Reload: Nach erfolgreicher Wiederherstellung erzwingt die Seite automatisch einen kompletten Reload des Browsers (`window.location.reload()`), um sicherzustellen, dass keine alten Daten (z.B. Stammdaten) mehr im Speicher der Vue/Pinia-Stores (Frontend) gehalten werden.
+
+3. Auflistung der Anzeigefelder
+--------------------------------------------------------------------------------
+- Aktive Datenbank (currentDB): Zeigt den Dateipfad der Datenbank an, die gerade vom System verwendet wird (z.B. "huhnlite.db").
+- Verfügbare Backup-Dateien: Eine Liste, aus der das Ziel-Backup ausgewählt wird. Jedes Element zeigt den Dateinamen und den relativen Pfad an.

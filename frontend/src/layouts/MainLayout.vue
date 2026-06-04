@@ -215,7 +215,17 @@
           </q-item>
         </q-expansion-item>
 
+        <q-separator class="q-my-md" />
+
+        <q-item clickable v-ripple @click="openHelp"
+                :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
+          <q-item-section avatar>
+            <q-icon name="help_outline"/>
+          </q-item-section>
+          <q-item-section>Hilfe</q-item-section>
+        </q-item>
       </q-list>
+
 
       <div class="q-pa-md q-mt-auto">
         <q-separator class="q-my-md" />
@@ -234,6 +244,32 @@
 
     <!-- Login Modal - Blocks UI if auth enabled -->
     <LoginModal/>
+
+    <!-- Help Modal -->
+    <q-dialog v-model="helpDialogOpen" maximized transition-show="slide-up" transition-hide="slide-down">
+      <q-card class="column no-wrap" style="height: 100vh;">
+        <q-bar class="bg-primary text-white q-py-md">
+          <q-icon name="help_outline" />
+          <div class="text-weight-bold">Handbuch / Hilfe</div>
+          <q-space />
+          <q-btn dense flat icon="close" v-close-popup>
+            <q-tooltip>Schließen</q-tooltip>
+          </q-btn>
+        </q-bar>
+
+        <q-card-section class="col q-pa-none relative-position bg-white">
+          <div v-if="helpLoading" class="absolute-center text-center">
+            <q-spinner-gears size="50px" color="primary" />
+            <div class="q-mt-md text-grey-7">Lade Hilfedatei...</div>
+          </div>
+          <iframe
+            v-else-if="helpUrl"
+            :src="helpUrl"
+            style="width: 100%; height: 100%; border: none;"
+          ></iframe>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
@@ -254,6 +290,10 @@ const sessionStore = useSessionStore();
 const session = sessionStore;
 const leftDrawerOpen = ref(false);
 const backupLoading = ref(false);
+
+const helpDialogOpen = ref(false);
+const helpLoading = ref(false);
+const helpUrl = ref('');
 
 async function runBackup() {
   backupLoading.value = true;
@@ -351,6 +391,56 @@ function toggleLeftDrawer () {
 const handleLogout = () => {
   sessionStore.logout();
 };
+
+async function openHelp() {
+  helpDialogOpen.value = true;
+  helpLoading.value = true;
+  helpUrl.value = '';
+
+  if (window.go && window.go.main && window.go.main.App) {
+    try {
+      // Check if file is accessible
+      await window.go.main.App.GetHelpContent();
+      
+      // Determine base URL from Axios boot config or fallback to default port
+      const baseApiUrl = api.defaults.baseURL || 'http://localhost:8080';
+      helpUrl.value = `${baseApiUrl}/help/HuhnLite-de.html`;
+    } catch (err) {
+      console.error('Error loading help content:', err);
+      // Fallback to open natively if reading content fails
+      const errMsg = await window.go.main.App.OpenHelp();
+      if (errMsg) {
+        $q.notify({
+          type: 'negative',
+          message: 'Hilfe konnte nicht geladen werden: ' + String(err),
+          position: 'top',
+          timeout: 5000
+        });
+        helpDialogOpen.value = false;
+      }
+    } finally {
+      helpLoading.value = false;
+    }
+  } else {
+    // Local / development mockup when Wails is not running
+    const mockHtml = `
+      <html>
+        <head>
+          <style>
+            body { font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6; }
+            h1 { color: #027be3; }
+          </style>
+        </head>
+        <body>
+          <h1>Hilfe-Dokument (Entwicklungsmodus)</h1>
+          <p>Die Wails-Laufzeitumgebung ist nicht verfügbar. Im Live-System wird hier das Handbuch geladen.</p>
+        </body>
+      </html>
+    `;
+    helpUrl.value = 'data:text/html;charset=utf-8,' + encodeURIComponent(mockHtml);
+    helpLoading.value = false;
+  }
+}
 
 onMounted(async () => {
   console.log('MainLayout: Starte Initialisierung...');

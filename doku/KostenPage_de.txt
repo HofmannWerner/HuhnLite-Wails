@@ -1,0 +1,51 @@
+Dokumentation KostenPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "KostenPage.vue" ist ein Modul zum übergeordneten Kostenmanagement des Betriebes.
+Die Seite unterteilt sich in zwei logische Bereiche:
+1. Den "Kostentabkopf" (Stammdaten & Faktoren): Hier werden langfristige Anlagenwerte und Abschreibungssätze gepflegt. Aus diesen Werten berechnet das System die täglichen Fixkosten.
+2. Das "Kosten-Grid" (Kosten-Positionen): Hier werden laufende, kurzfristige Rechnungen oder Kostenpositionen erfasst. Die hier eingegebenen Kosten werden durch die angegebene Tagesanzahl geteilt, um die "Variablen Kosten pro Tag" zu ermitteln.
+
+Das System berechnet und visualisiert als Kern-Feature dieser Seite permanent die "Gesamtkosten pro Tag", welche sich aus den Fixkosten und den variablen Kosten zusammensetzen.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) KOSTENTABKOPF (Stammdaten & Faktoren)
+- Schlachterlös am Ende (€) (SCHLACHTERLOES)
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Erwarteter Erlös bei der Ausstallung/Schlachtung der Herde am Ende der Produktionsdauer.
+- Produktionsdauer geplant (Tage) (PRODDAUERGEPLANT)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Die angesetzte Lebens-/Produktionszeit der Herde, wird als Teiler für bestimmte Kostenkalkulationen verwendet.
+- Gebäudewert (€) (GEBAEUDEWERT)
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Gesamtwert der Stallgebäude.
+- Abschreibung G (%) (ABSCHREIBUNG_G)
+  Syntax: Float (Nummern-Feld, step 0.1)
+  Bedeutung: Prozentualer Abschreibungssatz für die Gebäude pro Jahr.
+- Gerätewert (€) (GERAETEWERT)
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Gesamtwert der verbauten Technik/Geräte.
+- Abschreibung R (%) (ABSCHREIBUNG_R)
+  Syntax: Float (Nummern-Feld, step 0.1)
+  Bedeutung: Prozentualer Abschreibungssatz für die Geräte pro Jahr.
+
+B) FORMULAR "NEUE KOSTEN-POSITION" (Kosten-Grid)
+- Buchungsdatum (BUCHUNGSDATUM)
+  Syntax: Date
+  Bedeutung: Datum des Kostenanfalls oder der Rechnung.
+- Kostentyp (KOSTENTYP)
+  Syntax: String (Dropdown)
+  Bedeutung: Unterscheidung zwischen 'Variabel (VA)' und 'Fix (FI)'. Dient der statistischen Auswertung.
+- Bezeichnung (BEZEICHNUNG)
+  Syntax: String (Textfeld)
+  Bedeutung: Freitext zur Beschreibung der Ausgabe (z.B. "Tierarztbesuch", "Wartung Lüftung").
+- Kosten (€) (KOSTEN)
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Der Gesamtbetrag der Ausgabe.
+- Anzahl Tage (TAGE)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Der Zeitraum, auf den diese Kosten verteilt werden sollen (z.B. eine Tierarztrechnung für eine Behandlung, die über 14 Tage wirkt -> 14 Tage). Der Betrag dividiert durch diese Tage ergibt die Kosten pro Tag für die Laufzeitauswertung.

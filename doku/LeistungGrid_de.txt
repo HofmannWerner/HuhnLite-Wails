@@ -1,0 +1,66 @@
+Dokumentation LeistungGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "LeistungGrid.vue" ist das zentrale Modul zur täglichen (oder periodischen) Erfassung der Legeleistung einer Herde.
+Hier werden die produzierten Eimengen nach Größenklassen erfasst, sowie ggf. Schmutz-, Knick- und Brucheier. 
+Zusätzlich können über diese Maske die erfassten Bestände direkt physisch in ein "Eilager" (Lagerbuchung) oder ein "Pseudo-Lager" (anderweitige Verwendung) verschoben werden. Auch die direkte Buchung von Tierverlusten (z.B. durch Tod oder Keulung) ist hier integriert.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTER- BZW. STEUERFELDER (Übersicht)
+- filterHerde: Dropdown zur Einschränkung der Tabelle auf eine spezifische Herde.
+- nurAktiveFilter: Checkbox, um archivierte/inaktive Herden auszublenden.
+- filterDateRangeText: Date-Picker zur Einschränkung der angezeigten Leistungsbuchungen nach Datum.
+
+B) FORMULAR "NEUE BUCHUNG" / "BUCHUNG BEARBEITEN"
+1. Stammdaten der Buchung
+- ID_HERDEN
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Die Herde, für welche die Leistung erfasst wird. Pflichtfeld. Bei Bearbeitung schreibgeschützt.
+- bookingDateOnly (Buchungsdatum)
+  Syntax: Date (Datumsfeld)
+  Bedeutung: Das Datum der Leistung.
+  Plausibilität: Darf nicht in der Zukunft liegen. Darf nicht vor dem Legebeginn-Datum der ausgewählten Herde liegen.
+- berechnete Kennzahlen (schreibgeschützt)
+  - LW (Lebenswoche/Leistungswoche): Errechnet sich aus dem Buchungsdatum und dem Legebeginn.
+  - AW (Alterswoche): Errechnet sich aus dem Buchungsdatum und dem Einstalldatum/Geburtsdatum.
+  - Tierbestand: Der tagesaktuelle Hennenbestand zum gewählten Datum.
+
+2. Leistung & Gewicht
+Die Bearbeitbarkeit dieser Felder (Readonly-Status) hängt massiv von den globalen oder herdenspezifischen Parametern ab (z.B. "Jumbos erfassen", "Klassen erfassen").
+
+- Kontrollgew. KG (displayKontrollgewicht)
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Gesamtgewicht der Eier bei einer Kontrollwiegung.
+- Verpackung KG (displayVerpackung)
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Tara-Gewicht (Leergewicht) der Verpackung.
+- Klasse A (KLASSEA)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Summe der verkaufsfähigen Eier (Klasse A). Kann je nach Parameter-Einstellung entweder manuell erfasst oder automatisch aus den Größenklassen errechnet werden.
+- Vollei KG (displayVollei)
+  Syntax: Float (Textfeld)
+  Bedeutung: Gewicht des anfallenden Volleis.
+- Eigewicht g (displayDgewicht)
+  Syntax: Float (Schreibgeschützt)
+  Bedeutung: Errechnetes Durchschnittsgewicht pro Ei.
+- Größenklassen (KL6/JUMBO, XL, LARGE, MEDIUM, SMALL)
+  Syntax: Integer (Nummern-Felder)
+  Bedeutung: Stückzahlen der gelegten Eier in der jeweiligen Gewichtsklasse.
+  Plausibilität: Werden nur freigeschaltet, wenn der Parameter für die jeweilige Klasse oder generelles "Klassenerfassen" aktiviert ist.
+- Defekte (SCHMUTZ, KNICKEIER, BRUCHEIER)
+  Syntax: Integer (Nummern-Felder)
+  Bedeutung: Stückzahlen defekter oder unsauberer Eier.
+
+C) ZUSATZ-AKTIONEN (Lagerbuchungen & Verluste)
+- "Ins Eilager übertragen" / "Anderweitige Verwendung"
+  Erlaubt das Verbuchen der erfassten Eimengen in ein physisches Lager oder ein Pseudo-Lager.
+  Plausibilität: Button ist deaktiviert, wenn die Summe der Klasse A Eier 0 ist oder wenn die eingegebene Eimenge (Klasse A + Defekte) den Tierbestand absurd übersteigt (hasEggOverflow).
+- "Verluste buchen"
+  Öffnet einen Unter-Dialog zur Erfassung von Tierverlusten.
+  - VERLUSTE: Anzahl verendeter Tiere (> 0).
+  - ID_TEXTE: Grund (aus Lookup-Tabelle).
+  - MEMO: Freitext für Bemerkungen.

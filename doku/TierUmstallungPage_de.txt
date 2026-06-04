@@ -1,0 +1,36 @@
+Dokumentation TierUmstallungPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "TierUmstallungPage.vue" bietet eine spezialisierte Ansicht, um Tiere (Hühner) zwischen zwei verschiedenen Herden umzubuchen bzw. umzustallen.
+Der Prozess funktioniert datumsorientiert: Man wählt auf der linken Seite ("Abgebende Herde") eine Leistungsbuchung einer Herde an einem bestimmten Tag aus. Daraufhin zeigt die rechte Seite ("Empfangende Herde") automatisch nur noch Buchungen anderer Herden am **selben Tag** an. Sobald beide Seiten ausgewählt sind, wird der Umbuchungs-Button in der Mitte aktiv. Die tatsächliche Umbuchung erzeugt im Backend entsprechende Ab- und Zugangsbuchungen.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTERUNG DER ANSICHT
+- timeframe
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Zeitraum in Tagen, für den historische Buchungen angezeigt werden sollen (z.B. "Letzte 7 Tage", "Letzte 30 Tage", "Alle"). Reduziert die Menge der initial geladenen Daten auf der linken Seite.
+
+B) TABELLEN-ANSICHTEN (Keine Eingabefelder, aber Auswahllisten)
+- Tabelle "Abgebende Herde (Geben)"
+  Bedeutung: Wählt die Quell-Herde und das Datum aus (Basis: bestehende Leistungsbuchungen).
+- Tabelle "Empfangende Herde (Nehmen)"
+  Bedeutung: Wählt die Ziel-Herde aus.
+  Plausibilität: Diese Tabelle bleibt leer, bis links ein Eintrag gewählt wurde. Danach zeigt sie zwingend nur Buchungen anderer Herden (andere ID) mit identischem Datum an.
+
+C) DIALOG "UMSTALLUNGSMENGE"
+Dieses Formular erscheint nach Klick auf den Pfeil-Button (wenn Quell- und Zielherde am selben Tag gewählt wurden).
+
+- amount (Anzahl)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Anzahl der Tiere (Stück), die umgebucht werden sollen.
+  Plausibilität/Regeln:
+  - Muss größer als 0 sein (> 0).
+  - Darf den aktuell verfügbaren Tierbestand der Quellherde an diesem Tag nicht überschreiten (<= herdeLinks?.tierbestand).
+- idTexte (Grund für Umstallung)
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Dokumentiert den Grund der Umstallung.
+  Plausibilität: Pflichtfeld. Die Liste der Gründe wird aus der Tabelle der Systemtexte (Typ 'T') geladen.

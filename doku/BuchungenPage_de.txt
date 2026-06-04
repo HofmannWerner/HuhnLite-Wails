@@ -1,0 +1,18 @@
+Dokumentation BuchungenPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "BuchungenPage.vue" ist, ähnlich wie die "EinrichtungenPage", keine eigenständige Datenmaske. Sie dient als zentrale Navigations- und Layout-Hülle (Tab-Container) für alle operativen Erfassungsmasken der Anwendung.
+Sie bündelt die täglichen Aufgabenbereiche des Landwirts an einem Ort, sodass ein schneller Wechsel zwischen verschiedenen Erfassungen möglich ist. Die Seite reagiert auf URL-Parameter (z.B. `?tab=aktionen`), um direkt in einem bestimmten Reiter zu starten.
+
+2. Enthaltene Module und Tab-Struktur
+--------------------------------------------------------------------------------
+
+- Leistung: Lädt "LeistungGrid.vue" zur täglichen Erfassung der Eierproduktion pro Herde.
+- Verluste: Lädt "VerlusteGrid.vue" für die schnelle Eingabe von Tierabgängen.
+- Tierbewegungen: Lädt "TierbewegungenGrid.vue" für Einstallungen, Umstallungen und sonstige Abgänge.
+- Eilager: Lädt "EilagerBuchungenGrid.vue" zur Verwaltung des Eilager-Bestandes (Umlagerungen, Sortierungen).
+- Futter: Lädt "FutterGrid.vue" für die Erfassung von Futtermittellieferungen.
+- Verkauf: Lädt "VerkaufGrid.vue" für die kommerzielle Dokumentation von Eierverkäufen.
+- Aktionen: Lädt "AktionenGrid.vue" zur Verwaltung von Todo-Listen, Impfungen und Aufgaben.

@@ -79,6 +79,7 @@ type Buchung struct {
 	Dgewichtei      float64 `json:"dgewichtei"`
 	Aw              int32   `json:"aw"`
 	Vermittelt      string  `json:"vermittelt"`
+	Futterverbrauchtier int32   `json:"futterverbrauchtier"`
 }
 
 type DynamischeSql struct {
@@ -208,6 +209,7 @@ type Firmenparameter struct {
 	Bio                       int32   `json:"bio"`
 	Haltungstyp               string  `json:"haltungstyp"`
 	Bioaufschlag              float64 `json:"bioaufschlag"`
+	Futterinventur            int32   `json:"futterinventur"`
 }
 
 type Futter struct {

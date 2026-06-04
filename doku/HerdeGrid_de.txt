@@ -1,0 +1,71 @@
+Dokumentation HerdeGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Komponente "HerdeGrid.vue" ist ein zentrales Element zur Verwaltung der Herden. Sie unterteilt sich intern erneut in mehrere Tabs:
+- Herden-Dashboard (Kartenansicht der Herden)
+- Parameter (Zuweisung und Übersteuerung von globalen Herdenparametern auf Basis einer spezifischen Herde)
+- Details/Statistik (Detaillierte tabellarische Wochenstatistik und Leistungskennzahlen wie Eier nach Gewichtsklassen)
+- Grafik (Kuchendiagramme zur Visualisierung der Produktion)
+
+Zudem enthält diese Komponente den Dialog zur Neuanlage bzw. Bearbeitung einer Herde (Stammdaten der Herde).
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR HERDEN-STAMMDATEN (Dialog: "Neue Herde" / "Herde bearbeiten")
+Dieses Formular dient der Erfassung der grundlegenden Stammdaten einer Legehennen-Herde.
+
+- HERDENNUMMER
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Eindeutige, interne Nummer der Herde. Pflichtfeld.
+- BEZEICHNUNG
+  Syntax: String (Textfeld)
+  Bedeutung: Freitext-Name oder Bezeichnung der Herde (z.B. "Herde Frühjahr 2024").
+- ID_RASSE
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Zuweisung der Rasse. Pflichtfeld. Bezieht Daten aus der Rassen-Tabelle.
+- ID_ZUECHTER
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Referenz auf den Züchter oder Händler (Personen/Firmen-Stamm).
+- ANFANGSBESTAND
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Anzahl der eingestallten Tiere zum Start.
+- EINSTALLDATUM
+  Syntax: Date (Datumsfeld)
+  Bedeutung: Datum der Einstallung in den Stall.
+- LEGEDATUM
+  Syntax: Date (Datumsfeld)
+  Bedeutung: Datum des erwarteten oder tatsächlichen Legebeginns.
+- EINSTALLKOSTEN
+  Syntax: Float (Nummern-Feld, 2 Dezimalstellen)
+  Bedeutung: Monetäre Einstandskosten (Einkaufspreis der Tiere).
+- ID_STALL
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Zuweisung der Herde zu einem physischen Stall.
+- ID_SILO
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Zuweisung eines Futter-Silos.
+- ID_EILAGER
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Standard-Eilagerplatz für die Produktion dieser Herde.
+- ALLE_BUCHUNGEN_MIT_DATUM
+  Syntax: Integer/Boolean als 0/1 (Checkbox)
+  Bedeutung: Zwingt den Benutzer bei Leistungserfassungen ein explizites Datum anzugeben.
+- AKTIV
+  Syntax: Integer/Boolean als 0/1 (Checkbox)
+  Bedeutung: Status-Kennzeichen, ob die Herde aktuell produktiv ist oder bereits archiviert wurde.
+
+B) TAB "PARAMETER"
+Dieses Tab enthält dieselben Parameter-Felder wie die `FirmenPage.vue`, erlaubt jedoch das Laden, Überschreiben und Kopieren dieser Defaults für eine *spezifische* Herde.
+Felder (Auszug, siehe auch Firmenparameter_de.txt):
+- MASSVOLLEI, ANZAHLKONTROLLW, LAUFZEITWOCHEN, PRODUKTIONSDAUER, LEGEBEGINN_LW, BIO, BIOAUFSCHLAG, HALTUNGSTYP, VERPACKUNGKG, MAXTAGEVERMITTELN, SCHLACHTERLOESHENNE, ID_TABELLEALTER, ID_TABELLEGEWICHT, Chargen-Optionen, Erfassungs-Optionen.
+*Besonderheit*: Enthält zusätzliche Steuerungselemente:
+- firmaAktiv (Checkbox): Schaltet um zwischen Ansicht der "Globalen Herdenparameter" und den parametern einer ausgewählten Herde.
+- copySourceId (Dropdown): Erlaubt das Kopieren eines Parametersatzes von einer anderen Herde auf die aktuell ausgewählte.
+
+C) FILTER- UND STEUERUNGSFELDER (In den Listen/Grids)
+- filter (String): Suchfeld zur schnellen Volltextsuche in der Liste.
+- nurAktive (Boolean): Filtert die Listenansicht, sodass nur Herden angezeigt werden, bei denen AKTIV = 1 ist.
+- chartHerdeId, filterYear, filterQuarter, filterMonth (Dropdowns): Steuerfelder zur Einschränkung der statistischen Grafikauswertung.

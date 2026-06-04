@@ -1,0 +1,25 @@
+Dokumentation BenutzerPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "BenutzerPage.vue" ist ein Administrationsmodul zur Verwaltung der System-Anwender (Logins).
+Hier können neue Benutzerkonten erstellt, Passwörter gesetzt und Berechtigungsprofile (z.B. Administrator, Standardbenutzer) zugewiesen werden.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "NEUER BENUTZER" / "BENUTZER BEARBEITEN"
+- Username (USERNAME)
+  Syntax: String (Textfeld)
+  Bedeutung: Der eindeutige Anmeldename des Benutzers (für den Login-Bildschirm).
+  Plausibilität: Bei bestehenden Benutzern (Bearbeitungsmodus) ist dieser Name schreibgeschützt (readonly).
+- Klarname (Anzeige) (KLARNAME)
+  Syntax: String (Textfeld)
+  Bedeutung: Der tatsächliche, ausgeschriebene Name der Person (wird an diversen Stellen in der Oberfläche als "Eingeloggt als..." angezeigt).
+- Passwort (PASSWORT)
+  Syntax: String (Passwortfeld, Zeichen sind verdeckt)
+  Bedeutung: Das Passwort für den Login. Beim Neuanlegen ist es pflicht, beim Bearbeiten kann durch Eingabe eines neuen Passworts das alte überschrieben werden (bleibt es leer, wird es meist nicht verändert - abhängig von der Backend-Logik).
+- Profil (ID_BENUTZER_PROFILE)
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Verknüpfung zu einer Profil-Rolle. Das Profil steuert die Berechtigungen im System (z.B. Profil_KZ 'A' für Administratoren, was wiederum Felder in der Textverwaltung entsperrt).

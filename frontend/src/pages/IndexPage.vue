@@ -106,17 +106,22 @@
 
     </div>
     
-    <div class="q-mt-xl row items-center q-gutter-md">
-      <div class="text-grey-6 text-caption">
-        Version vom {{ buildTime }}
+    <div class="q-mt-xl column items-center q-gutter-y-sm">
+      <div class="row items-center q-gutter-md">
+        <div class="text-grey-6 text-caption">
+          Version vom {{ buildTime }}
+        </div>
+        <q-badge v-if="dbStatus.engine" :color="dbStatus.engine === 'mysql' ? 'orange-9' : (dbStatus.engine === 'sqlite' ? 'blue-8' : 'negative')" class="q-pa-sm text-weight-bold">
+          <q-icon :name="dbStatus.engine === 'offline' ? 'link_off' : 'database'" class="q-mr-xs" />
+          {{ dbStatus.engine === 'mysql' ? 'MariaDB' : (dbStatus.engine === 'sqlite' ? 'SQLite' : 'Offline') }}
+          <q-tooltip>
+            {{ dbStatus.engine === 'offline' ? 'FEHLER: ' + (dbStatus.error || 'Keine Verbindung') : 'Verbindung: ' + dbStatus.host }}
+          </q-tooltip>
+        </q-badge>
       </div>
-      <q-badge v-if="dbStatus.engine" :color="dbStatus.engine === 'mysql' ? 'orange-9' : (dbStatus.engine === 'sqlite' ? 'blue-8' : 'negative')" class="q-pa-sm text-weight-bold">
-        <q-icon :name="dbStatus.engine === 'offline' ? 'link_off' : 'database'" class="q-mr-xs" />
-        {{ dbStatus.engine === 'mysql' ? 'MariaDB' : (dbStatus.engine === 'sqlite' ? 'SQLite' : 'Offline') }}
-        <q-tooltip>
-          {{ dbStatus.engine === 'offline' ? 'FEHLER: ' + (dbStatus.error || 'Keine Verbindung') : 'Verbindung: ' + dbStatus.host }}
-        </q-tooltip>
-      </q-badge>
+      <div v-if="dbStatus.engine && dbStatus.engine !== 'offline'" class="text-grey-6 text-caption text-center" style="max-width: 800px; word-break: break-all;">
+        Aktive DB: <span :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-8'" class="text-weight-bold">{{ dbStatus.host }}</span>
+      </div>
     </div>
   </q-page>
 </template>

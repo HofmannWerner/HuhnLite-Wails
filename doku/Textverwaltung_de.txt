@@ -1,0 +1,45 @@
+Dokumentation Textverwaltung.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "Textverwaltung.vue" ist ein zentrales Konfigurationsmodul zur Verwaltung aller systemweiten Dropdown-Texte, Gründe und Parameterlisten. 
+Anstatt für jeden Dropdown-Inhalt (z.B. Verlustgründe, Rassen, Haltungsformen) eine eigene Datenbanktabelle anzulegen, bündelt das System diese in der "Textverwaltung".
+
+Die Seite ist in zwei Hauptbereiche gegliedert:
+1. Texttypen (Kategorien): Definiert die übergeordneten Listen (z.B. Typ "TV" = Tierbewegungs-Grund).
+2. Texte (Einträge): Die tatsächlichen Auswahlmöglichkeiten, die einem bestimmten "Texttyp" zugeordnet sind.
+
+Einige Texttypen und Texte sind als "System-Eintrag" (S) markiert. Diese sind fest mit der Programmlogik verzahnt (z.B. bedeutet das Kennzeichen 'U' beim Bewegungstyp 'Umstallung') und können daher von regulären Benutzern nicht gelöscht oder in ihrem Kennzeichen verändert werden. Nur Administratoren (Profil-KZ 'A') können System-Flags setzen oder entfernen.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "TEXTTYP BEARBEITEN" (Kategorie)
+- Kürzel (KZ)
+  Syntax: String (Textfeld)
+  Bedeutung: Eindeutiger technischer Identifikator für die Kategorie (z.B. "TV" für Tierbewegungen).
+  Plausibilität: Pflichtfeld. Für Nicht-Admins schreibgeschützt bei existierenden Einträgen.
+- Bezeichnung
+  Syntax: String (Textfeld)
+  Bedeutung: Lesbarer Name der Kategorie (z.B. "Gründe für Tierabgang").
+- System-Eintrag (geschützt)
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Wenn aktiviert, wird die Kategorie für normale Benutzer gesperrt. (Nur für Admins sichtbar/änderbar).
+
+B) FORMULAR "TEXT BEARBEITEN" (Eintrag)
+- Texttyp (text_typ_kz)
+  Syntax: String (Dropdown)
+  Bedeutung: Zuordnung, zu welcher Kategorie dieser Eintrag gehört.
+- Kennz. (Funktion) (kz)
+  Syntax: String (Textfeld, maxlength 1)
+  Bedeutung: Ein einstelliges Kürzel, das von der Programmlogik oft zur Identifikation des Eintrags verwendet wird (z.B. 'U' für Umstallung, 'V' für Verlust).
+- Betreff
+  Syntax: String (Textfeld)
+  Bedeutung: Ein kurzer Titel oder Name für den Eintrag (wird meistens in Dropdowns angezeigt).
+- Inhalt
+  Syntax: String (Textarea)
+  Bedeutung: Zusätzliche detaillierte Beschreibung oder Langtext.
+- System-Eintrag (geschützt)
+  Syntax: Boolean (Checkbox)
+  Bedeutung: Sperrt diesen spezifischen Texteintrag gegen versehentliches Löschen durch Standard-User.

@@ -1,0 +1,60 @@
+Dokumentation FutterGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "FutterGrid.vue" ist zuständig für die Verwaltung von Futterlieferungen und Futterbuchungen.
+Über diese Maske können Zugänge (Lieferungen) von bestimmten Futtersorten in die entsprechenden Silos dokumentiert werden. Dabei werden nicht nur die Mengen (in kg) erfasst, sondern auch die kaufmännischen Aspekte wie Lieferant, Preis pro Dezitonne (dt), Netto, Brutto, MwSt und eventuelle Rabatte.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTERFELDER (Übersichtsliste)
+- filterSilo (Silo filtern)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Filtert die Liste nach Futterbuchungen, die in ein bestimmtes Silo geflossen sind.
+- filterText (Grund / Sorte)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Filtert nach der gelieferten Futtersorte (z.B. Legehennenmehl, Starter). Zieht Daten aus der Tabelle "Futtersorten".
+
+B) FORMULAR "NEUE FUTTERBUCHUNG" / "FUTTERBUCHUNG BEARBEITEN"
+1. Kopfdaten
+- fullTimestamp (Datum und Uhrzeit)
+  Syntax: DateTime (via FormHeader Komponente)
+  Bedeutung: Definiert exakt, wann das Futter geliefert wurde.
+- Lieferdatum (LIEFERDATUM)
+  Syntax: Date (Schreibgeschützt)
+  Bedeutung: Wird automatisch aus dem fullTimestamp extrahiert und zur reinen Information angezeigt.
+- ID_SILO
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Das Ziel-Silo, in welches das Futter eingelagert wird.
+  Plausibilität: Pflichtfeld.
+
+2. Lieferant & Menge
+- ID_PERSON (Lieferant)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Die Person/Firma, welche das Futter geliefert hat. Die Auswahlliste ist vorselektiert auf Personen, die als Lieferant gekennzeichnet sind.
+- ID_FUTTERSORTEN (Grund / Sorte)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Die exakte Art des Futters.
+  Plausibilität: Pflichtfeld.
+- LIEFERMENGE
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Die gelieferte Futtermenge in Kilogramm (kg).
+- PREISDT
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Preis pro Dezitonne (100 kg) Futter.
+
+3. Preise & MwSt
+- NETTO
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Der Netto-Gesamtbetrag der Lieferung in Euro (€).
+- MWSTKZ (MwSt)
+  Syntax: String (Dropdown)
+  Bedeutung: Das Mehrwertsteuer-Kennzeichen (inklusive zugehörigem Prozentwert).
+- BRUTTO
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Der Brutto-Gesamtbetrag der Lieferung in Euro (€).
+- RABATTPROZ
+  Syntax: Float (Textfeld mit Komma-Parsing)
+  Bedeutung: Etwaiger Rabatt in Prozent (%).

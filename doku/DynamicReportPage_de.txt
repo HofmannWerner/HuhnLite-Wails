@@ -1,0 +1,30 @@
+Dokumentation DynamicReportPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "DynamicReportPage.vue" ist das Herzstück des Auswertungssystems. Sie stellt eine dynamische Reporting-Engine zur Verfügung, mit der Benutzer Berichte ansehen, filtern und exportieren können, während Administratoren neue Berichte per SQL konfigurieren können, ohne den Quellcode der Applikation ändern zu müssen.
+
+Die Seite ist in zwei Hauptbereiche ("Tabs") unterteilt:
+- Anzeige: Für den Endanwender zur Ansicht und Ausführung der Auswertungen.
+- Konfiguration: Nur für Administratoren sichtbar. Zur Anlage und Pflege der SQL-Berichte.
+
+2. Aufbau und Funktionen: Anzeige-Modus
+--------------------------------------------------------------------------------
+- Bericht wählen (Baumstruktur): Zeigt alle verfügbaren Berichte gruppiert nach Kategorien/Ordnern an.
+- Parameter-Filter: Wählt der Anwender einen Bericht aus, der Variablen im SQL-Befehl enthält (z.B. Datumsbereich oder eine spezifische Herde), öffnet sich automatisch ein "Filter einstellen" Dialog.
+- Darstellung:
+  - Standard/Listen (S, L): Eine flache, sortierbare Tabelle mit optionaler Summenzeile.
+  - Master-Detail Gitter (M): Zwei Tabellen (oben = Master, unten = Detail). Bei Klick auf einen Master-Datensatz aktualisieren sich die Detail-Daten.
+  - Master-Detail Template (T): Erzeugt einen HTML-Bericht auf Basis eines konfigurierten HTML-Templates (z.B. für formatierte Lieferscheine oder Rechnungen).
+- Aktionen: "Drucken / PDF" (Erzeugt eine Druckansicht) und "CSV Export" (Lädt die Rohdaten zur Weiterverarbeitung in Excel herunter).
+
+3. Aufbau und Funktionen: Konfiguration (Admin-Bereich)
+--------------------------------------------------------------------------------
+Berichte werden in einem mehrstufigen Assistenten (Stepper) angelegt:
+- Name & Art: Definition des Namens, der Kategorie und der grundlegenden Art (Einfache Liste, Gitter, Template).
+- Master & Header: 
+  - SYSTEM_KZ: Schützt den Report vor versehentlichem Löschen.
+  - Master SQL: Das primäre SQL-Statement, das die Hauptdatenbank-Abfrage darstellt. Platzhalter für Benutzereingaben werden in Fragezeichen eingefasst (z.B. `WHERE datum >= '?Startdatum?'`).
+- Detail-SQL: Nur bei Master-Detail Berichten. Verwendet Felder des selektierten Master-Datensatzes als Parameter (z.B. `WHERE id_master = '#ID#'`).
+- Formatierung: Parameter definieren (z.B. ob '?Startdatum?' als Datums-Picker oder Textfeld angezeigt werden soll). Festlegen von HTML-Templates für den Druck.

@@ -1,0 +1,69 @@
+Dokumentation PersonPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "PersonPage.vue" ist zuständig für die Verwaltung der zentralen Personen- und Firmenstammdaten (mit Ausnahme der eigenen Firma, welche über die FirmenPage verwaltet wird). 
+Hier werden alle Kontaktpersonen, Züchter, Händler und sonstigen Stakeholder angelegt und gepflegt. Die Ansicht verwendet ein "Card Grid" Design zur Übersicht, welches ein schnelles Suchen nach Namen oder Filtern nach dem Personentyp (z.B. Züchter) erlaubt.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+Dieses Formular (Dialog: "Neue Person hinzufügen" / "Person bearbeiten") erfasst die detaillierten Kontaktdaten.
+
+A) BILD / FOTO
+- FOTO
+  Syntax: Bild (Base64 kodiert, File-Upload)
+  Bedeutung: Optionales Profil- oder Firmenbild der Person.
+
+B) KLASSIFIZIERUNG & NUMMERN
+- PERSONENNUMMER
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Eindeutige interne oder externe Kundennummer/Personennummer.
+- ID_TEXTE
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Auswahl des Personen-Typs (z.B. Lieferant, Züchter, Kunde). Bezieht seine Auswahlmöglichkeiten aus der Texte/Lookup-Tabelle (Typ 'P').
+- KZ
+  Syntax: String (Schreibgeschütztes Textfeld)
+  Bedeutung: Abkürzung/Kennzeichen des ausgewählten Personentyps. Wird automatisch gesetzt, sobald ein Personen-Typ (ID_TEXTE) ausgewählt wird.
+  Plausibilität: Darf nicht 'F' sein (wird beim Speichern mit einer Fehlermeldung blockiert), da 'F' für die interne Firmenverwaltung (FirmenPage) reserviert ist.
+
+C) NAME & ANSCHRIFT
+- ID_ANREDE
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Auswahl der Anrede (z.B. Herr, Frau, Firma). Bezieht Daten aus Lookup-Tabelle Typ 'N'.
+- NAME
+  Syntax: String (Textfeld)
+  Bedeutung: Nachname oder primärer Name der Person/des Kontakts.
+  Plausibilität: Pflichtfeld (Darf nicht leer sein, sonst Validierungsfehler "Pflichtfeld").
+- FIRMA
+  Syntax: String (Textfeld)
+  Bedeutung: Optionaler Firmenname, falls es sich um ein Unternehmen handelt.
+- STRASSE
+  Syntax: String (Textfeld)
+  Bedeutung: Straße und Hausnummer.
+- PLZ
+  Syntax: String (Textfeld)
+  Bedeutung: Postleitzahl.
+- ORT
+  Syntax: String (Textfeld)
+  Bedeutung: Wohn- oder Firmensitz.
+- POSTFACH
+  Syntax: String (Textfeld)
+  Bedeutung: Angabe eines Postfachs.
+
+D) KONTAKTDATEN (KOMMUNIKATION)
+- TELEFON
+  Syntax: String (Textfeld, Typ 'tel')
+  Bedeutung: Festnetznummer.
+- MOBILTELEPHON
+  Syntax: String (Textfeld, Typ 'tel')
+  Bedeutung: Handynummer. In der Übersichtsansicht ist dies ein klickbarer Link ('tel:').
+- EMAIL
+  Syntax: String (Textfeld, Typ 'email')
+  Bedeutung: Primäre E-Mail-Adresse. In der Übersichtsansicht klickbar ('mailto:').
+- EMAIL2
+  Syntax: String (Textfeld, Typ 'email')
+  Bedeutung: Sekundäre E-Mail-Adresse.
+- HOMEPAGE
+  Syntax: String (Textfeld)
+  Bedeutung: Webseite der Person/Firma. In der Übersichtsansicht klickbar, öffnet einen neuen Tab. Fehlende "http/https" Präfixe werden automatisch ergänzt.

@@ -1,0 +1,25 @@
+Dokumentation AdminPage.vue (AdminDirect)
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "AdminPage.vue" (bzw. "AdminDirect.vue") ist ein hochgradig privilegierter System-Wartungs-Dialog ("DIREKT-MODUS").
+Diese Maske ist nicht für den produktiven Standard-Betrieb gedacht, sondern dient primär Test-, Demo- oder Entwicklungszwecken.
+Ihre einzige und hochriskante Funktion ist es, das "Datumswerte verschieben"-Skript auf der Datenbank auszuführen. Damit können auf einen Schlag alle Buchungs- und Leistungsdaten im System um X Tage in die Zukunft oder Vergangenheit verschoben werden.
+
+Dies ist nützlich, wenn man z.B. eine Demo-Datenbank mit alten Daten hat und diese komplett "auf heute" datieren möchte, um die Auswertungen wieder plausibel darzustellen.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "DATUMSWERTE VERSCHIEBEN"
+- Tage verschieben (daysInput)
+  Syntax: Integer (Nummern-Eingabe)
+  Bedeutung: Die Anzahl der Tage, um die alle Datumsfelder in der gesamten Datenbank verschoben werden sollen.
+  Plausibilität: Positive Zahlen verschieben die Daten in die Zukunft, negative Zahlen in die Vergangenheit.
+- Aktuellstes Datum in DB (latestDate)
+  Syntax: Info-Text (Readonly)
+  Bedeutung: Das System ermittelt das aktuellste Buchungsdatum aus der Datenbank.
+- Vorschlag (suggestedDiff)
+  Syntax: Info-Text (Readonly)
+  Bedeutung: Das System berechnet die Differenz in Tagen zwischen "Heute" und dem "Aktuellsten Datum in DB" und schlägt diesen Wert automatisch im Eingabefeld vor.

@@ -4,7 +4,11 @@ import {context} from '../models';
 
 export function GetDBStatus():Promise<Record<string, string>>;
 
+export function GetHelpContent():Promise<string>;
+
 export function Greet(arg1:string):Promise<string>;
+
+export function OpenHelp():Promise<string>;
 
 export function Quit():Promise<void>;
 

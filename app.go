@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	stdruntime "runtime"
 
 	"huhnlite-wails/backend/api"
 	"huhnlite-wails/backend/db"
@@ -140,3 +144,119 @@ func (a *App) Quit() {
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
+
+func (a *App) getHelpFilePaths() []string {
+	var pathsToCheck []string
+
+	// 1. If SQLite, check its directory
+	if a.database != nil && a.database.Engine == "sqlite" && a.database.Config.DBConnectionString != "" {
+		dbDir := filepath.Dir(a.database.Config.DBConnectionString)
+		pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, "HuhnLite-de.html"))
+	}
+
+	// 2. Check executable directory (BundleDir)
+	if execPath, err := os.Executable(); err == nil {
+		bundleDir := filepath.Dir(execPath)
+		if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
+			bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
+		}
+		pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, "HuhnLite-de.html"))
+	}
+
+	// 3. Check CWD
+	if cwd, err := os.Getwd(); err == nil {
+		pathsToCheck = append(pathsToCheck, filepath.Join(cwd, "HuhnLite-de.html"))
+	}
+
+	// 4. Check AppDataDir (Roaming/HuhnLite-Wails & Roaming)
+	if configDir, err := os.UserConfigDir(); err == nil {
+		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-de.html"))
+	}
+
+	// 5. Check LOCALAPPDATA environment variable (Local/HuhnLite-Wails & Local)
+	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-de.html"))
+	}
+
+	// 6. Check APPDATA environment variable (Roaming/HuhnLite-Wails & Roaming)
+	if appData := os.Getenv("APPDATA"); appData != "" {
+		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-de.html"))
+	}
+
+	return pathsToCheck
+}
+
+// GetHelpContent reads HuhnLite-de.html and returns its HTML content as a string
+func (a *App) GetHelpContent() (string, error) {
+	pathsToCheck := a.getHelpFilePaths()
+
+	var targetPath string
+	for _, p := range pathsToCheck {
+		log.Printf("[Help] Checking path: %s", p)
+		if _, err := os.Stat(p); err == nil {
+			targetPath = p
+			break
+		}
+	}
+
+	if targetPath == "" {
+		return "", fmt.Errorf("Die Hilfedatei 'HuhnLite-de.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab.")
+	}
+
+	content, err := os.ReadFile(targetPath)
+	if err != nil {
+		return "", fmt.Errorf("Fehler beim Lesen der Hilfedatei: %v", err)
+	}
+
+	return string(content), nil
+}
+
+// OpenHelp searches for HuhnLite-de.html analogously to HuhnLite.db and opens it in the browser
+func (a *App) OpenHelp() string {
+	pathsToCheck := a.getHelpFilePaths()
+
+	// Find first existing file
+	var targetPath string
+	for _, p := range pathsToCheck {
+		log.Printf("[Help] Checking path: %s", p)
+		if _, err := os.Stat(p); err == nil {
+			targetPath = p
+			break
+		}
+	}
+
+	if targetPath == "" {
+		log.Printf("[Help] Help file HuhnLite-de.html not found in any checked locations")
+		return "Die Hilfedatei 'HuhnLite-de.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab."
+	}
+
+	absPath, err := filepath.Abs(targetPath)
+	if err != nil {
+		absPath = targetPath
+	}
+	
+	log.Printf("[Help] Opening help file path natively: %s", absPath)
+	
+	var cmd *exec.Cmd
+	switch stdruntime.GOOS {
+	case "windows":
+		// On Windows, start can be tricky with quoted arguments. 
+		// "start" requires empty title quotes as first argument if target is quoted.
+		cmd = exec.Command("cmd", "/c", "start", "", absPath)
+	case "darwin":
+		cmd = exec.Command("open", absPath)
+	default:
+		cmd = exec.Command("xdg-open", absPath)
+	}
+	
+	if err := cmd.Start(); err != nil {
+		log.Printf("[Help] Error running open command: %v, falling back to Wails browser", err)
+		fileURL := "file:///" + filepath.ToSlash(absPath)
+		runtime.BrowserOpenURL(a.ctx, fileURL)
+	}
+	return ""
+}
+

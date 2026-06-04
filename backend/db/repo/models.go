@@ -50,35 +50,36 @@ type Benutzerprofile struct {
 }
 
 type Buchung struct {
-	ID              int64       `json:"id"`
-	IDHerden        int64       `json:"id_herden"`
-	Lw              int64       `json:"lw"`
-	Herdennummer    int64       `json:"herdennummer"`
-	Buchungsdatum   string      `json:"buchungsdatum"`
-	Gewichtprobe    int64       `json:"gewichtprobe"`
-	Kontrollgewicht float64     `json:"kontrollgewicht"`
-	Klassea         int64       `json:"klassea"`
-	Verluste        int64       `json:"verluste"`
-	Eimasse         float64     `json:"eimasse"`
-	Schmutz         int64       `json:"schmutz"`
-	Knickeier       int64       `json:"knickeier"`
-	Vollei          float64     `json:"vollei"`
-	Brucheier       int64       `json:"brucheier"`
-	Tierbestand     int64       `json:"tierbestand"`
-	IDEitabelle     int64       `json:"id_eitabelle"`
-	IDDgewichttab   int64       `json:"id_dgewichttab"`
-	Futterktag      int64       `json:"futterktag"`
-	Silonr          int64       `json:"silonr"`
-	Kl6             int64       `json:"kl6"`
-	Vermitteltam    string      `json:"vermitteltam"`
-	Small           int64       `json:"small"`
-	Large           int64       `json:"large"`
-	Medium          int64       `json:"medium"`
-	Xl              int64       `json:"xl"`
-	Zeitstempel     string      `json:"zeitstempel"`
-	Dgewichtei      float64     `json:"dgewichtei"`
-	Aw              int64       `json:"aw"`
-	Vermittelt      interface{} `json:"vermittelt"`
+	ID                  int64       `json:"id"`
+	IDHerden            int64       `json:"id_herden"`
+	Lw                  int64       `json:"lw"`
+	Herdennummer        int64       `json:"herdennummer"`
+	Buchungsdatum       string      `json:"buchungsdatum"`
+	Gewichtprobe        int64       `json:"gewichtprobe"`
+	Kontrollgewicht     float64     `json:"kontrollgewicht"`
+	Klassea             int64       `json:"klassea"`
+	Verluste            int64       `json:"verluste"`
+	Eimasse             float64     `json:"eimasse"`
+	Schmutz             int64       `json:"schmutz"`
+	Knickeier           int64       `json:"knickeier"`
+	Vollei              float64     `json:"vollei"`
+	Brucheier           int64       `json:"brucheier"`
+	Tierbestand         int64       `json:"tierbestand"`
+	IDEitabelle         int64       `json:"id_eitabelle"`
+	IDDgewichttab       int64       `json:"id_dgewichttab"`
+	Futterktag          int64       `json:"futterktag"`
+	Silonr              int64       `json:"silonr"`
+	Kl6                 int64       `json:"kl6"`
+	Vermitteltam        string      `json:"vermitteltam"`
+	Small               int64       `json:"small"`
+	Large               int64       `json:"large"`
+	Medium              int64       `json:"medium"`
+	Xl                  int64       `json:"xl"`
+	Zeitstempel         string      `json:"zeitstempel"`
+	Dgewichtei          float64     `json:"dgewichtei"`
+	Aw                  int64       `json:"aw"`
+	Vermittelt          interface{} `json:"vermittelt"`
+	Futterverbrauchtier int64       `json:"futterverbrauchtier"`
 }
 
 type DynamischeSql struct {
@@ -208,6 +209,7 @@ type Firmenparameter struct {
 	Bio                       int64       `json:"bio"`
 	Haltungstyp               interface{} `json:"haltungstyp"`
 	Bioaufschlag              interface{} `json:"bioaufschlag"`
+	Futterinventur            int64       `json:"futterinventur"`
 }
 
 type Futter struct {

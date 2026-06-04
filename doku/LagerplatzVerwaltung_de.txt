@@ -1,0 +1,34 @@
+Dokumentation LagerplatzVerwaltung.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "LagerplatzVerwaltung.vue" ist ein Stammdaten-Modul zur feingranularen Unterteilung von Eierlagern.
+Während ein "Eilager" z.B. eine ganze Halle oder ein Kühlraum ist, können hierin spezifische "Lagerplätze" (z.B. "Regal A", "Stellplatz 3") definiert werden. Diese Plätze können dann in den Lagerbuchungen zur genauen Verortung von Beständen herangezogen werden.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTERFELDER (Übersichtsliste)
+- filterEilager (Nach Eierlager filtern)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Reduziert die Liste der angezeigten Lagerplätze auf diejenigen, die einem bestimmten Haupt-Eilager zugeordnet sind.
+- searchTerm (Suchen)
+  Syntax: String (Textfeld)
+  Bedeutung: Volltextsuche über die Bezeichnung und Bemerkung der Lagerplätze.
+
+B) FORMULAR "NEUER LAGERPLATZ" / "LAGERPLATZ BEARBEITEN"
+1. Zuordnung
+- Eierlager auswählen (ID_EILAGER)
+  Syntax: Integer (Dropdown / q-select)
+  Bedeutung: Das übergeordnete Eilager, in dem sich dieser Lagerplatz befindet.
+  Plausibilität: Pflichtfeld.
+
+2. Stammdaten
+- Bezeichnung (BEZEICHNUNG)
+  Syntax: String (Textfeld, max 40 Zeichen)
+  Bedeutung: Eindeutiger Name oder Identifikator für den Lagerplatz.
+  Plausibilität: Pflichtfeld.
+- Bemerkung (BEMERKUNG)
+  Syntax: String (Textarea)
+  Bedeutung: Optionales Feld für zusätzliche Hinweise oder Wegbeschreibungen zum Lagerplatz.

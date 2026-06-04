@@ -151,39 +151,40 @@ insert into buchung (
     id_herden, lw, herdennummer, buchungsdatum, gewichtprobe, kontrollgewicht,
     klassea, verluste, eimasse, schmutz, knickeier, vollei, brucheier,
     tierbestand, id_eitabelle, id_dgewichttab, futterktag, silonr,
-    kl6, vermitteltam, small, large, medium, xl, dgewichtei, zeitstempel, aw, vermittelt)
-values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    kl6, vermitteltam, small, large, medium, xl, dgewichtei, zeitstempel, aw, vermittelt, futterverbrauchtier)
+values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateBuchungParams struct {
-	IDHerden        int32   `json:"id_herden"`
-	Lw              int32   `json:"lw"`
-	Herdennummer    int32   `json:"herdennummer"`
-	Buchungsdatum   string  `json:"buchungsdatum"`
-	Gewichtprobe    int32   `json:"gewichtprobe"`
-	Kontrollgewicht float64 `json:"kontrollgewicht"`
-	Klassea         int32   `json:"klassea"`
-	Verluste        int32   `json:"verluste"`
-	Eimasse         float64 `json:"eimasse"`
-	Schmutz         int32   `json:"schmutz"`
-	Knickeier       int32   `json:"knickeier"`
-	Vollei          float64 `json:"vollei"`
-	Brucheier       int32   `json:"brucheier"`
-	Tierbestand     int32   `json:"tierbestand"`
-	IDEitabelle     int32   `json:"id_eitabelle"`
-	IDDgewichttab   int32   `json:"id_dgewichttab"`
-	Futterktag      int32   `json:"futterktag"`
-	Silonr          int32   `json:"silonr"`
-	Kl6             int32   `json:"kl6"`
-	Vermitteltam    string  `json:"vermitteltam"`
-	Small           int32   `json:"small"`
-	Large           int32   `json:"large"`
-	Medium          int32   `json:"medium"`
-	Xl              int32   `json:"xl"`
-	Dgewichtei      float64 `json:"dgewichtei"`
-	Zeitstempel     string  `json:"zeitstempel"`
-	Aw              int32   `json:"aw"`
-	Vermittelt      string  `json:"vermittelt"`
+	IDHerden            int32   `json:"id_herden"`
+	Lw                  int32   `json:"lw"`
+	Herdennummer        int32   `json:"herdennummer"`
+	Buchungsdatum       string  `json:"buchungsdatum"`
+	Gewichtprobe        int32   `json:"gewichtprobe"`
+	Kontrollgewicht     float64 `json:"kontrollgewicht"`
+	Klassea             int32   `json:"klassea"`
+	Verluste            int32   `json:"verluste"`
+	Eimasse             float64 `json:"eimasse"`
+	Schmutz             int32   `json:"schmutz"`
+	Knickeier           int32   `json:"knickeier"`
+	Vollei              float64 `json:"vollei"`
+	Brucheier           int32   `json:"brucheier"`
+	Tierbestand         int32   `json:"tierbestand"`
+	IDEitabelle         int32   `json:"id_eitabelle"`
+	IDDgewichttab       int32   `json:"id_dgewichttab"`
+	Futterktag          int32   `json:"futterktag"`
+	Silonr              int32   `json:"silonr"`
+	Kl6                 int32   `json:"kl6"`
+	Vermitteltam        string  `json:"vermitteltam"`
+	Small               int32   `json:"small"`
+	Large               int32   `json:"large"`
+	Medium              int32   `json:"medium"`
+	Xl                  int32   `json:"xl"`
+	Dgewichtei          float64 `json:"dgewichtei"`
+	Zeitstempel         string  `json:"zeitstempel"`
+	Aw                  int32   `json:"aw"`
+	Vermittelt          string  `json:"vermittelt"`
+	Futterverbrauchtier int32   `json:"futterverbrauchtier"`
 }
 
 func (q *Queries) CreateBuchung(ctx context.Context, arg CreateBuchungParams) (sql.Result, error) {
@@ -216,6 +217,7 @@ func (q *Queries) CreateBuchung(ctx context.Context, arg CreateBuchungParams) (s
 		arg.Zeitstempel,
 		arg.Aw,
 		arg.Vermittelt,
+		arg.Futterverbrauchtier,
 	)
 }
 
@@ -359,9 +361,9 @@ insert into firmenparameter (
     id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung,
     maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei,
     chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung,
-    beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag)
+    beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag, futterinventur)
 values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?)
+        ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateFirmenparameterParams struct {
@@ -409,6 +411,7 @@ type CreateFirmenparameterParams struct {
 	Bio                       int32   `json:"bio"`
 	Haltungstyp               string  `json:"haltungstyp"`
 	Bioaufschlag              float64 `json:"bioaufschlag"`
+	Futterinventur            int32   `json:"futterinventur"`
 }
 
 func (q *Queries) CreateFirmenparameter(ctx context.Context, arg CreateFirmenparameterParams) (sql.Result, error) {
@@ -457,6 +460,7 @@ func (q *Queries) CreateFirmenparameter(ctx context.Context, arg CreateFirmenpar
 		arg.Bio,
 		arg.Haltungstyp,
 		arg.Bioaufschlag,
+		arg.Futterinventur,
 	)
 }
 
@@ -4691,31 +4695,32 @@ set id_herden = ?, lw = ?, herdennummer = ?, buchungsdatum = ?, gewichtprobe = ?
     dgewichtei  = ?,
     zeitstempel = ?,
     aw          = ?,
-    vermittelt  = ?
+    vermittelt  = ?,
+    futterverbrauchtier = ?
 where id = ?
 `
 
 type UpdateBuchungParams struct {
-	IDHerden        int32   `json:"id_herden"`
-	Lw              int32   `json:"lw"`
-	Herdennummer    int32   `json:"herdennummer"`
-	Buchungsdatum   string  `json:"buchungsdatum"`
-	Gewichtprobe    int32   `json:"gewichtprobe"`
-	Kontrollgewicht float64 `json:"kontrollgewicht"`
-	Klassea         int32   `json:"klassea"`
-	Verluste        int32   `json:"verluste"`
-	Eimasse         float64 `json:"eimasse"`
-	Schmutz         int32   `json:"schmutz"`
-	Knickeier       int32   `json:"knickeier"`
-	Vollei          float64 `json:"vollei"`
-	Brucheier       int32   `json:"brucheier"`
+	IDHerden            int32   `json:"id_herden"`
+	Lw                  int32   `json:"lw"`
+	Herdennummer        int32   `json:"herdennummer"`
+	Buchungsdatum       string  `json:"buchungsdatum"`
+	Gewichtprobe        int32   `json:"gewichtprobe"`
+	Kontrollgewicht     float64 `json:"kontrollgewicht"`
+	Klassea             int32   `json:"klassea"`
+	Verluste            int32   `json:"verluste"`
+	Eimasse             float64 `json:"eimasse"`
+	Schmutz             int32   `json:"schmutz"`
+	Knickeier           int32   `json:"knickeier"`
+	Vollei              float64 `json:"vollei"`
+	Brucheier           int32   `json:"brucheier"`
 	Tierbestand     int32   `json:"tierbestand"`
 	IDEitabelle     int32   `json:"id_eitabelle"`
 	IDDgewichttab   int32   `json:"id_dgewichttab"`
 	Futterktag      int32   `json:"futterktag"`
 	Silonr          int32   `json:"silonr"`
 	Kl6             int32   `json:"kl6"`
-	Vermitteltam    string  `json:"vermitteltam"`
+	Vermitteltam        string  `json:"vermitteltam"`
 	Small           int32   `json:"small"`
 	Large           int32   `json:"large"`
 	Medium          int32   `json:"medium"`
@@ -4724,7 +4729,8 @@ type UpdateBuchungParams struct {
 	Zeitstempel     string  `json:"zeitstempel"`
 	Aw              int32   `json:"aw"`
 	Vermittelt      string  `json:"vermittelt"`
-	ID              int32   `json:"id"`
+	Futterverbrauchtier int32   `json:"futterverbrauchtier"`
+	ID                  int32   `json:"id"`
 }
 
 func (q *Queries) UpdateBuchung(ctx context.Context, arg UpdateBuchungParams) (sql.Result, error) {
@@ -4757,6 +4763,7 @@ func (q *Queries) UpdateBuchung(ctx context.Context, arg UpdateBuchungParams) (s
 		arg.Zeitstempel,
 		arg.Aw,
 		arg.Vermittelt,
+		arg.Futterverbrauchtier,
 		arg.ID,
 	)
 }
@@ -5048,7 +5055,8 @@ set kz = ?, jumbos = ?, klassenerfassen = ?, klasseaerfassen = ?, klasseaerrechn
     pseudolager  = ?,
     bio          = ?,
     haltungstyp  = ?,
-    bioaufschlag = ?
+    bioaufschlag = ?,
+    futterinventur = ?
 where id_herden = ?
 `
 
@@ -5096,6 +5104,7 @@ type UpdateFirmenparameterParams struct {
 	Bio                       int32   `json:"bio"`
 	Haltungstyp               string  `json:"haltungstyp"`
 	Bioaufschlag              float64 `json:"bioaufschlag"`
+	Futterinventur            int32   `json:"futterinventur"`
 	IDHerden                  int32   `json:"id_herden"`
 }
 
@@ -5144,6 +5153,7 @@ func (q *Queries) UpdateFirmenparameter(ctx context.Context, arg UpdateFirmenpar
 		arg.Bio,
 		arg.Haltungstyp,
 		arg.Bioaufschlag,
+		arg.Futterinventur,
 		arg.IDHerden,
 	)
 }

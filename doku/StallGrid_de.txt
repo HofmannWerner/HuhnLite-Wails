@@ -1,0 +1,21 @@
+Dokumentation StallGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "StallGrid.vue" ist ein einfaches Stammdaten-Modul zur Anlage und Verwaltung der Ställe im Betrieb.
+Ställe dienen als oberste physische Haltungsebene und können mehreren Herden zugeordnet werden.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "NEUER STALL" / "STALL BEARBEITEN"
+1. Stammdaten
+- Stallnummer (STALLNUMMER)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Eindeutige, logische Nummer des Stalls auf dem Betriebsgelände.
+  Plausibilität: Pflichtfeld.
+- Stallbezeichnung (BEZEICHNUNG)
+  Syntax: String (Textfeld)
+  Bedeutung: Beschreibender Name für den Stall (z.B. "Stall Nord", "Aufzuchtstall 1").
+  Plausibilität: Pflichtfeld.

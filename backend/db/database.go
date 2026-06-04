@@ -179,6 +179,167 @@ func Connect(cfg config.Config) (*DB, error) {
 				}
 			}
 		}
+
+		// Fix für FUTTER (ZEITSTEMPEL hinzufügen falls fehlend)
+		{
+			table := "FUTTER"
+			columns := []struct {
+				name string
+				spec string
+			}{
+				{"ZEITSTEMPEL", "VARCHAR(50) DEFAULT '0001-01-01 00:00:00'"},
+			}
+			for _, col := range columns {
+				var hasColumn bool
+				if cfg.DBEngine == "sqlite" {
+					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
+						for rows.Next() {
+							var cid int
+							var name, dtype string
+							var notnull, pk int
+							var dflt_value interface{}
+							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
+								hasColumn = true
+							}
+						}
+						rows.Close()
+					}
+				} else {
+					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
+					rows, err := conn.Query(checkQuery)
+					if err == nil {
+						if rows.Next() {
+							hasColumn = true
+						}
+						rows.Close()
+					}
+				}
+				if !hasColumn {
+					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
+					spec := col.spec
+					if cfg.DBEngine == "sqlite" && strings.Contains(spec, "VARCHAR") {
+						spec = "TEXT DEFAULT '0001-01-01 00:00:00'"
+					}
+					if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col.name, spec)); err == nil {
+						log.Printf("[DB] Successfully added %s to %s", col.name, table)
+					} else {
+						log.Printf("[DB] Error adding %s to %s: %v", col.name, table, err)
+					}
+				}
+			}
+		}
+
+		// Fix für BUCHUNG (FUTTERVERBRAUCHTIER hinzufügen falls fehlend)
+		{
+			table := "BUCHUNG"
+			columns := []struct {
+				name string
+				spec string
+			}{
+				{"FUTTERVERBRAUCHTIER", "INTEGER NOT NULL DEFAULT 0"},
+			}
+			for _, col := range columns {
+				var hasColumn bool
+				if cfg.DBEngine == "sqlite" {
+					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
+						for rows.Next() {
+							var cid int
+							var name, dtype string
+							var notnull, pk int
+							var dflt_value interface{}
+							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
+								hasColumn = true
+							}
+						}
+						rows.Close()
+					}
+				} else {
+					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
+					rows, err := conn.Query(checkQuery)
+					if err == nil {
+						if rows.Next() {
+							hasColumn = true
+						}
+						rows.Close()
+					}
+				}
+				if !hasColumn {
+					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
+					spec := col.spec
+					if cfg.DBEngine == "sqlite" && strings.Contains(spec, "INTEGER") {
+						spec = "INTEGER NOT NULL DEFAULT 0"
+					} else if cfg.DBEngine == "mysql" && strings.Contains(spec, "INTEGER") {
+						spec = "INT NOT NULL DEFAULT 0"
+					}
+					if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col.name, spec)); err == nil {
+						log.Printf("[DB] Successfully added %s to %s", col.name, table)
+					} else {
+						log.Printf("[DB] Error adding %s to %s: %v", col.name, table, err)
+					}
+				}
+			}
+		}
+
+		// Fix für FIRMENPARAMETER (FUTTERINVENTUR hinzufügen falls fehlend)
+		{
+			table := "FIRMENPARAMETER"
+			columns := []struct {
+				name string
+				spec string
+			}{
+				{"FUTTERINVENTUR", "INTEGER NOT NULL DEFAULT 0"},
+			}
+			for _, col := range columns {
+				var hasColumn bool
+				if cfg.DBEngine == "sqlite" {
+					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
+						for rows.Next() {
+							var cid int
+							var name, dtype string
+							var notnull, pk int
+							var dflt_value interface{}
+							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
+								hasColumn = true
+							}
+						}
+						rows.Close()
+					}
+				} else {
+					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
+					rows, err := conn.Query(checkQuery)
+					if err == nil {
+						if rows.Next() {
+							hasColumn = true
+						}
+						rows.Close()
+					}
+				}
+				if !hasColumn {
+					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
+					spec := col.spec
+					if cfg.DBEngine == "sqlite" && strings.Contains(spec, "INTEGER") {
+						spec = "INTEGER NOT NULL DEFAULT 0"
+					} else if cfg.DBEngine == "mysql" && strings.Contains(spec, "INTEGER") {
+						spec = "INT NOT NULL DEFAULT 0"
+					}
+					if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col.name, spec)); err == nil {
+						log.Printf("[DB] Successfully added %s to %s", col.name, table)
+					} else {
+						log.Printf("[DB] Error adding %s to %s: %v", col.name, table, err)
+					}
+				}
+			}
+		}
+
+		// Fix for existing float values in FUTTERKTAG in SQLite
+		if cfg.DBEngine == "sqlite" {
+			_, err = conn.Exec("UPDATE BUCHUNG SET FUTTERKTAG = CAST(ROUND(FUTTERKTAG) AS INTEGER) WHERE typeof(FUTTERKTAG) = 'real'")
+			if err != nil {
+				log.Printf("[DB] Error cleaning up FUTTERKTAG floats: %v", err)
+			} else {
+				log.Printf("[DB] Successfully cleaned up any float FUTTERKTAG values in SQLite")
+			}
+		}
 	}
 
 	if err != nil {

@@ -249,40 +249,41 @@ INSERT INTO BUCHUNG (
     ID_HERDEN, LW, HERDENNUMMER, BUCHUNGSDATUM, GEWICHTPROBE, KONTROLLGEWICHT,
     KLASSEA, VERLUSTE, EIMASSE, SCHMUTZ, KNICKEIER, VOLLEI, BRUCHEIER,
     TIERBESTAND, ID_EITABELLE, ID_DGEWICHTTAB, FUTTERKTAG, SILONR,
-    KL6, VERMITTELTAM, SMALL, LARGE, MEDIUM, XL, DGEWICHTEI, ZEITSTEMPEL, AW, VERMITTELT)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, id_herden, lw, herdennummer, buchungsdatum, gewichtprobe, kontrollgewicht, klassea, verluste, eimasse, schmutz, knickeier, vollei, brucheier, tierbestand, id_eitabelle, id_dgewichttab, futterktag, silonr, kl6, vermitteltam, small, large, medium, xl, zeitstempel, dgewichtei, aw, vermittelt
+    KL6, VERMITTELTAM, SMALL, LARGE, MEDIUM, XL, DGEWICHTEI, ZEITSTEMPEL, AW, VERMITTELT, FUTTERVERBRAUCHTIER)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, id_herden, lw, herdennummer, buchungsdatum, gewichtprobe, kontrollgewicht, klassea, verluste, eimasse, schmutz, knickeier, vollei, brucheier, tierbestand, id_eitabelle, id_dgewichttab, futterktag, silonr, kl6, vermitteltam, small, large, medium, xl, zeitstempel, dgewichtei, aw, vermittelt, futterverbrauchtier
 `
 
 type CreateBuchungParams struct {
-	IDHerden        int64       `json:"id_herden"`
-	Lw              int64       `json:"lw"`
-	Herdennummer    int64       `json:"herdennummer"`
-	Buchungsdatum   string      `json:"buchungsdatum"`
-	Gewichtprobe    int64       `json:"gewichtprobe"`
-	Kontrollgewicht float64     `json:"kontrollgewicht"`
-	Klassea         int64       `json:"klassea"`
-	Verluste        int64       `json:"verluste"`
-	Eimasse         float64     `json:"eimasse"`
-	Schmutz         int64       `json:"schmutz"`
-	Knickeier       int64       `json:"knickeier"`
-	Vollei          float64     `json:"vollei"`
-	Brucheier       int64       `json:"brucheier"`
-	Tierbestand     int64       `json:"tierbestand"`
-	IDEitabelle     int64       `json:"id_eitabelle"`
-	IDDgewichttab   int64       `json:"id_dgewichttab"`
-	Futterktag      int64       `json:"futterktag"`
-	Silonr          int64       `json:"silonr"`
-	Kl6             int64       `json:"kl6"`
-	Vermitteltam    string      `json:"vermitteltam"`
-	Small           int64       `json:"small"`
-	Large           int64       `json:"large"`
-	Medium          int64       `json:"medium"`
-	Xl              int64       `json:"xl"`
-	Dgewichtei      float64     `json:"dgewichtei"`
-	Zeitstempel     string      `json:"zeitstempel"`
-	Aw              int64       `json:"aw"`
-	Vermittelt      interface{} `json:"vermittelt"`
+	IDHerden            int64       `json:"id_herden"`
+	Lw                  int64       `json:"lw"`
+	Herdennummer        int64       `json:"herdennummer"`
+	Buchungsdatum       string      `json:"buchungsdatum"`
+	Gewichtprobe        int64       `json:"gewichtprobe"`
+	Kontrollgewicht     float64     `json:"kontrollgewicht"`
+	Klassea             int64       `json:"klassea"`
+	Verluste            int64       `json:"verluste"`
+	Eimasse             float64     `json:"eimasse"`
+	Schmutz             int64       `json:"schmutz"`
+	Knickeier           int64       `json:"knickeier"`
+	Vollei              float64     `json:"vollei"`
+	Brucheier           int64       `json:"brucheier"`
+	Tierbestand         int64       `json:"tierbestand"`
+	IDEitabelle         int64       `json:"id_eitabelle"`
+	IDDgewichttab       int64       `json:"id_dgewichttab"`
+	Futterktag          int64       `json:"futterktag"`
+	Silonr              int64       `json:"silonr"`
+	Kl6                 int64       `json:"kl6"`
+	Vermitteltam        string      `json:"vermitteltam"`
+	Small               int64       `json:"small"`
+	Large               int64       `json:"large"`
+	Medium              int64       `json:"medium"`
+	Xl                  int64       `json:"xl"`
+	Dgewichtei          float64     `json:"dgewichtei"`
+	Zeitstempel         string      `json:"zeitstempel"`
+	Aw                  int64       `json:"aw"`
+	Vermittelt          interface{} `json:"vermittelt"`
+	Futterverbrauchtier int64       `json:"futterverbrauchtier"`
 }
 
 func (q *Queries) CreateBuchung(ctx context.Context, arg CreateBuchungParams) (Buchung, error) {
@@ -315,6 +316,7 @@ func (q *Queries) CreateBuchung(ctx context.Context, arg CreateBuchungParams) (B
 		arg.Zeitstempel,
 		arg.Aw,
 		arg.Vermittelt,
+		arg.Futterverbrauchtier,
 	)
 	var i Buchung
 	err := row.Scan(
@@ -347,6 +349,7 @@ func (q *Queries) CreateBuchung(ctx context.Context, arg CreateBuchungParams) (B
 		&i.Dgewichtei,
 		&i.Aw,
 		&i.Vermittelt,
+		&i.Futterverbrauchtier,
 	)
 	return i, err
 }
@@ -553,9 +556,9 @@ INSERT INTO FIRMENPARAMETER (
     ID_TABELLEGEWICHT, ID_TABELLEALTER, LEGEBEGINN_LW, VERLUSTEBEIBUCHUNG, LAGERBUCHUNGBEIBUCHUNG,
     MAXTAGEVERMITTELN, CHARGEJUMBOS, CHARGEXL, CHARGEMEDIUM, CHARGESMALL, CHARGELARGE, CHARGEVOLLEI,
     CHARGEPREFIXFIRMA, CHARGEPREFIXHERDENNUMMER, CHARGEDATUM, CHARGELAGERNUMMER, CHARGETRENNUNG,
-    BEIVERMITTELNDATUMAKTUELL, PSEUDOLAGER, BIO, HALTUNGSTYP, BIOAUFSCHLAG)
+    BEIVERMITTELNDATUMAKTUELL, PSEUDOLAGER, BIO, HALTUNGSTYP, BIOAUFSCHLAG, FUTTERINVENTUR)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?) RETURNING id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag
+        ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag, futterinventur
 `
 
 type CreateFirmenparameterParams struct {
@@ -603,6 +606,7 @@ type CreateFirmenparameterParams struct {
 	Bio                       int64       `json:"bio"`
 	Haltungstyp               interface{} `json:"haltungstyp"`
 	Bioaufschlag              interface{} `json:"bioaufschlag"`
+	Futterinventur            int64       `json:"futterinventur"`
 }
 
 func (q *Queries) CreateFirmenparameter(ctx context.Context, arg CreateFirmenparameterParams) (Firmenparameter, error) {
@@ -651,6 +655,7 @@ func (q *Queries) CreateFirmenparameter(ctx context.Context, arg CreateFirmenpar
 		arg.Bio,
 		arg.Haltungstyp,
 		arg.Bioaufschlag,
+		arg.Futterinventur,
 	)
 	var i Firmenparameter
 	err := row.Scan(
@@ -700,6 +705,7 @@ func (q *Queries) CreateFirmenparameter(ctx context.Context, arg CreateFirmenpar
 		&i.Bio,
 		&i.Haltungstyp,
 		&i.Bioaufschlag,
+		&i.Futterinventur,
 	)
 	return i, err
 }
@@ -2003,7 +2009,7 @@ func (q *Queries) GetBestandsuebersicht(ctx context.Context, arg GetBestandsuebe
 }
 
 const getBuchung = `-- name: GetBuchung :one
-SELECT id, id_herden, lw, herdennummer, buchungsdatum, gewichtprobe, kontrollgewicht, klassea, verluste, eimasse, schmutz, knickeier, vollei, brucheier, tierbestand, id_eitabelle, id_dgewichttab, futterktag, silonr, kl6, vermitteltam, small, large, medium, xl, zeitstempel, dgewichtei, aw, vermittelt
+SELECT id, id_herden, lw, herdennummer, buchungsdatum, gewichtprobe, kontrollgewicht, klassea, verluste, eimasse, schmutz, knickeier, vollei, brucheier, tierbestand, id_eitabelle, id_dgewichttab, futterktag, silonr, kl6, vermitteltam, small, large, medium, xl, zeitstempel, dgewichtei, aw, vermittelt, futterverbrauchtier
 FROM BUCHUNG
 WHERE ID = ?
 `
@@ -2041,6 +2047,7 @@ func (q *Queries) GetBuchung(ctx context.Context, id int64) (Buchung, error) {
 		&i.Dgewichtei,
 		&i.Aw,
 		&i.Vermittelt,
+		&i.Futterverbrauchtier,
 	)
 	return i, err
 }
@@ -2559,7 +2566,7 @@ func (q *Queries) GetEilagerSumBySource(ctx context.Context, arg GetEilagerSumBy
 }
 
 const getFirmenparameterByHerde = `-- name: GetFirmenparameterByHerde :one
-SELECT id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag
+SELECT id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag, futterinventur
 FROM FIRMENPARAMETER
 WHERE ID_HERDEN = ? OR ID_HERDEN = -1
 ORDER BY ID_HERDEN DESC
@@ -2616,6 +2623,7 @@ func (q *Queries) GetFirmenparameterByHerde(ctx context.Context, idHerden int64)
 		&i.Bio,
 		&i.Haltungstyp,
 		&i.Bioaufschlag,
+		&i.Futterinventur,
 	)
 	return i, err
 }
@@ -2652,7 +2660,7 @@ func (q *Queries) GetGewichtByTabNumAndWeight(ctx context.Context, arg GetGewich
 }
 
 const getGlobalFirmenparameter = `-- name: GetGlobalFirmenparameter :one
-SELECT id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag
+SELECT id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag, futterinventur
 FROM FIRMENPARAMETER
 WHERE ID_HERDEN = -1
 LIMIT 1
@@ -2708,6 +2716,7 @@ func (q *Queries) GetGlobalFirmenparameter(ctx context.Context) (Firmenparameter
 		&i.Bio,
 		&i.Haltungstyp,
 		&i.Bioaufschlag,
+		&i.Futterinventur,
 	)
 	return i, err
 }
@@ -3326,6 +3335,7 @@ SELECT B.ID,
        B.DGEWICHTEI,
        B.AW,
        B.VERMITTELT,
+       B.FUTTERVERBRAUCHTIER,
        H.HERDENNUMMER AS HERDEN_NUMMER_REL,
        H.BEZEICHNUNG AS HERDEN_BEZEICHNUNG_REL,
        H.ID_EILAGER   AS HERDEN_ID_EILAGER,
@@ -3366,6 +3376,7 @@ type ListBuchungenRow struct {
 	Dgewichtei           float64        `json:"dgewichtei"`
 	Aw                   int64          `json:"aw"`
 	Vermittelt           interface{}    `json:"vermittelt"`
+	Futterverbrauchtier  int64          `json:"futterverbrauchtier"`
 	HerdenNummerRel      sql.NullInt64  `json:"herden_nummer_rel"`
 	HerdenBezeichnungRel sql.NullString `json:"herden_bezeichnung_rel"`
 	HerdenIDEilager      sql.NullInt64  `json:"herden_id_eilager"`
@@ -3411,6 +3422,7 @@ func (q *Queries) ListBuchungen(ctx context.Context) ([]ListBuchungenRow, error)
 			&i.Dgewichtei,
 			&i.Aw,
 			&i.Vermittelt,
+			&i.Futterverbrauchtier,
 			&i.HerdenNummerRel,
 			&i.HerdenBezeichnungRel,
 			&i.HerdenIDEilager,
@@ -5352,40 +5364,42 @@ SET ID_HERDEN = ?, LW = ?, HERDENNUMMER = ?, BUCHUNGSDATUM = ?, GEWICHTPROBE = ?
     DGEWICHTEI  = ?,
     ZEITSTEMPEL = ?,
     AW          = ?,
-    VERMITTELT  = ?
-WHERE ID = ? RETURNING id, id_herden, lw, herdennummer, buchungsdatum, gewichtprobe, kontrollgewicht, klassea, verluste, eimasse, schmutz, knickeier, vollei, brucheier, tierbestand, id_eitabelle, id_dgewichttab, futterktag, silonr, kl6, vermitteltam, small, large, medium, xl, zeitstempel, dgewichtei, aw, vermittelt
+    VERMITTELT  = ?,
+    FUTTERVERBRAUCHTIER = ?
+WHERE ID = ? RETURNING id, id_herden, lw, herdennummer, buchungsdatum, gewichtprobe, kontrollgewicht, klassea, verluste, eimasse, schmutz, knickeier, vollei, brucheier, tierbestand, id_eitabelle, id_dgewichttab, futterktag, silonr, kl6, vermitteltam, small, large, medium, xl, zeitstempel, dgewichtei, aw, vermittelt, futterverbrauchtier
 `
 
 type UpdateBuchungParams struct {
-	IDHerden        int64       `json:"id_herden"`
-	Lw              int64       `json:"lw"`
-	Herdennummer    int64       `json:"herdennummer"`
-	Buchungsdatum   string      `json:"buchungsdatum"`
-	Gewichtprobe    int64       `json:"gewichtprobe"`
-	Kontrollgewicht float64     `json:"kontrollgewicht"`
-	Klassea         int64       `json:"klassea"`
-	Verluste        int64       `json:"verluste"`
-	Eimasse         float64     `json:"eimasse"`
-	Schmutz         int64       `json:"schmutz"`
-	Knickeier       int64       `json:"knickeier"`
-	Vollei          float64     `json:"vollei"`
-	Brucheier       int64       `json:"brucheier"`
-	Tierbestand     int64       `json:"tierbestand"`
-	IDEitabelle     int64       `json:"id_eitabelle"`
-	IDDgewichttab   int64       `json:"id_dgewichttab"`
-	Futterktag      int64       `json:"futterktag"`
-	Silonr          int64       `json:"silonr"`
-	Kl6             int64       `json:"kl6"`
-	Vermitteltam    string      `json:"vermitteltam"`
-	Small           int64       `json:"small"`
-	Large           int64       `json:"large"`
-	Medium          int64       `json:"medium"`
-	Xl              int64       `json:"xl"`
-	Dgewichtei      float64     `json:"dgewichtei"`
-	Zeitstempel     string      `json:"zeitstempel"`
-	Aw              int64       `json:"aw"`
-	Vermittelt      interface{} `json:"vermittelt"`
-	ID              int64       `json:"id"`
+	IDHerden            int64       `json:"id_herden"`
+	Lw                  int64       `json:"lw"`
+	Herdennummer        int64       `json:"herdennummer"`
+	Buchungsdatum       string      `json:"buchungsdatum"`
+	Gewichtprobe        int64       `json:"gewichtprobe"`
+	Kontrollgewicht     float64     `json:"kontrollgewicht"`
+	Klassea             int64       `json:"klassea"`
+	Verluste            int64       `json:"verluste"`
+	Eimasse             float64     `json:"eimasse"`
+	Schmutz             int64       `json:"schmutz"`
+	Knickeier           int64       `json:"knickeier"`
+	Vollei              float64     `json:"vollei"`
+	Brucheier           int64       `json:"brucheier"`
+	Tierbestand         int64       `json:"tierbestand"`
+	IDEitabelle         int64       `json:"id_eitabelle"`
+	IDDgewichttab       int64       `json:"id_dgewichttab"`
+	Futterktag          int64       `json:"futterktag"`
+	Silonr              int64       `json:"silonr"`
+	Kl6                 int64       `json:"kl6"`
+	Vermitteltam        string      `json:"vermitteltam"`
+	Small               int64       `json:"small"`
+	Large               int64       `json:"large"`
+	Medium              int64       `json:"medium"`
+	Xl                  int64       `json:"xl"`
+	Dgewichtei          float64     `json:"dgewichtei"`
+	Zeitstempel         string      `json:"zeitstempel"`
+	Aw                  int64       `json:"aw"`
+	Vermittelt          interface{} `json:"vermittelt"`
+	Futterverbrauchtier int64       `json:"futterverbrauchtier"`
+	ID                  int64       `json:"id"`
 }
 
 func (q *Queries) UpdateBuchung(ctx context.Context, arg UpdateBuchungParams) (Buchung, error) {
@@ -5418,6 +5432,7 @@ func (q *Queries) UpdateBuchung(ctx context.Context, arg UpdateBuchungParams) (B
 		arg.Zeitstempel,
 		arg.Aw,
 		arg.Vermittelt,
+		arg.Futterverbrauchtier,
 		arg.ID,
 	)
 	var i Buchung
@@ -5451,6 +5466,7 @@ func (q *Queries) UpdateBuchung(ctx context.Context, arg UpdateBuchungParams) (B
 		&i.Dgewichtei,
 		&i.Aw,
 		&i.Vermittelt,
+		&i.Futterverbrauchtier,
 	)
 	return i, err
 }
@@ -5820,8 +5836,9 @@ SET KZ = ?, JUMBOS = ?, KLASSENERFASSEN = ?, KLASSEAERFASSEN = ?, KLASSEAERRECHN
     PSEUDOLAGER  = ?,
     BIO          = ?,
     HALTUNGSTYP  = ?,
-    BIOAUFSCHLAG = ?
-WHERE ID_HERDEN = ? RETURNING id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag
+    BIOAUFSCHLAG = ?,
+    FUTTERINVENTUR = ?
+WHERE ID_HERDEN = ? RETURNING id, id_herden, kz, jumbos, klassenerfassen, klasseaerfassen, klasseaerrechnen, klasseavermitteln, erfasseschmutzei, erfasseknickei, erfassebruchei, erfassevollei, massvollei, aufteilunggewicht, kontrollwiegung, anzahlkontrollw, verpackungkg, aufteilungalter, erfassevolleikg, laufzeitwochen, zeitstempel, schlachterloeshenne, produktionsdauer, id_tabellegewicht, id_tabellealter, legebeginn_lw, verlustebeibuchung, lagerbuchungbeibuchung, aw, maxtagevermitteln, chargejumbos, chargexl, chargemedium, chargesmall, chargelarge, chargevollei, chargeprefixfirma, chargeprefixherdennummer, chargedatum, chargelagernummer, chargetrennung, beivermittelndatumaktuell, pseudolager, bio, haltungstyp, bioaufschlag, futterinventur
 `
 
 type UpdateFirmenparameterParams struct {
@@ -5868,6 +5885,7 @@ type UpdateFirmenparameterParams struct {
 	Bio                       int64       `json:"bio"`
 	Haltungstyp               interface{} `json:"haltungstyp"`
 	Bioaufschlag              interface{} `json:"bioaufschlag"`
+	Futterinventur            int64       `json:"futterinventur"`
 	IDHerden                  int64       `json:"id_herden"`
 }
 
@@ -5916,6 +5934,7 @@ func (q *Queries) UpdateFirmenparameter(ctx context.Context, arg UpdateFirmenpar
 		arg.Bio,
 		arg.Haltungstyp,
 		arg.Bioaufschlag,
+		arg.Futterinventur,
 		arg.IDHerden,
 	)
 	var i Firmenparameter
@@ -5966,6 +5985,7 @@ func (q *Queries) UpdateFirmenparameter(ctx context.Context, arg UpdateFirmenpar
 		&i.Bio,
 		&i.Haltungstyp,
 		&i.Bioaufschlag,
+		&i.Futterinventur,
 	)
 	return i, err
 }

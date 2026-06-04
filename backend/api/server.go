@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -90,6 +91,24 @@ func toString(i interface{}) string {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+type dbExecutor interface {
+	QueryRowContext(ctx context.Context, query string, args ...interface{}) *sql.Row
+}
+
+func getSiloNrForHerd(ctx context.Context, dbExecutor dbExecutor, herdID int64) int64 {
+	var idSilo int64
+	err := dbExecutor.QueryRowContext(ctx, "SELECT ID_SILO FROM HERDEN WHERE ID = ?", herdID).Scan(&idSilo)
+	if err != nil || idSilo <= 0 {
+		return 0
+	}
+	var silonr int64
+	err = dbExecutor.QueryRowContext(ctx, "SELECT SILONUMMER FROM SILO WHERE ID = ?", idSilo).Scan(&silonr)
+	if err != nil {
+		return 0
+	}
+	return silonr
 }
 
 func toNullInt64(v int64) sql.NullInt64 {
@@ -319,6 +338,55 @@ func doAutomaticEilagerBuchung(ctx context.Context, conn *sql.DB, queries db.Que
 	return err
 }
 
+func getHelpDir(database *wailsdb.DB) string {
+	var pathsToCheck []string
+
+	// 1. If SQLite, check its directory
+	if database != nil && database.Engine == "sqlite" && database.Config.DBConnectionString != "" {
+		dbDir := filepath.Dir(database.Config.DBConnectionString)
+		pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, "HuhnLite-de.html"))
+	}
+
+	// 2. Check executable directory
+	if execPath, err := os.Executable(); err == nil {
+		bundleDir := filepath.Dir(execPath)
+		if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
+			bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
+		}
+		pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, "HuhnLite-de.html"))
+	}
+
+	// 3. Check CWD
+	if cwd, err := os.Getwd(); err == nil {
+		pathsToCheck = append(pathsToCheck, filepath.Join(cwd, "HuhnLite-de.html"))
+	}
+
+	// 4. Check AppDataDir
+	if configDir, err := os.UserConfigDir(); err == nil {
+		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-de.html"))
+	}
+
+	// 5. Check LOCALAPPDATA
+	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-de.html"))
+	}
+
+	// 6. Check APPDATA
+	if appData := os.Getenv("APPDATA"); appData != "" {
+		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-de.html"))
+	}
+
+	for _, p := range pathsToCheck {
+		if _, err := os.Stat(p); err == nil {
+			return filepath.Dir(p)
+		}
+	}
+	return ""
+}
+
 func StartServer(database *wailsdb.DB) *gin.Engine {
 	log.Printf("[DEBUG] StartServer called with engine: %s", database.Engine)
 	conn := database.SQL
@@ -335,6 +403,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	if os.Getenv("APP_ENV") == "dev" {
 		r.Use(gin.Logger())
+	}
+
+	// Serve help directory statically if found
+	if helpDir := getHelpDir(database); helpDir != "" {
+		log.Printf("[API] Serving help files from: %s", helpDir)
+		r.Static("/help", helpDir)
+	} else {
+		log.Println("[API] Help directory not found, static /help route will not be served")
 	}
 
 	// Verhindert SQLite CGO Segfaults bei abgebrochenen HTTP-Requests (Axios unmount cancellation)
@@ -595,6 +671,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		Bio                       int64    `json:"BIO"`
 		Haltungstyp               string   `json:"HALTUNGSTYP"`
 		Bioaufschlag              float64  `json:"BIOAUFSCHLAG"`
+		Futterinventur            int64    `json:"FUTTERINVENTUR"`
 	}
 
 	r.POST("/api/firmenparameter", func(c *gin.Context) {
@@ -654,6 +731,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Bio:                       req.Bio,
 			Haltungstyp:               req.Haltungstyp,
 			Bioaufschlag:              req.Bioaufschlag,
+			Futterinventur:            req.Futterinventur,
 		}
 
 		// FOOLPROOF STRATEGY: Delete any existing record for this herd, then insert the new one.
@@ -731,6 +809,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Bio:                       req.Bio,
 			Haltungstyp:               req.Haltungstyp,
 			Bioaufschlag:              req.Bioaufschlag,
+			Futterinventur:            req.Futterinventur,
 		}
 
 		_, dbErr := queries.CreateFirmenparameter(c, params)
@@ -1128,6 +1207,288 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 		c.JSON(http.StatusOK, res)
+	})
+
+	r.POST("/api/silo/:id/inventur", func(c *gin.Context) {
+		idStr := c.Param("id")
+		siloID, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			log.Printf("[INVENTUR] Invalid Silo ID: %s, error: %v", idStr, err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültiges Silo-ID Format"})
+			return
+		}
+
+		var req struct {
+			Inventurdatum      string  `json:"INVENTURDATUMNEU" binding:"required"`
+			Inventurfuellmenge float64 `json:"INVENTURFUELLMENGE" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			log.Printf("[INVENTUR] JSON bind error: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		log.Printf("[INVENTUR] Start processing SiloID: %d, Date: %s, Qty: %.2f", siloID, req.Inventurdatum, req.Inventurfuellmenge)
+
+		// 1. Transaction starten
+		tx, err := conn.BeginTx(c, nil)
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to begin transaction: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Starten der Transaktion: " + err.Error()})
+			return
+		}
+		defer tx.Rollback()
+
+		// 2. Silo laden
+		var silonummer int64
+		var bezeichnung string
+		var inventurDatumAlt string
+		var inventurDatumNeu string
+		err = tx.QueryRowContext(c, "SELECT SILONUMMER, BEZEICHNUNG, INVENTURDATUMALT, INVENTURDATUMNEU FROM SILO WHERE ID = ?", siloID).Scan(&silonummer, &bezeichnung, &inventurDatumAlt, &inventurDatumNeu)
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to load Silo ID %d: %v", siloID, err)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Silo nicht gefunden: " + err.Error()})
+			return
+		}
+		log.Printf("[INVENTUR] Loaded Silo Nr: %d, Bez: %s, AltDate: %s, NeuDate: %s", silonummer, bezeichnung, inventurDatumAlt, inventurDatumNeu)
+
+		// Fallback für leeres Alt-Datum
+		if strings.TrimSpace(inventurDatumAlt) == "" {
+			inventurDatumAlt = "0001-01-01"
+		}
+
+		// 3. Check 1: Max(Buchungsdatum) der angeschlossenen Herden > Inventurdatum (nur aktive Herden berücksichtigen)
+		var maxBuchungsdatum sql.NullString
+		err = tx.QueryRowContext(c, `
+			SELECT MAX(B.BUCHUNGSDATUM) 
+			FROM BUCHUNG B
+			JOIN HERDEN H ON B.ID_HERDEN = H.ID
+			WHERE H.ID_SILO = ? AND H.AKTIV = 1`, siloID).Scan(&maxBuchungsdatum)
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to fetch max booking date for SiloNr %d: %v", silonummer, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Abfragen des maximalen Buchungsdatums: " + err.Error()})
+			return
+		}
+
+		maxDateStr := "0001-01-01"
+		if maxBuchungsdatum.Valid {
+			maxDateStr = maxBuchungsdatum.String
+		}
+		log.Printf("[INVENTUR] Max booking date for SiloNr %d is %s", silonummer, maxDateStr)
+
+		if maxDateStr <= req.Inventurdatum {
+			log.Printf("[INVENTUR] Validation failed: Max booking date %s <= entered date %s", maxDateStr, req.Inventurdatum)
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Das maximale Buchungsdatum der angeschlossenen Herden (%s) muss nach dem Inventurdatum (%s) liegen.", maxDateStr, req.Inventurdatum)})
+			return
+		}
+
+		// 4. Letzte Futterlieferung holen
+		var lastF struct {
+			ID_SILO         int64
+			SILONUMMER      int64
+			HERDENR         int64
+			ID_PERSON       int64
+			LIEFERDATUM     string
+			LIEFERMENGE     float64
+			PREISDT         float64
+			RABATTPROZ      float64
+			NETTO           float64
+			BRUTTO          float64
+			MWSTPROZ        float64
+			MWSTKZ          interface{}
+			DATUM           string
+			ZEITSTEMPEL     string
+			ID_FUTTERSORTEN int64
+			AW              int64
+		}
+		err = tx.QueryRowContext(c, `
+			SELECT ID_SILO, SILONUMMER, HERDENR, ID_PERSON, LIEFERDATUM, LIEFERMENGE, PREISDT, RABATTPROZ, NETTO, BRUTTO, MWSTPROZ, MWSTKZ, DATUM, ZEITSTEMPEL, ID_FUTTERSORTEN, AW
+			FROM FUTTER WHERE ID_SILO = ? ORDER BY LIEFERDATUM DESC, ID DESC LIMIT 1`, siloID).
+			Scan(&lastF.ID_SILO, &lastF.SILONUMMER, &lastF.HERDENR, &lastF.ID_PERSON, &lastF.LIEFERDATUM, &lastF.LIEFERMENGE, &lastF.PREISDT, &lastF.RABATTPROZ, &lastF.NETTO, &lastF.BRUTTO, &lastF.MWSTPROZ, &lastF.MWSTKZ, &lastF.DATUM, &lastF.ZEITSTEMPEL, &lastF.ID_FUTTERSORTEN, &lastF.AW)
+		
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to load last feed delivery: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Keine vorherige Futterlieferung für dieses Silo gefunden. Kopieren nicht möglich."})
+			return
+		}
+		log.Printf("[INVENTUR] Copying last feed delivery: ID_PERSON=%d, SortenID=%d, PreisDt=%.2f, MwStProz=%.2f, MwStKz=%v",
+			lastF.ID_PERSON, lastF.ID_FUTTERSORTEN, lastF.PREISDT, lastF.MWSTPROZ, lastF.MWSTKZ)
+
+		// 5. Zwei Buchungssätze erstellen
+		// a) Liefermenge auf Inventurmenge, Lieferdatum auf Inventurdatum
+		inventurMenge := req.Inventurfuellmenge
+		inventurDatum := req.Inventurdatum
+		mwstKzStr := toString(lastF.MWSTKZ)
+
+		// Netto und Brutto berechnen
+		nettoA := inventurMenge * (lastF.PREISDT / 100.0) * (1.0 - lastF.RABATTPROZ / 100.0)
+		bruttoA := nettoA * (1.0 + lastF.MWSTPROZ / 100.0)
+		log.Printf("[INVENTUR] Calculated Booking A: Net=%.2f, Gross=%.2f", nettoA, bruttoA)
+
+		insertQuery := `
+			INSERT INTO FUTTER (ID_SILO, SILONUMMER, HERDENR, ID_PERSON, LIEFERDATUM, LIEFERMENGE, PREISDT, RABATTPROZ, NETTO, BRUTTO, MWSTPROZ, MWSTKZ, DATUM, ZEITSTEMPEL, AW, ID_FUTTERSORTEN)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+		resA, err := tx.ExecContext(c, insertQuery,
+			lastF.ID_SILO, lastF.SILONUMMER, lastF.HERDENR, lastF.ID_PERSON,
+			inventurDatum, inventurMenge, lastF.PREISDT, lastF.RABATTPROZ,
+			nettoA, bruttoA, lastF.MWSTPROZ, mwstKzStr,
+			inventurDatum, inventurDatum + " 12:00:00Z", lastF.AW, lastF.ID_FUTTERSORTEN,
+		)
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to insert Booking A: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Speichern der ersten Futterbuchung (a): " + err.Error()})
+			return
+		}
+		idA, _ := resA.LastInsertId()
+		log.Printf("[INVENTUR] Booking A inserted successfully. ID=%d", idA)
+
+		// b) Lieferdatum auf Inventurdatum - 1, Liefermenge auf minus (negative)
+		tParsed, err := time.Parse("2006-01-02", inventurDatum)
+		if err != nil {
+			log.Printf("[INVENTUR] Date parse error: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültiges Datumsformat: " + err.Error()})
+			return
+		}
+		prevDatum := tParsed.AddDate(0, 0, -1).Format("2006-01-02")
+		mengeB := -inventurMenge
+		nettoB := mengeB * (lastF.PREISDT / 100.0) * (1.0 - lastF.RABATTPROZ / 100.0)
+		bruttoB := nettoB * (1.0 + lastF.MWSTPROZ / 100.0)
+		log.Printf("[INVENTUR] Calculated Booking B: Date=%s, Qty=%.2f, Net=%.2f, Gross=%.2f", prevDatum, mengeB, nettoB, bruttoB)
+
+		resB, err := tx.ExecContext(c, insertQuery,
+			lastF.ID_SILO, lastF.SILONUMMER, lastF.HERDENR, lastF.ID_PERSON,
+			prevDatum, mengeB, lastF.PREISDT, lastF.RABATTPROZ,
+			nettoB, bruttoB, lastF.MWSTPROZ, mwstKzStr,
+			prevDatum, prevDatum + " 12:00:00Z", lastF.AW, lastF.ID_FUTTERSORTEN,
+		)
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to insert Booking B: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Speichern der zweiten Futterbuchung (b): " + err.Error()})
+			return
+		}
+		idB, _ := resB.LastInsertId()
+		log.Printf("[INVENTUR] Booking B inserted successfully. ID=%d", idB)
+
+		// 6. Ab diesem Datum (INVENTURDATUMALT) bis Inventurdatum - 1
+		// Futterlieferungen abfragen
+		var gesamtLiefermenge, gesamtNetto, gesamtBrutto float64
+		err = tx.QueryRowContext(c, `
+			SELECT COALESCE(SUM(LIEFERMENGE), 0.0), COALESCE(SUM(NETTO), 0.0), COALESCE(SUM(BRUTTO), 0.0)
+			FROM FUTTER WHERE ID_SILO = ? AND LIEFERDATUM >= ? AND LIEFERDATUM <= ?`,
+			siloID, inventurDatumAlt, prevDatum).Scan(&gesamtLiefermenge, &gesamtNetto, &gesamtBrutto)
+
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to sum deliveries in period [%s, %s]: %v", inventurDatumAlt, prevDatum, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Berechnen der Gesamtlieferungen: " + err.Error()})
+			return
+		}
+		log.Printf("[INVENTUR] Summed deliveries: Qty=%.2f, Net=%.2f, Gross=%.2f", gesamtLiefermenge, gesamtNetto, gesamtBrutto)
+
+		// 7. Alle Buchungssätze für diesen Zeitraum und diese Silonummer (alle Herden des Silos) lesen
+		// Errechne die FuttertageGesamt (= Tierbestand der Buchungen)
+		var futtertageGesamt int64
+		err = tx.QueryRowContext(c, `
+			SELECT COALESCE(SUM(B.TIERBESTAND), 0) 
+			FROM BUCHUNG B
+			JOIN HERDEN H ON B.ID_HERDEN = H.ID
+			WHERE H.ID_SILO = ? 
+			  AND B.BUCHUNGSDATUM >= ? AND B.BUCHUNGSDATUM <= ?`,
+			siloID, inventurDatumAlt, prevDatum).Scan(&futtertageGesamt)
+
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to sum bird days: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Berechnen der Futtertage: " + err.Error()})
+			return
+		}
+		log.Printf("[INVENTUR] Summed bird days: %d", futtertageGesamt)
+
+		if futtertageGesamt <= 0 {
+			log.Printf("[INVENTUR] Error: Bird days is <= 0")
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Keine Tierbestände in den Herdenbuchungen für den Zeitraum %s bis %s gefunden. Berechnung abgebrochen.", inventurDatumAlt, prevDatum)})
+			return
+		}
+
+		// Futterverbrauch Tier (in Gramm) und Futterkosten Tier (in Euro) Errechnen
+		futterverbrauchTierGrams := int64(math.Round((gesamtLiefermenge * 1000.0) / float64(futtertageGesamt)))
+		futterkostenTier := gesamtNetto / float64(futtertageGesamt)
+		log.Printf("[INVENTUR] Consumption: %d g/bird/day, Costs: %.6f EUR/bird/day", futterverbrauchTierGrams, futterkostenTier)
+
+		// 8. Hole alle Buchungen für den Zeitraum (alle Herden des Silos) und speichere
+		rows, err := tx.QueryContext(c, `
+			SELECT B.ID, B.TIERBESTAND 
+			FROM BUCHUNG B
+			JOIN HERDEN H ON B.ID_HERDEN = H.ID
+			WHERE H.ID_SILO = ? 
+			  AND B.BUCHUNGSDATUM >= ? AND B.BUCHUNGSDATUM <= ?`,
+			siloID, inventurDatumAlt, prevDatum)
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to query bookings for update: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Lesen der Buchungssätze: " + err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		type buchungUpdate struct {
+			id          int64
+			tierbestand int64
+		}
+		var updates []buchungUpdate
+		for rows.Next() {
+			var buID, tb int64
+			if err := rows.Scan(&buID, &tb); err == nil {
+				updates = append(updates, buchungUpdate{id: buID, tierbestand: tb})
+			}
+		}
+		rows.Close()
+		log.Printf("[INVENTUR] Found %d booking rows to update", len(updates))
+
+		for _, up := range updates {
+			futterKtag := int64(math.Round(futterkostenTier * float64(up.tierbestand)))
+			_, err = tx.ExecContext(c, `
+				UPDATE BUCHUNG
+				SET FUTTERVERBRAUCHTIER = ?, FUTTERKTAG = ?, SILONR = ?
+				WHERE ID = ?`,
+				futterverbrauchTierGrams, futterKtag, silonummer, up.id)
+			if err != nil {
+				log.Printf("[INVENTUR] Failed to update booking ID %d: %v", up.id, err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Fehler beim Aktualisieren der Buchung ID %d: %s", up.id, err.Error())})
+				return
+			}
+		}
+		log.Printf("[INVENTUR] Successfully updated all %d daily bookings", len(updates))
+
+		// 9. Speichere das Inventurdatum (inventurDatum) in den Silosatz in das Feld Inventurdatum Alt,
+		// und setze Inventurdatum Neu auf das neue Datum, und die Inventurfüllmenge.
+		_, err = tx.ExecContext(c, `
+			UPDATE SILO
+			SET INVENTURDATUMALT = ?, INVENTURDATUMNEU = ?, INVENTURFUELLMENGE = ?
+			WHERE ID = ?`,
+			inventurDatum, inventurDatum, inventurMenge, siloID)
+		if err != nil {
+			log.Printf("[INVENTUR] Failed to update Silo: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Aktualisieren des Silosatzes: " + err.Error()})
+			return
+		}
+		log.Printf("[INVENTUR] Successfully updated SILO table details")
+
+		// 10. Commit transaction
+		err = tx.Commit()
+		if err != nil {
+			log.Printf("[INVENTUR] Commit failed: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Commit der Transaktion: " + err.Error()})
+			return
+		}
+		log.Printf("[INVENTUR] Transaction committed successfully!")
+
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Futterinventur erfolgreich durchgeführt",
+			"gesamt_liefermenge": gesamtLiefermenge,
+			"gesamt_netto": gesamtNetto,
+			"futtertage_gesamt": futtertageGesamt,
+			"futterverbrauch_tier_g": futterverbrauchTierGrams,
+			"futterkosten_tier_eur": futterkostenTier,
+		})
 	})
 
 	r.DELETE("/api/silo/:id", func(c *gin.Context) {
@@ -3071,6 +3432,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		Dgewichtei           float64 `json:"DGEWICHTEI"`
 		Aw                   int64   `json:"AW"`
 		Vermittelt           string  `json:"VERMITTELT"`
+		Futterverbrauchtier  int64   `json:"FUTTERVERBRAUCHTIER"`
 		HerdenNummerRel      int64   `json:"HERDEN_NUMMER_REL"`
 		HerdenBezeichnungRel string  `json:"HERDEN_BEZEICHNUNG_REL"`
 	}
@@ -3117,6 +3479,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				Dgewichtei:      v.Dgewichtei,
 				Aw:              v.Aw,
 				Vermittelt:      toString(v.Vermittelt),
+				Futterverbrauchtier: v.Futterverbrauchtier,
 				HerdenNummerRel: v.HerdenNummerRel.Int64,
 			}
 		}
@@ -3280,6 +3643,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Dgewichtei      float64 `json:"DGEWICHTEI"`
 			Aw              int64   `json:"AW"`
 			Vermittelt      string  `json:"VERMITTELT"`
+			Futterverbrauchtier int64 `json:"FUTTERVERBRAUCHTIER"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			log.Printf("[API] POST /api/buchung - Bind Error: %v", err)
@@ -3291,7 +3655,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		req.Vermitteltam = sanitizeDate(req.Vermitteltam)
 		req.Zeitstempel = sanitizeDateTime(req.Zeitstempel)
 
-		log.Printf("[API] POST /api/buchung - Received: %+v", req)
+		siloNr := req.Silonr
+		if siloNr <= 0 {
+			siloNr = getSiloNrForHerd(c, conn, req.IDHerden)
+		}
+
+		log.Printf("[API] POST /api/buchung - Received: %+v, Resolved SiloNr: %d", req, siloNr)
 
 		// Dublettenprüfung
 		var count int64
@@ -3428,7 +3797,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					IDEitabelle:     req.IDEitabelle,
 					IDDgewichttab:   req.IDDgewichttab,
 					Futterktag:      req.Futterktag,
-					Silonr:          req.Silonr,
+					Silonr:          siloNr,
 					Kl6:             distInt(req.Kl6, isLast),
 					Vermitteltam:    vGroupDate,
 					Small:           distInt(req.Small, isLast),
@@ -3439,6 +3808,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					Zeitstempel:     req.Zeitstempel,
 					Aw:              req.Aw,
 					Vermittelt:      "V", // Vermittelt
+					Futterverbrauchtier: req.Futterverbrauchtier,
 				}
 				res, err := queries.CreateBuchung(c, p)
 				if err != nil {
@@ -3474,7 +3844,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			IDEitabelle:     req.IDEitabelle,
 			IDDgewichttab:   req.IDDgewichttab,
 			Futterktag:      req.Futterktag,
-			Silonr:          req.Silonr,
+			Silonr:          siloNr,
 			Kl6:             req.Kl6,
 			Vermitteltam:    req.Vermitteltam,
 			Small:           req.Small,
@@ -3485,6 +3855,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Zeitstempel:     req.Zeitstempel,
 			Aw:              req.Aw,
 			Vermittelt:      "N", // Normal
+			Futterverbrauchtier: req.Futterverbrauchtier,
 		}
 		res, err := queries.CreateBuchung(c, params)
 		if err != nil {
@@ -3532,6 +3903,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Dgewichtei      float64 `json:"DGEWICHTEI"`
 			Aw              int64   `json:"AW"`
 			Vermittelt      string  `json:"VERMITTELT"`
+			Futterverbrauchtier int64 `json:"FUTTERVERBRAUCHTIER"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -3540,6 +3912,32 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		req.Buchungsdatum = sanitizeDate(req.Buchungsdatum)
 		req.Vermitteltam = sanitizeDate(req.Vermitteltam)
+
+		existing, err := queries.GetBuchung(c, idInt)
+		var existingSilonr, existingFvt, existingFkt int64
+		if err == nil {
+			existingSilonr = existing.Silonr
+			existingFvt = existing.Futterverbrauchtier
+			existingFkt = existing.Futterktag
+		}
+
+		siloNr := req.Silonr
+		if siloNr <= 0 {
+			siloNr = existingSilonr
+		}
+		if siloNr <= 0 {
+			siloNr = getSiloNrForHerd(c, conn, req.IDHerden)
+		}
+
+		fvt := req.Futterverbrauchtier
+		if fvt <= 0 {
+			fvt = existingFvt
+		}
+
+		fkt := req.Futterktag
+		if fkt <= 0 {
+			fkt = existingFkt
+		}
 
 		// Dublettenprüfung (unter Ausschluss des eigenen Datensatzes)
 		var count int64
@@ -3567,8 +3965,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Tierbestand:     req.Tierbestand,
 			IDEitabelle:     req.IDEitabelle,
 			IDDgewichttab:   req.IDDgewichttab,
-			Futterktag:      req.Futterktag,
-			Silonr:          req.Silonr,
+			Futterktag:      fkt,
+			Silonr:          siloNr,
 			Kl6:             req.Kl6,
 			Vermitteltam:    req.Vermitteltam,
 			Small:           req.Small,
@@ -3579,6 +3977,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Zeitstempel:     req.Zeitstempel,
 			Aw:              req.Aw,
 			Vermittelt:      req.Vermittelt,
+			Futterverbrauchtier: fvt,
 		}
 		res, err := queries.UpdateBuchung(c, params)
 		if err != nil {
@@ -8342,6 +8741,25 @@ func migrateDB(database *wailsdb.DB) {
 	// 3. Basis-Daten synchronisieren, falls MariaDB leer ist
 	if database.Engine == "mysql" {
 		syncDataFromSQLite(database)
+	}
+
+	// 4. Backfill SILONR for bookings that have 0
+	log.Println("Migration: Repariere SILONR = 0 in BUCHUNG...")
+	repairRes, err := db.Exec(`
+		UPDATE BUCHUNG
+		SET SILONR = COALESCE((
+			SELECT S.SILONUMMER
+			FROM HERDEN H
+			JOIN SILO S ON H.ID_SILO = S.ID
+			WHERE H.ID = BUCHUNG.ID_HERDEN
+		), 0)
+		WHERE SILONR = 0`)
+	if err != nil {
+		log.Printf("Fehler beim Reparieren von SILONR in BUCHUNG: %v", err)
+	} else {
+		if rows, err := repairRes.RowsAffected(); err == nil && rows > 0 {
+			log.Printf("Migration: %d Buchungen erfolgreich mit korrekter SILONR aktualisiert.", rows)
+		}
 	}
 }
 

@@ -1,0 +1,30 @@
+Dokumentation VerlusteGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "VerlusteGrid.vue" dient der isolierten Erfassung und Auswertung von Tierverlusten (z.B. durch Krankheit, Tod, Keulung).
+Technisch greift sie auf die gleiche Datenbank-Tabelle zurück wie alle anderen Tierbewegungen, filtert die Ansicht jedoch hart auf den Bewegungstyp 'V' (Verlust).
+Über diese Maske können neue Verlust-Buchungen initiiert werden, welche dann zur Dateneingabe den allgemeinen `TierbewegungDialog` (vorbelegt auf Typ 'V') aufrufen.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTERFELDER (Übersichtsliste)
+- filterDays (Zeitraum in Tagen)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Begrenzt die angezeigten Buchungen auf die letzten X Tage (Standard: 7).
+- filterHerde (Herde auswählen)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Filtert die Liste nach einer spezifischen Herde. Eine Herde muss hier ausgewählt sein, um den Button "Neue Verluste" zu aktivieren.
+- filterText (Grund Verlust)
+  Syntax: Integer (Dropdown)
+  Bedeutung: Filtert die Verluste nach einem bestimmten Grund (Datenbasis: Systemtexte vom Typ 'V').
+
+B) AKTIONEN (Übersicht)
+- Neue Verluste (Button)
+  Bedeutung: Öffnet den `TierbewegungDialog` zur Erfassung. Es wird automatisch der Verlust-Modus (`fixed-typ=true`, `initial-typ="V"`) gesetzt, sodass der Benutzer den Typ nicht mehr verändern kann.
+- Edit-Icon / Row-Doppelklick
+  Bedeutung: Öffnet einen bestehenden Verlust-Eintrag im `TierbewegungDialog` zur Bearbeitung.
+- Delete-Icon
+  Bedeutung: Löscht die Verlustbuchung nach einer Bestätigungs-Rückfrage.

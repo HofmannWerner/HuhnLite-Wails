@@ -1,0 +1,34 @@
+Dokumentation TierbewegungenGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "TierbewegungenGrid.vue" ist ein hybrides Verwaltungsmodul für die Veränderung von Tierbeständen.
+Die Komponente besitzt zwei völlig unterschiedliche Ansichten (View-Modi), die abhängig vom ausgewählten "Grund" (Filterfeld) umgeschaltet werden:
+1. **Standard-Ansicht**: Zeigt eine Liste der Leistungsbuchungen an. Hier kann über den Button "Bewegung hinzufügen" der "TierbewegungDialog" aufgerufen werden, um z.B. manuelle Zugänge oder Abgänge (Verkäufe/Schlachtungen) zu buchen.
+2. **Umstallungs-Ansicht (Dual Grid)**: Wenn als Grund eine "Umstallung" (Typ 'T', KZ 'U') gewählt wird, wechselt die Oberfläche in ein Zwei-Tabellen-Layout. Hier können Tiere datumssynchron von einer Quell-Herde in eine Ziel-Herde verschoben werden (dies entspricht logisch der Funktionalität, die auch in der separaten `TierUmstallungPage.vue` zu finden ist).
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FILTERFELDER (Übersicht)
+- filterHerde (Herde auswählen)
+  Bedeutung: Filtert die angezeigten Buchungen auf eine bestimmte Herde. Ist Voraussetzung, um den "Neu"-Button in der Standard-Ansicht nutzen zu können.
+- timeframe (Zeitraum)
+  Bedeutung: Dropdown zur Schnellauswahl der Zeitspanne (Letzte 7, 30, 90 Tage oder Alle).
+- filterDateRangeText (Manuelles Datum)
+  Bedeutung: Erlaubt eine exakte Eingabe von Start- und Enddatum.
+- filterText (Grund)
+  Bedeutung: Dropdown für den Bewegungsgrund (Systemtexte Typ 'T'). **Wichtig:** Die Auswahl eines Grundes mit dem Kennzeichen 'U' (Umstallung) ändert das Layout der gesamten Komponente in den Umstallungs-Modus.
+
+B) AKTIONEN
+- Standard-Modus ("Neu" / "+" Icon)
+  Öffnet die Komponente `TierbewegungDialog`.
+- Umstallungs-Modus (Pfeil-Icon "east")
+  Wird aktiv, wenn in der linken (Quell-Herde) und der rechten (Ziel-Herde) Tabelle jeweils eine Buchung am selben Datum markiert wurde.
+
+C) DIALOG "TIER-UMSTALLUNG" (Mengen-Eingabe)
+- amount (Anzahl Stück)
+  Syntax: Integer (Nummern-Feld)
+  Bedeutung: Die exakte Anzahl der Tiere, die umgestallt werden sollen.
+  Plausibilität: Darf nicht <= 0 sein. Darf den verfügbaren Tierbestand der Quell-Herde am gewählten Tag nicht überschreiten.

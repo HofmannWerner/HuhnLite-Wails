@@ -274,7 +274,13 @@
               />
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.KLASSEAVERMITTELN" label="KlasseA vermitteln" dense color="secondary"/>
+              <q-checkbox
+                v-model="paramForm.KLASSEAVERMITTELN"
+                label="KlasseA vermitteln"
+                dense
+                color="secondary"
+                @update:model-value="onKlasseAVermittelnChanged"
+              />
             </div>
             <div class="col-6 col-md-4">
               <q-checkbox v-model="paramForm.ERFASSESCHMUTZEI" label="Schmutzeier" dense color="secondary"/>
@@ -326,6 +332,15 @@
             </div>
             <div class="col-6 col-md-4">
               <q-checkbox v-model="paramForm.PSEUDOLAGER" label="PseudoLager erlauben" dense color="secondary"/>
+            </div>
+            <div class="col-6 col-md-4">
+              <q-checkbox
+                v-model="paramForm.FUTTERINVENTUR"
+                label="Futterinventur"
+                dense
+                color="secondary"
+                @update:model-value="onFutterinventurChanged"
+              />
             </div>
           </div>
         </q-form>
@@ -405,7 +420,8 @@ const paramForm = reactive({
   BEIVERMITTELNDATUMAKTUELL: false,
   PSEUDOLAGER: false,
   BIO: false,
-  HALTUNGSTYP: '3'
+  HALTUNGSTYP: '3',
+  FUTTERINVENTUR: false
 });
 const originalParams = ref<string>('');
 const isParamsDirty = computed(() => JSON.stringify(paramForm) !== originalParams.value);
@@ -583,7 +599,8 @@ async function loadParams() {
       PSEUDOLAGER: (extractInt(d.PSEUDOLAGER || d.pseudolager) === 1),
       BIO: (extractInt(d.BIO || d.bio) === 1),
       HALTUNGSTYP: typeof (d.HALTUNGSTYP || d.haltungstyp) === 'string' ? (d.HALTUNGSTYP || d.haltungstyp) : ((d.HALTUNGSTYP || d.haltungstyp) || '3'),
-      BIOAUFSCHLAG: Number(d.BIOAUFSCHLAG || d.bioaufschlag) || 0
+      BIOAUFSCHLAG: Number(d.BIOAUFSCHLAG || d.bioaufschlag) || 0,
+      FUTTERINVENTUR: (extractInt(d.FUTTERINVENTUR || d.futterinventur) === 1)
     };
     Object.assign(paramForm, data);
     // Ensure all fields are in the baseline for comparison, including unchanged ones like id_herden
@@ -601,6 +618,42 @@ function onPhotoSelected(file: File | null) {
     companyForm.FOTO = e.target?.result as string;
   };
   reader.readAsDataURL(file);
+}
+
+function onFutterinventurChanged(val: boolean) {
+  if (val && !paramForm.KLASSEAVERMITTELN) {
+    $q.dialog({
+      title: 'KlasseA vermitteln erforderlich',
+      message: 'Die Futterinventur kann nur aktiviert werden, wenn "KlasseA vermitteln" ebenfalls aktiv ist. Möchten Sie "KlasseA vermitteln" jetzt aktivieren?',
+      cancel: {
+        label: 'Abbrechen',
+        flat: true,
+        color: 'grey-7'
+      },
+      ok: {
+        label: 'Aktivieren',
+        color: 'primary',
+        unelevated: true
+      },
+      persistent: true
+    }).onOk(() => {
+      paramForm.KLASSEAVERMITTELN = true;
+    }).onCancel(() => {
+      paramForm.FUTTERINVENTUR = false;
+    });
+  }
+}
+
+function onKlasseAVermittelnChanged(val: boolean) {
+  if (!val && paramForm.FUTTERINVENTUR) {
+    paramForm.FUTTERINVENTUR = false;
+    $q.notify({
+      type: 'info',
+      message: 'Da "KlasseA vermitteln" deaktiviert wurde, wurde auch die "Futterinventur" deaktiviert.',
+      icon: 'info',
+      timeout: 4000
+    });
+  }
 }
 
 async function saveCompany() {

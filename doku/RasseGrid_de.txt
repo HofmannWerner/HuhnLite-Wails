@@ -1,0 +1,16 @@
+Dokumentation RasseGrid.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Komponente "RasseGrid.vue" dient der Stammdatenverwaltung von Hühnerrassen. Sie wird als Sub-Tab innerhalb der "HerdenPage.vue" dargestellt.
+Sie bietet eine einfache tabellarische Auflistung aller Rassen sowie Funktionen zum Erstellen (Anlegen), Bearbeiten und Löschen. Wird eine Rasse bearbeitet/gelöscht/erstellt, triggert das Grid ein Event, welches der übergeordneten Herdenansicht (HerdeGrid) signalisiert, ihre Auswahllisten ebenfalls zu aktualisieren.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+A) FORMULAR RASSEN-STAMMDATEN (Dialog: "Neue Rasse" / "Rasse bearbeiten")
+
+- newRasse (internes Modell) -> DB Feld "RASSE"
+  Syntax: String (Textfeld)
+  Bedeutung: Name bzw. Bezeichnung der Rasse (z.B. "Lohmann Brown", "Sandy").
+  Plausibilität: Pflichtfeld (Darf nicht leer sein, wird durch Validierungsregel "!!val || 'Feld darf nicht leer sein'" sichergestellt).

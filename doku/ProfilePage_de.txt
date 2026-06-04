@@ -1,0 +1,42 @@
+Dokumentation ProfilePage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "ProfilePage.vue" ist das Administrationsmodul zur Verwaltung von Berechtigungsrollen (Profilen).
+Hier können neue Profile angelegt werden (z.B. "G" für Gast) und über eine Berechtigungs-Matrix feingranular konfiguriert werden, auf welche Seiten und Funktionen dieses Profil im Frontend Zugriff hat. Diese Profile werden dann in der "BenutzerPage" den eigentlichen Anwendern zugewiesen.
+Das Profil "A" (Administrator) ist ein Systemprofil und lässt sich in der Regel nicht löschen, da es vollen Zugriff garantiert.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+A) FORMULAR "NEUES PROFIL"
+- Profil-Kennzeichen (PROFIL_KZ)
+  Syntax: String (Textfeld, 1 Zeichen)
+  Bedeutung: Eindeutiger Identifikator für die Rolle (z.B. "G", "M", "A").
+- Beschreibung (BESCHREIBUNG)
+  Syntax: String (Textfeld)
+  Bedeutung: Lesbarer Name für das Profil (z.B. "Gastzugriff ohne Schreibrechte").
+
+B) BERECHTIGUNGS-MATRIX (Checkboxen)
+Syntax für alle folgenden Felder: Boolean (Checkbox) - wird in der Datenbank als 0 oder 1 gespeichert.
+
+Gruppe: Basis & Stammdaten
+- Dashboard anzeigen (F_DASHBOARD)
+- Herden verwalten (F_HERDEN_VERWALTEN)
+- Einrichtungen verwalten (F_EINRICHTUNGEN_VERWALTEN)
+- Personen verwalten (F_PERSONEN_VERWALTEN)
+
+Gruppe: Operativ & Auswertung
+- Buchungen erfassen (F_BUCHUNGEN_ERFASSEN)
+- Reports/Auswertungen anzeigen (F_AUSWERTUNGEN_ANZEIGEN)
+- Kosten verwalten (F_KOSTEN_VERWALTEN)
+- Roh-Tabellen anzeigen (Mist) (F_TABELLEN_ANZEIGEN)
+
+Gruppe: System & Admin
+- Zugriff Systemverwaltung (Panel) (F_SYSTEM_VERWALTUNG)
+- Benutzer & Profile verwalten (F_BENUTZER_PROFILE)
+- Berichtsstruktur verwalten (F_SQL_STRUKTUR_VERWALTEN)
+- Parameter editieren (F_PARAMETER_EDITIEREN)
+- Texte verwalten (F_TEXTE_VERWALTEN)
+- Backups erstellen (F_BACKUP_ERSTELLEN)

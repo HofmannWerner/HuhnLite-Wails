@@ -1,0 +1,20 @@
+Dokumentation ShowTVPage.vue
+================================================================================
+
+1. Generelle Information über die Funktion/Aufgabe
+--------------------------------------------------------------------------------
+Die Vue-Komponente "ShowTVPage.vue" ist ein Konfigurations-Interface, mit dem gesteuert wird, welche Kategorien von Tierbewegungen oder Statusmeldungen im System sichtbar sind.
+Der Name "TV" stammt historisch vermutlich von "Tier-Veränderungen" oder einer ähnlichen Abkürzung.
+Die Maske ist als responsives Kachel-Layout (Grid) aufgebaut.
+
+2. Auflistung aller Felder: Syntax, Bedeutung/Plausibilität
+--------------------------------------------------------------------------------
+
+Jede Kachel repräsentiert einen Datensatz aus der Tabelle `SHOWTV`. Das Speichern erfolgt automatisch on-blur (beim Verlassen des Feldes) oder beim Klick auf die Checkbox.
+
+- Bezeichnung (TVNAME)
+  Syntax: String (Textfeld)
+  Bedeutung: Der interne oder externe Name der Tierbewegungsgruppe bzw. Statusmeldung (z.B. "Verkauf lebend", "Eigenverbrauch").
+- Anzeigen (SHOWIT)
+  Syntax: Boolean (Checkbox)
+  Bedeutung: In der Datenbank als 1 (True) oder 0 (False) gespeichert. Legt fest, ob dieser Eintrag in den Auswahllisten der Buchungsmasken (insb. TierbewegungenGrid) den Anwendern zur Verfügung steht.
