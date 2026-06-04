@@ -3,7 +3,7 @@
     <!-- Header with Action on Left, Title on Right -->
     <div class="row items-center justify-between q-mb-md">
       <div class="row q-gutter-md">
-        <q-btn color="primary" icon="add" label="Neue Aktion" @click="openCreate" rounded unelevated />
+        <q-btn color="primary" icon="add" :label="t('auto.neue_aktion')" @click="openCreate" rounded unelevated />
       </div>
       <div class="text-h6 text-primary">Aktionen</div>
     </div>
@@ -18,7 +18,7 @@
           option-label="LABEL"
           emit-value
           map-options
-          label="Benutzer"
+          :label="t('auto.benutzer')"
           filled
           stack-label
           @update:model-value="fetchData"
@@ -56,7 +56,7 @@
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                 <q-date v-model="filterDateRange" range @update:model-value="fetchData">
                   <div class="row items-center justify-end">
-                    <q-btn v-close-popup label="Schließen" color="primary" flat />
+                    <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                   </div>
                 </q-date>
               </q-popup-proxy>
@@ -74,7 +74,7 @@
           :options="[{value: 0, label: 'Offen'}, {value: 1, label: 'Erledigt'}, {value: 2, label: 'Alle'}]"
           emit-value
           map-options
-          label="Status"
+          :label="t('auto.status')"
           filled
           stack-label
           @update:model-value="fetchData"
@@ -189,7 +189,7 @@
                   option-label="LABEL"
                   emit-value
                   map-options
-                  label="Aktionstyp *"
+                  :label="t('auto.aktionstyp')"
                   filled
                   stack-label
                   :rules="[val => !!val || 'Erforderlich']"
@@ -202,7 +202,7 @@
                 <q-input
                   v-model="form.AKTIONSDATUM"
                   type="date"
-                  label="Datum *"
+                  :label="t('auto.datum')"
                   filled
                   stack-label
                   :rules="[val => !!val || 'Erforderlich']"
@@ -216,7 +216,7 @@
                   option-label="LABEL"
                   emit-value
                   map-options
-                  label="Benutzer"
+                  :label="t('auto.benutzer')"
                   filled
                   stack-label
                 />
@@ -225,7 +225,7 @@
 
             <q-input
               v-model="form.BEZEICHNUNG"
-              label="Bezeichnung / Beschreibung *"
+              :label="t('auto.bezeichnung_beschreibung')"
               filled
               stack-label
               type="textarea"
@@ -238,10 +238,10 @@
                 <q-input
                   v-model.number="form.INTERVALL_TAGE"
                   type="number"
-                  label="Intervall (Tage)"
+                  :label="t('auto.intervall_tage')"
                   filled
                   stack-label
-                  hint="0 = Einmalig"
+                  :hint="t('auto.0_einmalig')"
                   :disable="form.AKTIONEN_KZ !== 'W'"
                 />
               </div>
@@ -249,10 +249,10 @@
                 <q-input
                   v-model.number="form.ANZAHL_INTERVALLE"
                   type="number"
-                  label="Anzahl Intervalle"
+                  :label="t('auto.anzahl_intervalle')"
                   filled
                   stack-label
-                  hint="0 = Unendlich"
+                  :hint="t('auto.0_unendlich')"
                   :disable="form.AKTIONEN_KZ !== 'W'"
                 />
               </div>
@@ -261,7 +261,7 @@
             <div class="row" v-if="form.AKTIONEN_KZ === 'W'">
               <div class="col-12">
                 <q-btn 
-                  label="Erstelle Anzahl Intervalle" 
+                  :label="t('auto.erstelle_anzahl_intervalle')" 
                   color="secondary" 
                   class="full-width" 
                   rounded 
@@ -280,7 +280,7 @@
               <div class="col-12 flex items-center">
                 <q-checkbox 
                   v-model="form.ERLEDIGT_BOOL" 
-                  label="Bereits Erledigt" 
+                  :label="t('auto.bereits_erledigt')" 
                   color="positive" 
                   :disable="form.AKTIONEN_KZ === 'W'"
                 />
@@ -288,7 +288,7 @@
             </div>
 
             <div class="row justify-end q-mt-md q-gutter-x-sm">
-              <q-btn label="Abbrechen" color="negative" outline rounded v-close-popup padding="xs lg" />
+              <q-btn :label="t('form.cancel')" color="negative" outline rounded v-close-popup padding="xs lg" />
               <q-btn :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
             </div>
           </q-form>
@@ -299,6 +299,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useQuasar, date } from 'quasar';

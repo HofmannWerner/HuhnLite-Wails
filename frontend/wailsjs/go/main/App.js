@@ -6,16 +6,16 @@ export function GetDBStatus() {
   return window['go']['main']['App']['GetDBStatus']();
 }
 
-export function GetHelpContent() {
-  return window['go']['main']['App']['GetHelpContent']();
+export function GetHelpContent(arg1) {
+  return window['go']['main']['App']['GetHelpContent'](arg1);
 }
 
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
-export function OpenHelp() {
-  return window['go']['main']['App']['OpenHelp']();
+export function OpenHelp(arg1) {
+  return window['go']['main']['App']['OpenHelp'](arg1);
 }
 
 export function Quit() {

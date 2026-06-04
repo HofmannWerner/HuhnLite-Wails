@@ -36,7 +36,7 @@
                <q-input
                 :model-value="form.fullTimestamp ? form.fullTimestamp.split(' ')[0] : ''"
                 type="date"
-                label="Bewegungsdatum"
+                :label="t('auto.bewegungsdatum')"
                 filled
                 stack-label
                 readonly
@@ -48,7 +48,7 @@
                <q-select
                  v-model="form.TYP"
                 :options="typOptions"
-                label="Bewegungsart *"
+                :label="t('auto.bewegungsart')"
                 filled
                 stack-label
                 emit-value
@@ -65,7 +65,7 @@
                <q-input
                  v-model.number="form.BEWEGUNGEN"
                 type="number"
-                label="Anzahl (Stück) *"
+                :label="t('auto.anzahl_stueck')"
                 filled
                 stack-label
                 :rules="[
@@ -85,7 +85,7 @@
                 v-model.number="form.KOSTEN"
                 type="number"
                 step="0.01"
-                label="Kosten"
+                :label="t('menu.kosten')"
                 filled
                 stack-label
                 prefix="€"
@@ -104,7 +104,7 @@
                  option-label="LABEL"
                 emit-value
                 map-options
-                label="Grund / Bemerkung *"
+                :label="t('auto.grund_bemerkung')"
                 filled
                 stack-label
                 :rules="[val => !!val || 'Erforderlich']"
@@ -116,7 +116,7 @@
           </div>
 
           <div class="row justify-end q-mt-md q-gutter-x-sm">
-            <q-btn ref="cancelBtn" label="Abbrechen" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
+            <q-btn ref="cancelBtn" :label="t('form.cancel')" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
             <q-btn ref="saveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
           </div>
         </q-form>
@@ -126,6 +126,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

@@ -2,9 +2,9 @@
   <div class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="row q-gutter-md">
-        <q-btn color="primary" icon="add" label="Neue Bewegung" @click="openCreate" :disable="!filterHerde" rounded unelevated />
+        <q-btn color="primary" icon="add" :label="t('auto.neue_bewegung')" @click="openCreate" :disable="!filterHerde" rounded unelevated />
       </div>
-      <div class="text-h6 text-primary">Tierbewegungen</div>
+      <div class="text-h6 text-primary">{{ t('auto.tierbewegungen') }}</div>
     </div>
 
     <div class="row q-col-gutter-md q-mb-md items-center">
@@ -17,7 +17,7 @@
           emit-value
           map-options
           clearable
-          label="Herde auswählen"
+          :label="t('auto.herde_auswaehlen')"
           filled
           stack-label
         >
@@ -45,13 +45,13 @@
       </div>
 
       <div class="col-12 col-sm-4 col-md-2">
-        <q-input filled v-model="filterDateRangeText" label="Manuelles Datum" stack-label readonly dense>
+        <q-input filled v-model="filterDateRangeText" :label="t('auto.manuelles_datum')" stack-label readonly dense>
           <template v-slot:prepend>
             <q-icon name="event" class="cursor-pointer">
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                 <q-date v-model="filterDateRange" range @update:model-value="onDateRangeUpdate">
                   <div class="row items-center justify-end">
-                    <q-btn v-close-popup label="Schließen" color="primary" flat />
+                    <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                   </div>
                 </q-date>
               </q-popup-proxy>
@@ -69,7 +69,7 @@
           emit-value
           map-options
           clearable
-          label="Grund"
+          :label="t('auto.grund')"
           filled
           stack-label
           dense
@@ -91,7 +91,7 @@
           <q-card flat bordered class="rounded-borders shadow-2">
             <q-card-section class="bg-red-7 text-white row items-center q-pa-sm">
               <q-icon name="outbox" size="sm" class="q-mr-md" />
-              <div class="text-subtitle1 text-weight-bold">Abgebende Herde (Geben)</div>
+              <div class="text-subtitle1 text-weight-bold">{{ t('auto.abgebende_herde_geben') }}</div>
             </q-card-section>
             
             <q-table
@@ -134,7 +134,7 @@
             @click="openAmountDialog"
             class="shadow-5"
           >
-            <q-tooltip v-if="isActionActive">Tiere umbuchen</q-tooltip>
+            <q-tooltip v-if="isActionActive">{{ t('auto.tiere_umbuchen') }}</q-tooltip>
           </q-btn>
         </div>
 
@@ -143,7 +143,7 @@
           <q-card flat bordered class="rounded-borders shadow-2">
             <q-card-section class="bg-green-7 text-white row items-center q-pa-sm">
               <q-icon name="inbox" size="sm" class="q-mr-md" />
-              <div class="text-subtitle1 text-weight-bold">Empfangende Herde (Nehmen)</div>
+              <div class="text-subtitle1 text-weight-bold">{{ t('auto.empfangende_herde_nehmen') }}</div>
             </q-card-section>
             
             <q-table
@@ -205,7 +205,7 @@
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" class="q-gutter-x-sm">
             <q-btn flat round color="primary" icon="add" size="sm" @click="openCreateForBooking(props.row)">
-              <q-tooltip>Bewegung hinzufügen</q-tooltip>
+              <q-tooltip>{{ t('auto.bewegung_hinzufuegen') }}</q-tooltip>
             </q-btn>
           </q-td>
         </template>
@@ -217,20 +217,20 @@
       <q-card style="min-width: 350px; border-radius: 16px;">
         <q-card-section class="bg-primary text-white q-pa-md row items-center">
           <q-icon name="swap_horiz" size="sm" class="q-mr-sm" />
-          <div class="text-h6 text-weight-bold">Tier-Umstallung</div>
+          <div class="text-h6 text-weight-bold">{{ t('auto.tier_umstallung') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup color="white" />
         </q-card-section>
 
         <q-card-section class="q-pa-lg">
           <div class="q-mb-md text-weight-medium">
-            Tiere von Herde <strong>{{ herdeLinks?.herdennummer }}</strong> 
-            nach Herde <strong>{{ herdeRechts?.herdennummer }}</strong> verschieben.
+            {{ t('auto.tiere_von_herde') }} <strong>{{ herdeLinks?.herdennummer }}</strong> 
+            {{ t('auto.nach_herde') }} <strong>{{ herdeRechts?.herdennummer }}</strong> {{ t('auto.verschieben') }}
           </div>
           <q-input
             v-model.number="amount"
             type="number"
-            label="Anzahl (Stück) *"
+            :label="t('auto.anzahl_stueck')"
             filled
             autofocus
             :rules="[
@@ -244,8 +244,8 @@
           </div>
 
           <div class="row justify-end q-gutter-sm q-mt-lg">
-            <q-btn label="Abbrechen" color="negative" flat v-close-popup />
-            <q-btn label="Durchführen" color="positive" unelevated @click="confirmUmbuchung" />
+            <q-btn :label="t('form.cancel')" color="negative" flat v-close-popup />
+            <q-btn :label="t('auto.durchfuehren')" color="positive" unelevated @click="confirmUmbuchung" />
           </div>
         </q-card-section>
       </q-card>
@@ -263,6 +263,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

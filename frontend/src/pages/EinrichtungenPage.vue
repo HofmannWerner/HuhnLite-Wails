@@ -1,7 +1,7 @@
 <template>
   <q-page padding class="bg-grey-1">
     <div class="row items-center justify-between q-mb-lg">
-      <div class="text-h4 text-weight-bold text-primary">Einrichtungen</div>
+      <div class="text-h4 text-weight-bold text-primary">{{ t('auto.einrichtungen') }}</div>
     </div>
 
     <q-card class="shadow-2 rounded-borders overflow-hidden">
@@ -14,9 +14,9 @@
         align="left"
         narrow-indicator
       >
-        <q-tab name="silos" label="Silos" icon="warehouse" />
-        <q-tab name="stalle" label="Ställe" icon="home" />
-        <q-tab name="eilager" label="Eilager" icon="inventory_2" />
+        <q-tab name="silos" :label="t('auto.silos')" icon="warehouse" />
+        <q-tab name="stalle" :label="t('auto.staelle')" icon="home" />
+        <q-tab name="eilager" :label="t('grid.eggStorage')" icon="inventory_2" />
       </q-tabs>
 
       <q-separator />
@@ -44,9 +44,9 @@
               align="left"
               narrow-indicator
             >
-              <q-tab name="eilager" label="Eilager" icon="inventory_2" />
-              <q-tab name="lagerplatz" label="Lagerplatzverwaltung" icon="place" />
-              <q-tab name="bestandsuebersicht" label="Bestandsübersicht" icon="analytics" />
+              <q-tab name="eilager" :label="t('grid.eggStorage')" icon="inventory_2" />
+              <q-tab name="lagerplatz" :label="t('auto.lagerplatzverwaltung')" icon="place" />
+              <q-tab name="bestandsuebersicht" :label="t('auto.bestandsuebersicht')" icon="analytics" />
             </q-tabs>
 
             <q-tab-panels v-model="eilagerTab" animated class="bg-white rounded-borders shadow-1">
@@ -68,6 +68,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref } from 'vue';
 import SiloGrid from 'components/SiloGrid.vue';
 import StallGrid from 'components/StallGrid.vue';

@@ -104,7 +104,7 @@
     <q-dialog v-model="showDialog" persistent full-width @show="onDialogShow">
       <q-card style="max-width: 1000px; margin: auto; border-radius: 16px;">
         <q-card-section class="row items-center q-pb-none bg-primary text-white q-pa-md">
-          <div class="text-h6 text-weight-bold">{{ isEditing ? 'Futterbuchung bearbeiten' : 'Neue Futterbuchung' }}</div>
+          <div class="text-h6 text-weight-bold">{{ isEditing ? t('auto.edit_futter') : t('auto.new_futter') }}</div>
           <q-space />
           <q-btn icon="close" round dense v-close-popup @click="closeDialog" unelevated color="white" flat />
         </q-card-section>
@@ -250,8 +250,8 @@
             </div>
 
             <div class="row justify-end q-mt-xl q-gutter-x-sm">
-              <q-btn ref="cancelBtn" label="Abbrechen" color="negative" outline rounded @click="closeDialog" />
-              <q-btn ref="saveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
+              <q-btn ref="cancelBtn" :label="t('form.cancel')" color="negative" outline rounded @click="closeDialog" />
+              <q-btn ref="saveBtn" :label="isEditing ? t('form.update') : t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl" />
             </div>
           </q-form>
         </q-card-section>

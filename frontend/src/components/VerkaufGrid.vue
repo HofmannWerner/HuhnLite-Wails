@@ -1,7 +1,7 @@
 <template>
   <div class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
-      <div class="text-h6 text-primary">Verkaufs-Statistik</div>
+      <div class="text-h6 text-primary">{{ t('auto.verkaufs_statistik') }}</div>
     </div>
 
     <!-- Table -->
@@ -71,69 +71,69 @@
           <q-form @submit="onSubmit" class="q-gutter-md">
             <div class="row q-col-gutter-md">
               <div class="col-12 col-md-6">
-                <q-input v-model="form.BUCHUNGSDATUM" type="date" label="Buchungsdatum *" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => !!val || 'Datum ist ein Pflichtfeld']" :readonly="form.VERBUCHT" />
+                <q-input v-model="form.BUCHUNGSDATUM" type="date" :label="t('auto.buchungsdatum')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => !!val || 'Datum ist ein Pflichtfeld']" :readonly="form.VERBUCHT" />
               </div>
               <div class="col-12 col-md-4">
-                <q-input v-model.number="form.ID_EILAGERBUCHUNG" type="number" label="ID Eilagerbuchung" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
+                <q-input v-model.number="form.ID_EILAGERBUCHUNG" type="number" :label="t('auto.id_eilagerbuchung')" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
               </div>
               <div class="col-12 col-md-4">
-                <q-input v-model.number="form.ID_BUCHUNG" type="number" label="ID Leistung" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
+                <q-input v-model.number="form.ID_BUCHUNG" type="number" :label="t('auto.id_leistung')" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
               </div>
 
               <!-- Mengen (READONLY) -->
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.MENGESMALL" type="number" label="Menge S" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
+                <q-input v-model.number="form.MENGESMALL" type="number" :label="t('auto.menge_s')" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.MENGEMEDIUM" type="number" label="Menge M" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
+                <q-input v-model.number="form.MENGEMEDIUM" type="number" :label="t('auto.menge_m')" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.MENGELARGE" type="number" label="Menge L" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
+                <q-input v-model.number="form.MENGELARGE" type="number" :label="t('auto.menge_l')" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input v-model.number="form.MENGEXL" type="number" label="Menge XL" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
+                <q-input v-model.number="form.MENGEXL" type="number" :label="t('auto.menge_xl')" filled stack-label readonly :bg-color="$q.dark.isActive ? 'grey-8' : 'grey-3'" />
               </div>
 
               <!-- Preise (EDITABLE) -->
               <div class="col-6 col-md-3">
-                <q-input :model-value="formatCurrency(form.PREISSMALL)" @change="val => { form.PREISSMALL = parseCurrency(val); calcGesamt(); }" type="text" label="Preis S" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
+                <q-input :model-value="formatCurrency(form.PREISSMALL)" @change="val => { form.PREISSMALL = parseCurrency(val); calcGesamt(); }" type="text" :label="t('auto.preis_s')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input :model-value="formatCurrency(form.PREISMEDIUM)" @change="val => { form.PREISMEDIUM = parseCurrency(val); calcGesamt(); }" type="text" label="Preis M" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
+                <q-input :model-value="formatCurrency(form.PREISMEDIUM)" @change="val => { form.PREISMEDIUM = parseCurrency(val); calcGesamt(); }" type="text" :label="t('auto.preis_m')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input :model-value="formatCurrency(form.PREISLARGE)" @change="val => { form.PREISLARGE = parseCurrency(val); calcGesamt(); }" type="text" label="Preis L" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
+                <q-input :model-value="formatCurrency(form.PREISLARGE)" @change="val => { form.PREISLARGE = parseCurrency(val); calcGesamt(); }" type="text" :label="t('auto.preis_l')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
               <div class="col-6 col-md-3">
-                <q-input :model-value="formatCurrency(form.PREISXL)" @change="val => { form.PREISXL = parseCurrency(val); calcGesamt(); }" type="text" label="Preis XL" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
+                <q-input :model-value="formatCurrency(form.PREISXL)" @change="val => { form.PREISXL = parseCurrency(val); calcGesamt(); }" type="text" :label="t('auto.preis_xl')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right" />
               </div>
 
               <div class="col-12">
                 <div class="row items-center q-gutter-sm">
-                  <q-input :model-value="formatCurrency(form.GESAMTPREIS)" @change="val => { form.GESAMTPREIS = parseCurrency(val); onGesamtpreisManualChange(form.GESAMTPREIS); }" type="text" label="Gesamtpreis (€)" filled stack-label class="col" :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right text-bold" />
+                  <q-input :model-value="formatCurrency(form.GESAMTPREIS)" @change="val => { form.GESAMTPREIS = parseCurrency(val); onGesamtpreisManualChange(form.GESAMTPREIS); }" type="text" :label="t('auto.gesamtpreis')" filled stack-label class="col" :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" input-class="text-right text-bold" />
                   <q-btn flat round icon="calculate" color="primary" @click="calcGesamt" :disable="form.VERBUCHT">
-                    <q-tooltip>Neu berechnen</q-tooltip>
+                    <q-tooltip>{{ t('auto.neu_berechnen') }}</q-tooltip>
                   </q-btn>
                 </div>
               </div>
 
               <div class="col-6">
-                <q-input v-model="form.CHARGE" label="Charge" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :disable="isEditing" :readonly="form.VERBUCHT" />
+                <q-input v-model="form.CHARGE" :label="t('auto.charge')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :disable="isEditing" :readonly="form.VERBUCHT" />
               </div>
               <div class="col-6">
-                <q-input v-model.number="form.RABATTPROZENT" type="number" step="0.01" label="Rabatt (%)" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" @update:model-value="updateCalculatedPrices" />
+                <q-input v-model.number="form.RABATTPROZENT" type="number" step="0.01" :label="t('auto.rabatt')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :readonly="form.VERBUCHT" @update:model-value="updateCalculatedPrices" />
               </div>
               <div class="col-6">
-                <q-toggle v-model="form.BIO" label="Bio-Ware" color="positive" :disable="form.VERBUCHT" @update:model-value="updateCalculatedPrices" />
+                <q-toggle v-model="form.BIO" :label="t('auto.bio_ware')" color="positive" :disable="form.VERBUCHT" @update:model-value="updateCalculatedPrices" />
               </div>
               <div class="col-6">
-                <q-toggle v-model="form.VERBUCHT" label="Bereits verbucht" color="orange" />
+                <q-toggle v-model="form.VERBUCHT" :label="t('auto.bereits_verbucht')" color="orange" />
               </div>
             </div>
 
             <div class="q-mt-md">
               <q-btn :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated />
-              <q-btn label="Abbrechen" color="negative" class="q-ml-sm" @click="closeDialog" rounded unelevated />
+              <q-btn :label="t('form.cancel')" color="negative" class="q-ml-sm" @click="closeDialog" rounded unelevated />
             </div>
           </q-form>
         </q-card-section>
@@ -143,6 +143,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, reactive, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from 'src/boot/api';

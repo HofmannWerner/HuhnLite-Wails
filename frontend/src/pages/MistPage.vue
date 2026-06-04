@@ -1,7 +1,7 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-lg">
-      <div class="text-h4 text-weight-bolder text-primary">Tabellen</div>
+      <div class="text-h4 text-weight-bolder text-primary">{{ t('auto.tabellen') }}</div>
     </div>
 
     <q-tabs
@@ -13,12 +13,12 @@
       align="left"
       narrow-indicator
     >
-      <q-tab name="alter" label="Alterstabelle" icon="calendar_today" />
-      <q-tab name="gewicht" label="Gewichtstabelle" icon="straighten" />
-      <q-tab name="mwst" label="Mehrwertsteuer" icon="percent" />
-      <q-tab name="preise" label="Preistabelle" icon="payments"/>
-      <q-tab name="futtersorten" label="Futtersorten" icon="egg_alt" />
-      <q-tab name="feldnamen" label="Feld-Konfiguration" icon="translate"/>
+      <q-tab name="alter" :label="t('auto.alterstabelle')" icon="calendar_today" />
+      <q-tab name="gewicht" :label="t('auto.gewichtstabelle')" icon="straighten" />
+      <q-tab name="mwst" :label="t('auto.mehrwertsteuer')" icon="percent" />
+      <q-tab name="preise" :label="t('auto.preistabelle')" icon="payments"/>
+      <q-tab name="futtersorten" :label="t('auto.futtersorten')" icon="egg_alt" />
+      <q-tab name="feldnamen" :label="t('auto.feld_konfiguration')" icon="translate"/>
     </q-tabs>
 
     <q-separator class="q-my-md" />
@@ -29,28 +29,31 @@
         <div class="column q-gutter-y-md">
           <!-- 1. AUSWAHL (OBEN) -->
           <q-card flat bordered class="shadow-2 rounded-borders">
-            <q-card-section class="q-pa-sm row items-center q-gutter-x-md">
-              <div class="text-subtitle2 text-weight-bold text-primary">Tabelle wählen:</div>
-              <q-select
-                v-model="selectedHeaderId"
-                :options="tabellenkopfOptions"
-                option-label="BEZEICHNUNG_VAL"
-                option-value="ID"
-                emit-value
-                map-options
-                label="Vorhandene Alterstabellen (Typ A)"
-                filled
-                dense
-                class="col"
-                :loading="loadingLookups"
-                :key="tabellenkopfOptions.length"
-                @update:model-value="onHeaderSelect"
-              >
-                <template v-slot:no-option>
-                  <q-item><q-item-section class="text-grey">Keine Tabellen gefunden</q-item-section></q-item>
-                </template>
-              </q-select>
-              <q-btn label="Neuanlage" color="secondary" icon="add" @click="onNewHeader" rounded unelevated dense padding="xs md" />
+            <q-card-section class="q-pa-sm row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-auto text-subtitle2 text-weight-bold text-primary">{{ t('auto.tabelle_waehlen') }}</div>
+              <div class="col-12 col-sm">
+                <q-select
+                  v-model="selectedHeaderId"
+                  :options="tabellenkopfOptions"
+                  option-label="BEZEICHNUNG_VAL"
+                  option-value="ID"
+                  emit-value
+                  map-options
+                  :label="t('auto.vorhandene_alterstabellen_typ_a')"
+                  filled
+                  dense
+                  :loading="loadingLookups"
+                  :key="tabellenkopfOptions.length"
+                  @update:model-value="onHeaderSelect"
+                >
+                  <template v-slot:no-option>
+                    <q-item><q-item-section class="text-grey">{{ t('auto.keine_tabellen_gefunden') }}</q-item-section></q-item>
+                  </template>
+                </q-select>
+              </div>
+              <div class="col-12 col-sm-auto">
+                <q-btn :label="t('auto.neuanlage')" color="secondary" icon="add" @click="onNewHeader" rounded unelevated dense padding="xs md" class="full-width" />
+              </div>
             </q-card-section>
           </q-card>
 
@@ -64,7 +67,7 @@
                 rounded
                 dense
                 icon="edit"
-                label="Kopfdaten bearbeiten"
+                :label="t('auto.kopfdaten_bearbeiten')"
                 class="text-white q-px-md"
                 @click="isEditingAlter = true"
               />
@@ -75,7 +78,7 @@
                 dense
                 icon="delete"
                 color="negative"
-                label="Tabelle löschen"
+                :label="t('auto.tabelle_loeschen')"
                 class="text-white q-px-md q-ml-sm"
                 @click="onDeleteHeader"
               />
@@ -83,28 +86,28 @@
               <!-- Title (Right) -->
               <div class="row items-center q-gutter-x-sm q-pr-sm">
                 <q-icon :name="isEditingAlter ? 'edit' : 'calendar_today'" size="xs" />
-                <div class="text-subtitle2 text-weight-bold">Kopfdaten {{ isEditingAlter ? 'bearbeiten' : 'Details' }} (Alter)</div>
+                <div class="text-subtitle2 text-weight-bold">{{ isEditingAlter ? t('auto.kopfdaten_bearbeiten') : t('auto.kopfdaten_details') }} ({{ t('auto.alter') }})</div>
               </div>
             </q-card-section>
             <q-card-section class="q-pa-md">
               <q-form @submit="onSubmitAlterHeader" class="row q-col-gutter-md">
                 <div class="col-12 col-sm-2">
-                  <q-input v-model.number="alterForm.TABELLENNUMMER" label="Nummer *" filled stack-label type="number"
-                           :rules="[val => !!val || 'Pflichtfeld']" dense :disable="!!alterForm.ID || !isEditingAlter"/>
+                  <q-input v-model.number="alterForm.TABELLENNUMMER" :label="t('auto.nummer')" filled stack-label type="number"
+                           :rules="[val => !!val || t('message.required')]" dense :disable="!!alterForm.ID || !isEditingAlter"/>
                 </div>
                 <div class="col-12 col-sm-4">
-                  <q-input v-model="alterForm.BEZEICHNUNG" label="Bezeichnung *" filled stack-label
-                           :rules="[val => !!val || 'Pflichtfeld']" dense :disable="!isEditingAlter"/>
+                  <q-input v-model="alterForm.BEZEICHNUNG" :label="t('grid.designationRequired')" filled stack-label
+                           :rules="[val => !!val || t('message.required')]" dense :disable="!isEditingAlter"/>
                 </div>
                 <div class="col-12 col-sm-3">
-                  <q-input v-model="alterForm.ANLAGEDATUM" label="Anlagedatum" filled stack-label dense
+                  <q-input v-model="alterForm.ANLAGEDATUM" :label="t('auto.anlagedatum')" filled stack-label dense
                            mask="####-##-##" :disable="!isEditingAlter">
                     <template v-slot:append>
                       <q-icon name="event" class="cursor-pointer">
                         <q-popup-proxy cover transition-show="scale" transition-hide="scale" :disabled="!isEditingAlter">
                           <q-date v-model="alterForm.ANLAGEDATUM" mask="YYYY-MM-DD">
                             <div class="row items-center justify-end">
-                              <q-btn v-close-popup label="Schließen" color="primary" flat />
+                              <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                             </div>
                           </q-date>
                         </q-popup-proxy>
@@ -113,14 +116,14 @@
                   </q-input>
                 </div>
                 <div class="col-12 col-sm-3">
-                  <q-input v-model="alterForm.DATUM" label="Gültigkeit (Datum)" filled stack-label dense
+                  <q-input v-model="alterForm.DATUM" :label="t('auto.gueltigkeit_datum')" filled stack-label dense
                            mask="####-##-##" :disable="!isEditingAlter">
                     <template v-slot:append>
                       <q-icon name="event" class="cursor-pointer">
                         <q-popup-proxy cover transition-show="scale" transition-hide="scale" :disabled="!isEditingAlter">
                           <q-date v-model="alterForm.DATUM" mask="YYYY-MM-DD">
                             <div class="row items-center justify-end">
-                              <q-btn v-close-popup label="Schließen" color="primary" flat />
+                              <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                             </div>
                           </q-date>
                         </q-popup-proxy>
@@ -130,8 +133,8 @@
                 </div>
 
                 <div class="col-12 row justify-end q-gutter-x-sm" v-if="isEditingAlter">
-                  <q-btn label="Abbruch" color="grey-7" outline rounded @click="onCancelHeader" dense padding="xs lg" />
-                  <q-btn label="Speichern" type="submit" color="primary" rounded unelevated dense padding="xs xl" />
+                  <q-btn :label="t('form.cancel')" color="grey-7" outline rounded @click="onCancelHeader" dense padding="xs lg" />
+                  <q-btn :label="t('form.save')" type="submit" color="primary" rounded unelevated dense padding="xs xl" />
                 </div>
               </q-form>
             </q-card-section>
@@ -148,11 +151,11 @@
             :pagination="{ rowsPerPage: 15 }"
           >
             <template v-slot:top>
-              <div class="text-h6 text-weight-bold text-primary">Referenzwerte (Details)</div>
+              <div class="text-h6 text-weight-bold text-primary">{{ t('auto.referenzwerte_details') }}</div>
               <q-space />
-              <q-btn v-if="alterForm.ID" label="Zeile hinzufügen" color="secondary" icon="add" outline rounded size="sm"
+              <q-btn v-if="alterForm.ID" :label="t('auto.zeile_hinzufuegen')" color="secondary" icon="add" outline rounded size="sm"
                      @click="openCreateAlter"/>
-              <div v-if="alterForm.TABELLENNUMMER" class="text-caption text-grey q-ml-md">Tab-Nr:
+              <div v-if="alterForm.TABELLENNUMMER" class="text-caption text-grey q-ml-md">{{ t('auto.tab_nr') }}
                 {{ alterForm.TABELLENNUMMER }}
               </div>
             </template>
@@ -174,28 +177,31 @@
         <div class="column q-gutter-y-md">
           <!-- 1. AUSWAHL (OBEN) -->
           <q-card flat bordered class="shadow-2 rounded-borders">
-            <q-card-section class="q-pa-sm row items-center q-gutter-x-md">
-              <div class="text-subtitle2 text-weight-bold text-primary">Tabelle wählen:</div>
-              <q-select
-                v-model="selectedGewichtHeaderId"
-                :options="tabellenkopfGewichtOptions"
-                option-label="BEZEICHNUNG_VAL"
-                option-value="ID"
-                emit-value
-                map-options
-                label="Vorhandene Gewichtstabellen (Typ G)"
-                filled
-                dense
-                class="col"
-                :loading="loadingLookups"
-                :key="tabellenkopfGewichtOptions.length"
-                @update:model-value="onGewichtHeaderSelect"
-              >
-                <template v-slot:no-option>
-                  <q-item><q-item-section class="text-grey">Keine Tabellen gefunden</q-item-section></q-item>
-                </template>
-              </q-select>
-              <q-btn label="Neuanlage" color="secondary" icon="add" @click="onNewGewichtHeader" rounded unelevated dense padding="xs md" />
+            <q-card-section class="q-pa-sm row items-center q-col-gutter-sm">
+              <div class="col-12 col-sm-auto text-subtitle2 text-weight-bold text-primary">{{ t('auto.tabelle_waehlen') }}</div>
+              <div class="col-12 col-sm">
+                <q-select
+                  v-model="selectedGewichtHeaderId"
+                  :options="tabellenkopfGewichtOptions"
+                  option-label="BEZEICHNUNG_VAL"
+                  option-value="ID"
+                  emit-value
+                  map-options
+                  :label="t('auto.vorhandene_gewichtstabellen_typ_g')"
+                  filled
+                  dense
+                  :loading="loadingLookups"
+                  :key="tabellenkopfGewichtOptions.length"
+                  @update:model-value="onGewichtHeaderSelect"
+                >
+                  <template v-slot:no-option>
+                    <q-item><q-item-section class="text-grey">{{ t('auto.keine_tabellen_gefunden') }}</q-item-section></q-item>
+                  </template>
+                </q-select>
+              </div>
+              <div class="col-12 col-sm-auto">
+                <q-btn :label="t('auto.neuanlage')" color="secondary" icon="add" @click="onNewGewichtHeader" rounded unelevated dense padding="xs md" class="full-width" />
+              </div>
             </q-card-section>
           </q-card>
 
@@ -209,7 +215,7 @@
                 rounded
                 dense
                 icon="edit"
-                label="Kopfdaten bearbeiten"
+                :label="t('auto.kopfdaten_bearbeiten')"
                 class="text-white q-px-md"
                 @click="isEditingGewicht = true"
               />
@@ -220,7 +226,7 @@
                 dense
                 icon="delete"
                 color="negative"
-                label="Tabelle löschen"
+                :label="t('auto.tabelle_loeschen')"
                 class="text-white q-px-md q-ml-sm"
                 @click="onDeleteGewichtHeader"
               />
@@ -228,29 +234,29 @@
               <!-- Title (Right) -->
               <div class="row items-center q-gutter-x-sm q-pr-sm">
                 <q-icon :name="isEditingGewicht ? 'edit' : 'straighten'" size="xs" />
-                <div class="text-subtitle2 text-weight-bold">Kopfdaten {{ isEditingGewicht ? 'bearbeiten' : 'Details' }} (Gewicht)</div>
+                <div class="text-subtitle2 text-weight-bold">{{ isEditingGewicht ? t('auto.kopfdaten_bearbeiten') : t('auto.kopfdaten_details') }} ({{ t('auto.gewicht') }})</div>
               </div>
             </q-card-section>
             <q-card-section class="q-pa-md">
               <q-form @submit="onSubmitGewichtHeader" class="row q-col-gutter-md">
                 <div class="col-12 col-sm-2">
-                  <q-input v-model.number="gewichtForm.TABELLENNUMMER" label="Nummer *" filled stack-label type="number"
-                           :rules="[val => !!val || 'Pflichtfeld']" dense
+                  <q-input v-model.number="gewichtForm.TABELLENNUMMER" :label="t('auto.nummer')" filled stack-label type="number"
+                           :rules="[val => !!val || t('message.required')]" dense
                            :disable="!!gewichtForm.ID || !isEditingGewicht"/>
                 </div>
                 <div class="col-12 col-sm-4">
-                  <q-input v-model="gewichtForm.BEZEICHNUNG" label="Bezeichnung *" filled stack-label
-                           :rules="[val => !!val || 'Pflichtfeld']" dense :disable="!isEditingGewicht"/>
+                  <q-input v-model="gewichtForm.BEZEICHNUNG" :label="t('grid.designationRequired')" filled stack-label
+                           :rules="[val => !!val || t('message.required')]" dense :disable="!isEditingGewicht"/>
                 </div>
                 <div class="col-12 col-sm-3">
-                  <q-input v-model="gewichtForm.ANLAGEDATUM" label="Anlagedatum" filled stack-label dense
+                  <q-input v-model="gewichtForm.ANLAGEDATUM" :label="t('auto.anlagedatum')" filled stack-label dense
                            mask="####-##-##" :disable="!isEditingGewicht">
                     <template v-slot:append>
                       <q-icon name="event" class="cursor-pointer">
                         <q-popup-proxy cover transition-show="scale" transition-hide="scale" :disabled="!isEditingGewicht">
                           <q-date v-model="gewichtForm.ANLAGEDATUM" mask="YYYY-MM-DD">
                             <div class="row items-center justify-end">
-                              <q-btn v-close-popup label="Schließen" color="primary" flat />
+                              <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                             </div>
                           </q-date>
                         </q-popup-proxy>
@@ -259,14 +265,14 @@
                   </q-input>
                 </div>
                 <div class="col-12 col-sm-3">
-                  <q-input v-model="gewichtForm.DATUM" label="Gültigkeit (Datum)" filled stack-label dense
+                  <q-input v-model="gewichtForm.DATUM" :label="t('auto.gueltigkeit_datum')" filled stack-label dense
                            mask="####-##-##" :disable="!isEditingGewicht">
                     <template v-slot:append>
                       <q-icon name="event" class="cursor-pointer">
                         <q-popup-proxy cover transition-show="scale" transition-hide="scale" :disabled="!isEditingGewicht">
                           <q-date v-model="gewichtForm.DATUM" mask="YYYY-MM-DD">
                             <div class="row items-center justify-end">
-                              <q-btn v-close-popup label="Schließen" color="primary" flat />
+                              <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                             </div>
                           </q-date>
                         </q-popup-proxy>
@@ -276,8 +282,8 @@
                 </div>
 
                 <div class="col-12 row justify-end q-gutter-x-sm" v-if="isEditingGewicht">
-                  <q-btn label="Abbruch" color="grey-7" outline rounded @click="onCancelGewichtHeader" dense padding="xs lg" />
-                  <q-btn label="Speichern" type="submit" color="primary" rounded unelevated dense padding="xs xl" />
+                  <q-btn :label="t('auto.abbruch')" color="grey-7" outline rounded @click="onCancelGewichtHeader" dense padding="xs lg" />
+                  <q-btn :label="t('form.save')" type="submit" color="primary" rounded unelevated dense padding="xs xl" />
                 </div>
               </q-form>
             </q-card-section>
@@ -294,11 +300,11 @@
             :pagination="{ rowsPerPage: 15 }"
           >
             <template v-slot:top>
-              <div class="text-h6 text-weight-bold text-primary">Gewichts-Referenzwerte (Details)</div>
+              <div class="text-h6 text-weight-bold text-primary">{{ t('auto.gewichts_referenzwerte_details') }}</div>
               <q-space />
-              <q-btn v-if="gewichtForm.ID" label="Zeile hinzufügen" color="secondary" icon="add" outline rounded
+              <q-btn v-if="gewichtForm.ID" :label="t('auto.zeile_hinzufuegen')" color="secondary" icon="add" outline rounded
                      size="sm" @click="openCreateGewicht"/>
-              <div v-if="gewichtForm.TABELLENNUMMER" class="text-caption text-grey q-ml-md">Tab-Nr:
+              <div v-if="gewichtForm.TABELLENNUMMER" class="text-caption text-grey q-ml-md">{{ t('auto.tab_nr') }}
                 {{ gewichtForm.TABELLENNUMMER }}
               </div>
             </template>
@@ -329,8 +335,8 @@
           >
             <template v-slot:top>
               <div class="full-width row items-center justify-between">
-                <div class="text-h6 text-weight-bold">MwSt / Steuersätze</div>
-                <q-btn color="primary" icon="add" label="Neuer Steuersatz" @click="openCreateMwst" rounded unelevated/>
+                <div class="text-h6 text-weight-bold text-primary">{{ t('auto.mwst_steuersaetze') }}</div>
+                <q-btn color="primary" icon="add" :label="t('auto.neuer_steuersatz')" @click="openCreateMwst" rounded unelevated/>
               </div>
             </template>
             <template v-slot:body-cell-actions="props">
@@ -358,8 +364,8 @@
         >
           <template v-slot:top>
             <div class="full-width row items-center justify-between">
-              <div class="text-h6 text-weight-bold text-primary">Preistabelle (Eierpreise)</div>
-              <q-btn color="primary" icon="add" label="Neu" @click="openCreatePreis" rounded unelevated/>
+              <div class="text-h6 text-weight-bold text-primary">{{ t('auto.preistabelle_eierpreise') }}</div>
+              <q-btn color="primary" icon="add" :label="t('auto.neu')" @click="openCreatePreis" rounded unelevated/>
             </div>
           </template>
           <template v-slot:body-cell-actions="props">
@@ -387,7 +393,7 @@
         <q-dialog v-model="showPreiseDialog" persistent>
           <q-card style="min-width: 450px; border-radius: 12px;">
             <q-card-section class="bg-primary text-white q-pa-md row items-center">
-              <div class="text-h6">{{ isEditingPreis ? 'Eintrag bearbeiten' : 'Neuer Preiseintrag' }}</div>
+              <div class="text-h6">{{ isEditingPreis ? t('auto.eintrag_bearbeiten') : t('auto.neuer_preiseintrag') }}</div>
               <q-space/>
               <q-btn icon="close" flat round dense v-close-popup/>
             </q-card-section>
@@ -398,39 +404,39 @@
                     <q-select
                       v-model="preisForm.KZ_HALTUNGSTYP"
                       :options="haltungstypOptions"
-                      label="Haltungstyp *"
+                      :label="t('auto.haltungstyp')"
                       filled
                       stack-label
                       dense
                       emit-value
                       map-options
-                      :rules="[val => !!val || 'Pflichtfeld']"
+                      :rules="[val => !!val || t('message.required')]"
                     />
                   </div>
                   <div class="col-12 col-sm-6">
-                    <q-input v-model="preisForm.EIERKLASSE" label="Eierklasse (z.B. XL) *" filled stack-label dense
-                             :rules="[val => !!val || 'Pflichtfeld']"/>
+                    <q-input v-model="preisForm.EIERKLASSE" :label="t('auto.eierklasse_z_b_xl')" filled stack-label dense
+                             :rules="[val => !!val || t('message.required')]"/>
                   </div>
                   <div class="col-12 col-sm-6">
-                    <q-input v-model.number="preisForm.GEWICHT_VON" type="number" step="0.01" label="Gewicht von (g) *"
-                             filled stack-label dense :rules="[val => val !== null || 'Pflichtfeld']"/>
+                    <q-input v-model.number="preisForm.GEWICHT_VON" type="number" step="0.01" :label="t('auto.gewicht_von_g')"
+                             filled stack-label dense :rules="[val => val !== null || t('message.required')]"/>
                   </div>
                   <div class="col-12 col-sm-6">
-                    <q-input v-model.number="preisForm.GEWICHT_BIS" type="number" step="0.01" label="Gewicht bis (g) *"
-                             filled stack-label dense :rules="[val => val !== null || 'Pflichtfeld']"/>
+                    <q-input v-model.number="preisForm.GEWICHT_BIS" type="number" step="0.01" :label="t('auto.gewicht_bis_g')"
+                             filled stack-label dense :rules="[val => val !== null || t('message.required')]"/>
                   </div>
                   <div class="col-12 col-sm-6">
-                    <q-input v-model.number="preisForm.PREIS_VON" type="number" step="0.01" label="Preis von *" filled
-                             stack-label dense :rules="[val => val !== null || 'Pflichtfeld']"/>
+                    <q-input v-model.number="preisForm.PREIS_VON" type="number" step="0.01" :label="t('auto.preis_von')" filled
+                             stack-label dense :rules="[val => val !== null || t('message.required')]"/>
                   </div>
                   <div class="col-12 col-sm-6">
-                    <q-input v-model.number="preisForm.PREIS_BIS" type="number" step="0.01" label="Preis bis *" filled
-                             stack-label dense :rules="[val => val !== null || 'Pflichtfeld']"/>
+                    <q-input v-model.number="preisForm.PREIS_BIS" type="number" step="0.01" :label="t('auto.preis_bis')" filled
+                             stack-label dense :rules="[val => val !== null || t('message.required')]"/>
                   </div>
                 </div>
                 <div class="row justify-end q-mt-md q-gutter-x-sm">
-                  <q-btn label="Abbrechen" color="grey-7" flat v-close-popup/>
-                  <q-btn :label="isEditingPreis ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded
+                  <q-btn :label="t('form.cancel')" color="grey-7" flat v-close-popup/>
+                  <q-btn :label="isEditingPreis ? t('form.update') : t('form.save')" type="submit" color="primary" rounded
                          unelevated padding="xs xl"/>
                 </div>
               </q-form>
@@ -452,8 +458,8 @@
           >
             <template v-slot:top>
               <div class="full-width row items-center justify-between">
-                <div class="text-h6 text-weight-bold text-primary">Futtersorten</div>
-                <q-btn color="primary" icon="add" label="Neue Sorte" @click="openCreateFuttersorte" rounded unelevated/>
+                <div class="text-h6 text-weight-bold text-primary">{{ t('auto.futtersorten') }}</div>
+                <q-btn color="primary" icon="add" :label="t('auto.neue_sorte')" @click="openCreateFuttersorte" rounded unelevated/>
               </div>
             </template>
             <template v-slot:body-cell-actions="props">
@@ -471,17 +477,17 @@
         <q-dialog v-model="showFuttersortenDialog" persistent>
           <q-card style="min-width: 400px; border-radius: 12px;">
             <q-card-section class="bg-primary text-white q-pa-md row items-center">
-              <div class="text-h6">{{ isEditingFuttersorte ? 'Sorte bearbeiten' : 'Neue Futtersorte' }}</div>
+              <div class="text-h6">{{ isEditingFuttersorte ? t('auto.sorte_bearbeiten') : t('auto.neue_futtersorte') }}</div>
               <q-space/>
               <q-btn icon="close" flat round dense v-close-popup/>
             </q-card-section>
             <q-card-section class="q-pa-lg">
               <q-form @submit="onSubmitFuttersorte" class="q-gutter-md">
-                <q-input v-model="futtersorteForm.BEZEICHNUNG" label="Bezeichnung *" filled stack-label
-                         :rules="[val => !!val || 'Pflichtfeld']"/>
+                <q-input v-model="futtersorteForm.BEZEICHNUNG" :label="t('grid.designationRequired')" filled stack-label
+                         :rules="[val => !!val || t('message.required')]"/>
                 <div class="row justify-end q-mt-md q-gutter-x-sm">
-                  <q-btn label="Abbrechen" color="grey-7" flat v-close-popup/>
-                  <q-btn :label="isEditingFuttersorte ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl"/>
+                  <q-btn :label="t('form.cancel')" color="grey-7" flat v-close-popup/>
+                  <q-btn :label="isEditingFuttersorte ? t('form.update') : t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl"/>
                 </div>
               </q-form>
             </q-card-section>
@@ -567,46 +573,46 @@
     <q-dialog v-model="showAlterDialog" persistent>
       <q-card style="min-width: 500px; border-radius: 12px;">
         <q-card-section class="bg-primary text-white q-pa-md row items-center">
-          <div class="text-h6">{{ isEditingAlterRow ? 'Lebenswoche bearbeiten' : 'Neue Lebenswoche' }}</div>
+          <div class="text-h6">{{ isEditingAlterRow ? t('auto.lebenswoche_bearbeiten') : t('auto.neue_lebenswoche') }}</div>
           <q-space/>
           <q-btn icon="close" flat round dense v-close-popup/>
         </q-card-section>
         <q-card-section class="q-pa-lg">
           <q-form @submit="onSubmitAlterRow" class="row q-col-gutter-md">
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.ALTERINWOCHEN" label="Lebenswoche *" type="number" filled
-                       :rules="[val => !!val || 'Pflichtfeld']"/>
+              <q-input v-model.number="alterRowForm.ALTERINWOCHEN" :label="t('auto.lebenswoche')" type="number" filled
+                       :rules="[val => !!val || t('message.required')]"/>
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.EIGEWICHTWO" label="Ei-Gewicht Woche (g) *" type="number" step="0.1"
-                       filled :rules="[val => !!val || 'Pflichtfeld']"/>
+              <q-input v-model.number="alterRowForm.EIGEWICHTWO" :label="t('auto.ei_gewicht_woche_g')" type="number" step="0.1"
+                       filled :rules="[val => !!val || t('message.required')]"/>
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.LEGERATEAH" label="Legerate AH (%)" type="number" step="0.1"
+              <q-input v-model.number="alterRowForm.LEGERATEAH" :label="t('auto.legerate_ah')" type="number" step="0.1"
                        filled/>
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.LEGERATEDH" label="Legerate DH (%)" type="number" step="0.1"
+              <q-input v-model.number="alterRowForm.LEGERATEDH" :label="t('auto.legerate_dh')" type="number" step="0.1"
                        filled/>
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.EIGEWICHTKUM" label="Ei-Gewicht Kum. (g)" type="number" step="0.1"
+              <q-input v-model.number="alterRowForm.EIGEWICHTKUM" :label="t('auto.ei_gewicht_kum_g')" type="number" step="0.1"
                        filled/>
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.EIMASSEWO" label="Ei-Masse Woche (g)" type="number" step="0.1"
+              <q-input v-model.number="alterRowForm.EIMASSEWO" :label="t('auto.ei_masse_woche_g')" type="number" step="0.1"
                        filled/>
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.EIMASSEKUM" label="Ei-Masse Kum. (g)" type="number" step="0.1"
+              <q-input v-model.number="alterRowForm.EIMASSEKUM" :label="t('auto.ei_masse_kum_g')" type="number" step="0.1"
                        filled/>
             </div>
             <div class="col-12 col-sm-6">
-              <q-input v-model.number="alterRowForm.EIZAHLKUM" label="Eier Kum." type="number" step="0.1" filled/>
+              <q-input v-model.number="alterRowForm.EIZAHLKUM" :label="t('auto.eier_kum')" type="number" step="0.1" filled/>
             </div>
             <div class="col-12 row justify-end q-mt-md q-gutter-x-sm">
-              <q-btn label="Abbrechen" color="grey-7" flat v-close-popup/>
-              <q-btn label="Speichern" type="submit" color="primary" rounded unelevated padding="xs xl"/>
+              <q-btn :label="t('form.cancel')" color="grey-7" flat v-close-popup/>
+              <q-btn :label="isEditingAlterRow ? t('form.update') : t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl"/>
             </div>
           </q-form>
         </q-card-section>
@@ -617,40 +623,40 @@
     <q-dialog v-model="showGewichtDialog" persistent>
       <q-card style="min-width: 600px; border-radius: 12px;">
         <q-card-section class="bg-primary text-white q-pa-md row items-center">
-          <div class="text-h6">{{ isEditingGewichtRow ? 'Referenzgewicht bearbeiten' : 'Neues Referenzgewicht' }}</div>
+          <div class="text-h6">{{ isEditingGewichtRow ? t('auto.referenzgewicht_bearbeiten') : t('auto.neues_referenzgewicht') }}</div>
           <q-space/>
           <q-btn icon="close" flat round dense v-close-popup/>
         </q-card-section>
         <q-card-section class="q-pa-lg">
           <q-form @submit="onSubmitGewichtRow" class="row q-col-gutter-md">
             <div class="col-12 col-sm-4">
-              <q-input v-model.number="gewichtRowForm.EIGEWICHT" label="Ei-Gewicht (g) *" type="number" step="0.1"
-                       filled :rules="[val => !!val || 'Pflichtfeld']"/>
+              <q-input v-model.number="gewichtRowForm.EIGEWICHT" :label="t('auto.ei_gewicht_g')" type="number" step="0.1"
+                       filled :rules="[val => !!val || t('message.required')]"/>
             </div>
             <div class="col-4 col-sm-2">
-              <q-input v-model.number="gewichtRowForm.KLASSE1" label="XL (%)" type="number" step="0.1" filled/>
+              <q-input v-model.number="gewichtRowForm.KLASSE1" :label="t('auto.xl')" type="number" step="0.1" filled/>
             </div>
             <div class="col-4 col-sm-2">
-              <q-input v-model.number="gewichtRowForm.KLASSE2" label="L1 (%)" type="number" step="0.1" filled/>
+              <q-input v-model.number="gewichtRowForm.KLASSE2" :label="t('auto.l1')" type="number" step="0.1" filled/>
             </div>
             <div class="col-4 col-sm-2">
-              <q-input v-model.number="gewichtRowForm.KLASSE3" label="L2 (%)" type="number" step="0.1" filled/>
+              <q-input v-model.number="gewichtRowForm.KLASSE3" :label="t('auto.l2')" type="number" step="0.1" filled/>
             </div>
             <div class="col-4 col-sm-2">
-              <q-input v-model.number="gewichtRowForm.KLASSE4" label="M1 (%)" type="number" step="0.1" filled/>
+              <q-input v-model.number="gewichtRowForm.KLASSE4" :label="t('auto.m1')" type="number" step="0.1" filled/>
             </div>
             <div class="col-4 col-sm-2">
-              <q-input v-model.number="gewichtRowForm.KLASSE5" label="M2 (%)" type="number" step="0.1" filled/>
+              <q-input v-model.number="gewichtRowForm.KLASSE5" :label="t('auto.m2')" type="number" step="0.1" filled/>
             </div>
             <div class="col-4 col-sm-2">
-              <q-input v-model.number="gewichtRowForm.KLASSE6" label="S1 (%)" type="number" step="0.1" filled/>
+              <q-input v-model.number="gewichtRowForm.KLASSE6" :label="t('auto.s1')" type="number" step="0.1" filled/>
             </div>
             <div class="col-4 col-sm-2">
-              <q-input v-model.number="gewichtRowForm.KLASSE7" label="S2 (%)" type="number" step="0.1" filled/>
+              <q-input v-model.number="gewichtRowForm.KLASSE7" :label="t('auto.s2')" type="number" step="0.1" filled/>
             </div>
             <div class="col-12 row justify-end q-mt-md q-gutter-x-sm">
-              <q-btn label="Abbrechen" color="grey-7" flat v-close-popup/>
-              <q-btn label="Speichern" type="submit" color="primary" rounded unelevated padding="xs xl"/>
+              <q-btn :label="t('form.cancel')" color="grey-7" flat v-close-popup/>
+              <q-btn :label="isEditingGewichtRow ? t('form.update') : t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl"/>
             </div>
           </q-form>
         </q-card-section>
@@ -661,7 +667,7 @@
     <q-dialog v-model="showMwstDialog" persistent @show="onMwstDialogShow">
       <q-card style="min-width: 400px; max-width: 600px; border-radius: 12px;">
         <q-card-section class="row items-center q-pb-none bg-primary text-white q-pa-md">
-          <div class="text-h6">{{ isEditingMwst ? 'Steuersatz bearbeiten' : 'Neuer Steuersatz' }}</div>
+          <div class="text-h6">{{ isEditingMwst ? t('auto.steuersatz_bearbeiten') : t('auto.neuer_steuersatz') }}</div>
           <q-space />
           <q-btn icon="close" round dense v-close-popup @click="closeMwstDialog" unelevated color="white" flat />
         </q-card-section>
@@ -673,8 +679,8 @@
                      stack-label :rules="[val => val !== null || 'Pflichtfeld']"/>
             <q-input v-model="mwstForm.KONTO" label="Konto" filled stack-label/>
             <div class="row justify-end q-mt-md q-gutter-x-sm">
-              <q-btn ref="mwstCancelBtn" label="Abbrechen" color="negative" outline rounded @click="closeMwstDialog" />
-              <q-btn ref="mwstSaveBtn" :label="isEditingMwst ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
+              <q-btn ref="mwstCancelBtn" :label="t('form.cancel')" color="negative" outline rounded @click="closeMwstDialog" />
+              <q-btn ref="mwstSaveBtn" :label="isEditingMwst ? t('form.update') : t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl" />
             </div>
           </q-form>
         </q-card-section>
@@ -685,7 +691,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
+import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from 'src/boot/api';
@@ -788,111 +796,111 @@ const mwstRows = ref<Mwst[]>([]);
 const fieldRows = ref<FieldRow[]>([]);
 const futtersortenRows = ref<{ID: number, BEZEICHNUNG: string}[]>([]);
 
-const fieldColumns: QTableProps['columns'] = [
-  {name: 'actions', align: 'left', label: 'Aktion', field: 'actions'},
+const fieldColumns = computed<QTableProps['columns']>(() => [
+  {name: 'actions', align: 'left', label: t('grid.action'), field: 'actions'},
   {name: 'ID', align: 'left', label: 'ID', field: 'ID', sortable: true},
-  {name: 'KZ', align: 'left', label: 'KZ', field: (row: FieldRow) => getStr(row.KZ), sortable: true},
+  {name: 'KZ', align: 'left', label: t('auto.kz'), field: (row: FieldRow) => getStr(row.KZ), sortable: true},
   {
     name: 'FELDNAME',
     align: 'left',
-    label: 'Technischer Name',
+    label: t('auto.technischer_name'),
     field: (row: FieldRow) => getStr(row.FELDNAME),
     sortable: true
   },
   {
     name: 'INHALT',
     align: 'left',
-    label: 'Anzeige-Name / Übersetzung',
+    label: t('auto.anzeige_name_uebersetzung_col'),
     field: (row: FieldRow) => getStr(row.INHALT),
     sortable: true
   },
   {
     name: 'NAMEINDB',
     align: 'center',
-    label: 'In DB?',
+    label: t('auto.in_db'),
     field: (row: FieldRow) => getNum(row.NAMEINDB),
     sortable: true
   }
-];
+]);
 
-const mwstColumns: QTableProps['columns'] = [
-  {name: 'actions', align: 'center', label: 'Aktion', field: 'actions'},
-  {name: 'MWSTKZ', align: 'left', label: 'Kennzeichen', field: 'MWSTKZ', sortable: true},
-  {name: 'PROZENT', align: 'right', label: 'Prozent (%)', field: (row: Mwst) => getNum(row.PROZENT), sortable: true},
-  {name: 'KONTO', align: 'left', label: 'Konto', field: (row: Mwst) => getStr(row.KONTO) || '-', sortable: true}
-];
+const mwstColumns = computed<QTableProps['columns']>(() => [
+  {name: 'actions', align: 'center', label: t('grid.action'), field: 'actions'},
+  {name: 'MWSTKZ', align: 'left', label: t('auto.kennzeichen'), field: 'MWSTKZ', sortable: true},
+  {name: 'PROZENT', align: 'right', label: t('auto.prozent_percent'), field: (row: Mwst) => getNum(row.PROZENT), sortable: true},
+  {name: 'KONTO', align: 'left', label: t('auto.konto'), field: (row: Mwst) => getStr(row.KONTO) || '-', sortable: true}
+]);
 
-const futtersortenColumns: QTableProps['columns'] = [
-  { name: 'actions', align: 'center', label: 'Aktion', field: 'actions' },
-  { name: 'BEZEICHNUNG', align: 'left', label: 'Bezeichnung', field: 'BEZEICHNUNG', sortable: true }
-];
+const futtersortenColumns = computed<QTableProps['columns']>(() => [
+  { name: 'actions', align: 'center', label: t('grid.action'), field: 'actions' },
+  { name: 'BEZEICHNUNG', align: 'left', label: t('grid.designation'), field: 'BEZEICHNUNG', sortable: true }
+]);
 
-const alterColumns: QTableProps['columns'] = [
-  {name: 'actions', align: 'left', label: 'Aktion', field: 'actions'},
+const alterColumns = computed<QTableProps['columns']>(() => [
+  {name: 'actions', align: 'left', label: t('grid.action'), field: 'actions'},
   {
     name: 'ALTERINWOCHEN',
     align: 'left',
-    label: 'L-Woche',
+    label: t('auto.l_woche'),
     field: (row: LSLKlassik) => getNum(row.ALTERINWOCHEN),
     sortable: true
   },
   {
     name: 'EIGEWICHTWO',
     align: 'right',
-    label: 'Ei-Gew. Woche (g)',
+    label: t('auto.ei_gew_woche_g'),
     field: (row: LSLKlassik) => getNum(row.EIGEWICHTWO),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'LEGERATEAH',
     align: 'right',
-    label: 'Legerate AH (%)',
+    label: t('auto.legerate_ah'),
     field: (row: LSLKlassik) => getNum(row.LEGERATEAH),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'LEGERATEDH',
     align: 'right',
-    label: 'Legerate DH (%)',
+    label: t('auto.legerate_dh'),
     field: (row: LSLKlassik) => getNum(row.LEGERATEDH),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'EIGEWICHTKUM',
     align: 'right',
-    label: 'Ei-Gew. Kum. (g)',
+    label: t('auto.ei_gew_kum_g'),
     field: (row: LSLKlassik) => getNum(row.EIGEWICHTKUM),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'EIMASSEWO',
     align: 'right',
-    label: 'Ei-Masse Woche (g)',
+    label: t('auto.ei_masse_woche_g'),
     field: (row: LSLKlassik) => getNum(row.EIMASSEWO),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'EIMASSEKUM',
     align: 'right',
-    label: 'Ei-Masse Kum. (g)',
+    label: t('auto.ei_masse_kum_g'),
     field: (row: LSLKlassik) => getNum(row.EIMASSEKUM),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'EIZAHLKUM',
     align: 'right',
-    label: 'Eier Kum.',
+    label: t('auto.eier_kum'),
     field: (row: LSLKlassik) => getNum(row.EIZAHLKUM),
     format: (val: number) => val.toFixed(1)
   }
-];
+]);
 
-const gewichtColumns: QTableProps['columns'] = [
-  {name: 'actions', align: 'left', label: 'Aktion', field: 'actions'},
+const gewichtColumns = computed<QTableProps['columns']>(() => [
+  {name: 'actions', align: 'left', label: t('grid.action'), field: 'actions'},
   {
     name: 'EIGEWICHT',
     align: 'left',
-    label: 'Ei-Gewicht (g)',
+    label: t('auto.ei_gewicht_g_col'),
     field: (row: GewichtTabelle) => getNum(row.EIGEWICHT),
     format: (val: number) => val.toFixed(1),
     sortable: true
@@ -900,53 +908,53 @@ const gewichtColumns: QTableProps['columns'] = [
   {
     name: 'KLASSE1',
     align: 'right',
-    label: 'XL (%)',
+    label: t('auto.xl'),
     field: (row: GewichtTabelle) => getNum(row.KLASSE1),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'KLASSE2',
     align: 'right',
-    label: 'L1 (%)',
+    label: t('auto.l1'),
     field: (row: GewichtTabelle) => getNum(row.KLASSE2),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'KLASSE3',
     align: 'right',
-    label: 'L2 (%)',
+    label: t('auto.l2'),
     field: (row: GewichtTabelle) => getNum(row.KLASSE3),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'KLASSE4',
     align: 'right',
-    label: 'M1 (%)',
+    label: t('auto.m1'),
     field: (row: GewichtTabelle) => getNum(row.KLASSE4),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'KLASSE5',
     align: 'right',
-    label: 'M2 (%)',
+    label: t('auto.m2'),
     field: (row: GewichtTabelle) => getNum(row.KLASSE5),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'KLASSE6',
     align: 'right',
-    label: 'S1 (%)',
+    label: t('auto.s1'),
     field: (row: GewichtTabelle) => getNum(row.KLASSE6),
     format: (val: number) => val.toFixed(1)
   },
   {
     name: 'KLASSE7',
     align: 'right',
-    label: 'S1 (%)',
+    label: t('auto.s2'),
     field: (row: GewichtTabelle) => getNum(row.KLASSE7),
     format: (val: number) => val.toFixed(1)
   }
-];
+]);
 
 // MwSt Logic
 const showMwstDialog = ref(false);
@@ -1671,14 +1679,14 @@ const preisForm = reactive({
   PREIS_BIS: null as number | null
 });
 
-const preiseColumns: QTableProps['columns'] = [
-  {name: 'actions', align: 'center', label: 'Aktion', field: 'actions'},
-  {name: 'KZ_HALTUNGSTYP', align: 'left', label: 'H.-Typ', field: 'KZ_HALTUNGSTYP', sortable: true},
-  {name: 'EIERKLASSE', align: 'left', label: 'Klasse', field: 'EIERKLASSE', sortable: true},
+const preiseColumns = computed<QTableProps['columns']>(() => [
+  {name: 'actions', align: 'center', label: t('grid.action'), field: 'actions'},
+  {name: 'KZ_HALTUNGSTYP', align: 'left', label: t('auto.h_typ'), field: 'KZ_HALTUNGSTYP', sortable: true},
+  {name: 'EIERKLASSE', align: 'left', label: t('auto.klasse'), field: 'EIERKLASSE', sortable: true},
   {
     name: 'gewicht_von',
     align: 'right',
-    label: 'Gew. von',
+    label: t('auto.gew_von'),
     field: (row: any) => getNum(row.GEWICHT_VON),
     format: (val: number) => val.toFixed(2),
     sortable: true
@@ -1686,7 +1694,7 @@ const preiseColumns: QTableProps['columns'] = [
   {
     name: 'gewicht_bis',
     align: 'right',
-    label: 'Gew. bis',
+    label: t('auto.gew_bis'),
     field: (row: any) => getNum(row.GEWICHT_BIS),
     format: (val: number) => val.toFixed(2),
     sortable: true
@@ -1694,7 +1702,7 @@ const preiseColumns: QTableProps['columns'] = [
   {
     name: 'preis_von',
     align: 'right',
-    label: 'Preis von',
+    label: t('auto.preis_von_col'),
     field: (row: any) => getNum(row.PREIS_VON),
     format: (val: number) => val.toFixed(2),
     sortable: true
@@ -1702,12 +1710,12 @@ const preiseColumns: QTableProps['columns'] = [
   {
     name: 'preis_bis',
     align: 'right',
-    label: 'Preis bis',
+    label: t('auto.preis_bis_col'),
     field: (row: any) => getNum(row.PREIS_BIS),
     format: (val: number) => val.toFixed(2),
     sortable: true
   }
-];
+]);
 
 async function loadPreise() {
   loadingPreise.value = true;

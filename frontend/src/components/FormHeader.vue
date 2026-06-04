@@ -8,9 +8,9 @@
       <div class="col-12 col-md-4">
         <div class="text-subtitle1 text-weight-bold row items-center">
           <q-icon name="schedule" color="primary" class="q-mr-sm" size="sm" />
-          Erfassungs-Zeitpunkt
+          {{ t('auto.erfassungs_zeitpunkt') }}
         </div>
-        <div class="text-caption text-grey-7">Datum und Uhrzeit der Buchung</div>
+        <div class="text-caption text-grey-7">{{ t('auto.datum_und_uhrzeit_der_buchung') }}</div>
       </div>
       
       <div class="col-6 col-md-4">
@@ -37,7 +37,7 @@
           dense
           filled
           stack-label
-          label="Uhrzeit"
+          :label="t('auto.uhrzeit')"
           :bg-color="$q.dark.isActive ? 'grey-9' : 'white'"
           @update:model-value="onUpdate"
         >
@@ -51,6 +51,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

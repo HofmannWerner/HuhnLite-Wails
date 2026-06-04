@@ -2,9 +2,9 @@
   <div class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="row q-gutter-md">
-        <q-btn color="negative" icon="add" label="Neue Verluste" @click="openCreate" :disable="!filterHerde" rounded unelevated />
+        <q-btn color="negative" icon="add" :label="t('auto.neue_verluste')" @click="openCreate" :disable="!filterHerde" rounded unelevated />
       </div>
-      <div class="text-h6 text-negative">Verluste</div>
+      <div class="text-h6 text-negative">{{ t('auto.verluste') }}</div>
     </div>
 
     <div class="row q-col-gutter-md q-mb-md items-center">
@@ -12,7 +12,7 @@
         <q-input
           v-model.number="filterDays"
           type="number"
-          label="Zeitraum (Tage)"
+          :label="t('auto.zeitraum_tage')"
           filled
           stack-label
           min="1"
@@ -31,7 +31,7 @@
           emit-value
           map-options
           clearable
-          label="Herde auswählen"
+          :label="t('auto.herde_auswaehlen')"
           filled
           stack-label
         >
@@ -50,7 +50,7 @@
           emit-value
           map-options
           clearable
-          label="Grund Verlust"
+          :label="t('auto.grund_verlust')"
           filled
           stack-label
         >
@@ -101,7 +101,7 @@
        <template v-slot:body-cell-typ="props">
         <q-td :props="props">
           <q-chip color="negative" text-color="white" dense>
-            Verlust
+            {{ t('auto.verlust') }}
           </q-chip>
         </q-td>
       </template>
@@ -121,6 +121,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

@@ -4,10 +4,10 @@
     <!-- Title Section -->
     <div class="text-center q-mb-xl" style="line-height: 1.1;">
       <div class="text-weight-bolder text-primary title-text">
-        HuhnLite
+        {{ t('auto.huhnlite') }}
       </div>
       <div class="text-grey-7 subtitle-text">
-        Software-Lösung für den Legehennenhalter
+        {{ t('auto.software_loesung_fuer_den_legehennenhalt') }}
       </div>
     </div>
 
@@ -31,10 +31,9 @@
             <q-icon name="storage" size="3rem"/>
           </q-card-section>
           <q-card-section class="q-pt-md text-center col" :class="$q.dark.isActive ? 'bg-dark' : 'bg-white'">
-            <div class="text-h5 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">Stammdaten
+            <div class="text-h5 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">{{ t('auto.stammdaten') }}
             </div>
-            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">Herden,
-              Einrichtungen, Personen...
+            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">{{ t('auto.herden_einrichtungen_personen') }}
             </div>
           </q-card-section>
         </q-card>
@@ -48,10 +47,9 @@
           </q-card-section>
           <q-card-section class="q-pt-md text-center col" :class="$q.dark.isActive ? 'bg-dark' : 'bg-white'">
             <div class="text-h5 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">
-              Bewegungsdaten
+              {{ t('auto.bewegungsdaten') }}
             </div>
-            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">Buchungen,
-              Futter, Verluste...
+            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">{{ t('auto.buchungen_futter_verluste') }}
             </div>
           </q-card-section>
         </q-card>
@@ -64,9 +62,8 @@
             <q-icon name="table_chart" size="3rem"/>
           </q-card-section>
           <q-card-section class="q-pt-md text-center col" :class="$q.dark.isActive ? 'bg-dark' : 'bg-white'">
-            <div class="text-h5 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">Tabellen</div>
-            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">Kosten,
-              Parameter, MwSt...
+            <div class="text-h5 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">{{ t('auto.tabellen') }}</div>
+            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">{{ t('auto.kosten_parameter_mwst') }}
             </div>
           </q-card-section>
         </q-card>
@@ -79,9 +76,8 @@
             <q-icon name="assessment" size="3rem"/>
           </q-card-section>
           <q-card-section class="q-pt-md text-center col" :class="$q.dark.isActive ? 'bg-dark' : 'bg-white'">
-            <div class="text-h5 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">Reports</div>
-            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">Dynamische
-              Auswertungen...
+            <div class="text-h5 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : 'text-dark'">{{ t('auto.reports') }}</div>
+            <div class="text-subtitle2 text-grey-7 q-mt-sm" :class="$q.dark.isActive ? 'text-grey-4' : ''">{{ t('auto.dynamische_auswertungen') }}
             </div>
           </q-card-section>
         </q-card>
@@ -120,13 +116,15 @@
         </q-badge>
       </div>
       <div v-if="dbStatus.engine && dbStatus.engine !== 'offline'" class="text-grey-6 text-caption text-center" style="max-width: 800px; word-break: break-all;">
-        Aktive DB: <span :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-8'" class="text-weight-bold">{{ dbStatus.host }}</span>
+        {{ t('auto.aktive_db') }} <span :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-8'" class="text-weight-bold">{{ dbStatus.host }}</span>
       </div>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { useRouter } from 'vue-router';
 import {computed, onMounted, reactive} from 'vue';
 import { useSessionStore } from '../stores/session';

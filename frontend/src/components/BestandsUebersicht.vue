@@ -4,8 +4,7 @@
     <div class="row q-gutter-md q-mb-md items-center shadow-1 q-pa-sm rounded-borders"
          :class="$q.dark.isActive ? 'bg-grey-9 text-white' : 'bg-grey-1 text-black'">
       <div class="col-12 col-sm-auto">
-        <div class="text-caption q-mb-xs" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">1. Filter:
-          Lager-KZ
+        <div class="text-caption q-mb-xs" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">{{ t('auto.1_filter_lager_kz') }}
         </div>
         <q-select
           v-model="filterLagertyp"
@@ -24,8 +23,7 @@
       </div>
 
       <div class="col-12 col-sm-auto">
-        <div class="text-caption q-mb-xs" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">2. Filter:
-          Eierlager
+        <div class="text-caption q-mb-xs" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">{{ t('auto.2_filter_eierlager') }}
         </div>
         <q-select
           v-model="filterEilager"
@@ -88,7 +86,7 @@
               </div>
             </div>
             <div class="egg-col total-col">
-              <div class="text-caption text-grey-7">Summe</div>
+              <div class="text-caption text-grey-7">{{ t('auto.summe') }}</div>
               <div class="text-weight-bolder"
                    :class="prop.node.total > 0 ? ($q.dark.isActive ? 'text-amber-5' : 'text-deep-orange-9') : 'text-grey-4'">
                 {{ prop.node.total > 0 ? prop.node.total.toLocaleString('de-DE') : '-' }}
@@ -106,6 +104,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

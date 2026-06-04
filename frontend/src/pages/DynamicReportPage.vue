@@ -2,13 +2,13 @@
   <q-page padding>
     <div class="row items-center q-mb-md">
       <div class="text-h4 text-weight-bolder text-primary">
-        Dynamische Reports
+        {{ t('auto.dynamische_reports') }}
         <q-badge v-if="reportRows.length > 0" color="orange" floating>{{ reportRows.length }}</q-badge>
       </div>
       <q-space />
       <q-tabs v-model="tab" dense class="text-grey-7 bg-grey-2 rounded-borders q-pa-xs" active-color="primary" indicator-color="primary" align="left" narrow-indicator style="border: 1px solid #e0e0e0;">
-        <q-tab name="anzeige" label="Anzeige" icon="insights" />
-        <q-tab name="konfiguration" label="Konfiguration" icon="settings" v-if="sessionStore.can('sql_struktur_verwalten')" />
+        <q-tab name="anzeige" :label="t('auto.anzeige')" icon="insights" />
+        <q-tab name="konfiguration" :label="t('auto.konfiguration')" icon="settings" v-if="sessionStore.can('sql_struktur_verwalten')" />
       </q-tabs>
     </div>
 
@@ -16,10 +16,10 @@
     <q-dialog v-model="showHtmlReport" full-width full-height>
       <q-card class="bg-white">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6 text-primary">Berichts-Vorschau</div>
+          <div class="text-h6 text-primary">{{ t('auto.berichts_vorschau') }}</div>
           <q-space />
           <q-btn flat round icon="print" color="primary" @click="printHtmlReport" class="q-mr-sm">
-            <q-tooltip>Drucken</q-tooltip>
+            <q-tooltip>{{ t('auto.drucken') }}</q-tooltip>
           </q-btn>
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -28,14 +28,14 @@
           <iframe 
             :srcdoc="generatedHtml" 
             style="width: 100%; height: 100%; border: none;"
-            title="Bericht-Vorschau"
+            :title="t('auto.bericht_vorschau')"
           ></iframe>
         </q-card-section>
 
         <q-separator />
 
         <q-card-actions align="right" class="bg-grey-1 q-pa-md">
-          <q-btn label="Vorschau schließen" icon="close" color="primary" v-close-popup unelevated rounded />
+          <q-btn :label="t('auto.vorschau_schliessen')" icon="close" color="primary" v-close-popup unelevated rounded />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -49,7 +49,7 @@
             <q-card flat bordered class="shadow-2 rounded-borders overflow-hidden">
               <q-card-section class="bg-primary text-white q-pa-sm row items-center">
                 <q-icon name="list" size="sm" class="q-mr-sm" />
-                <div class="text-subtitle1 text-weight-bold">Report wählen</div>
+                <div class="text-subtitle1 text-weight-bold">{{ t('auto.report_waehlen') }}</div>
               </q-card-section>
               
               <q-card-section class="q-pa-sm border-bottom">
@@ -58,7 +58,7 @@
                     v-model="filterText" 
                     dense 
                     filled 
-                    placeholder="Suchen..." 
+                    :placeholder="t('auto.suchen')" 
                     class="col"
                     clearable
                   >
@@ -117,7 +117,7 @@
           <div class="col-12 col-md-8">
             <q-card flat bordered class="shadow-2 rounded-borders overflow-hidden" style="min-height: 500px">
               <q-card-section class="bg-secondary text-white q-pa-sm row items-center">
-                <div class="bg-orange text-black q-pa-xs q-mr-md font-weight-bold">RECHTE SEITE AKTIV</div>
+                <div class="bg-orange text-black q-pa-xs q-mr-md font-weight-bold">{{ t('auto.rechte_seite_aktiv') }}</div>
                 <q-icon name="insights" size="sm" class="q-mr-sm" />
                 <div class="text-subtitle1 text-weight-bold">
                   {{ currentReportLabel || 'Kein Report ausgewählt' }}
@@ -127,7 +127,7 @@
                   <q-btn 
                    v-if="generatedHtml || (currentReportType === 'S' && resultData.length > 0)" 
                    icon="print" 
-                   label="Drucken / PDF" 
+                   :label="t('auto.drucken_pdf')" 
                    flat 
                    color="white" 
                    size="sm" 
@@ -138,7 +138,7 @@
                 <q-btn 
                   v-if="resultData.length > 0 || masterData.length > 0" 
                   icon="save_alt" 
-                  label="CSV Export" 
+                  :label="t('auto.csv_export')" 
                   flat 
                   color="white" 
                   size="sm" 
@@ -156,7 +156,7 @@
                   class="q-ml-md"
                   @click="selectedKey = null; currentReportLabel = ''; masterData = []; detailData = []; resultData = []"
                 >
-                  <q-tooltip>Vorschau schließen</q-tooltip>
+                  <q-tooltip>{{ t('auto.vorschau_schliessen') }}</q-tooltip>
                 </q-btn>
               </q-card-section>
 
@@ -164,7 +164,7 @@
               <q-card-section v-if="executedSQL" class="bg-grey-2 q-pa-xs border-bottom">
                 <q-expansion-item
                   icon="terminal"
-                  label="Generiertes SQL-Statement (Backend)"
+                  :label="t('auto.generiertes_sql_statement_backend')"
                   header-class="text-caption text-weight-medium text-grey-8"
                   dense
                 >
@@ -179,7 +179,7 @@
                 <div v-if="loadingResult" class="flex flex-center q-pa-xl" style="height: 400px">
                   <q-spinner-cube color="primary" size="60px" />
                   <div class="full-width text-center q-mt-md text-grey-7 text-subtitle1">
-                    Generiere Daten... Bitte warten.
+                    {{ t('auto.generiere_daten_bitte_warten') }}
                   </div>
                 </div>
 
@@ -291,9 +291,9 @@
                       
                       <div v-if="!showMasterGrid && !showDetailGrid && currentReportType !== 'T'" class="q-pa-xl text-center text-grey-6 bg-grey-2 rounded-borders border-dashed">
                         <q-icon name="grid_view" size="lg" class="q-mb-sm opacity-50" />
-                        <div>Keine Gitter-Ansicht für diesen Report konfiguriert.</div>
-                        <div class="text-caption">Möchten Sie das Master-Grid in der Konfiguration aktivieren?</div>
-                        <q-btn label="Master-Grid jetzt anzeigen" flat color="primary" class="q-mt-md" @click="showMasterGrid = true" />
+                        <div>{{ t('auto.keine_gitter_ansicht_fuer_diesen_report_') }}</div>
+                        <div class="text-caption">{{ t('auto.moechten_sie_das_master_grid_in_der_konf') }}</div>
+                        <q-btn :label="t('auto.master_grid_jetzt_anzeigen')" flat color="primary" class="q-mt-md" @click="showMasterGrid = true" />
                       </div>
                    </div>
                 </div>
@@ -305,16 +305,16 @@
 
       <q-tab-panel name="konfiguration" class="q-pa-md">
         <div class="row items-center q-mb-md">
-          <div class="text-h6 text-primary text-weight-bold">Berichts-Struktur verwalten</div>
+          <div class="text-h6 text-primary text-weight-bold">{{ t('auto.berichts_struktur_verwalten') }}</div>
           <q-space />
           <div class="q-gutter-x-sm">
             <q-btn flat round dense icon="unfold_more" color="primary" @click="toggleConfigGroups(true)">
-              <q-tooltip>Alle Ordner ausklappen</q-tooltip>
+              <q-tooltip>{{ t('auto.alle_ordner_ausklappen') }}</q-tooltip>
             </q-btn>
             <q-btn flat round dense icon="unfold_less" color="grey-7" @click="toggleConfigGroups(false)">
-              <q-tooltip>Alle Ordner einklappen</q-tooltip>
+              <q-tooltip>{{ t('auto.alle_ordner_einklappen') }}</q-tooltip>
             </q-btn>
-            <q-btn color="primary" icon="add" label="Neuer Bericht" @click="openCreate" rounded unelevated class="q-ml-md" />
+            <q-btn color="primary" icon="add" :label="t('auto.neuer_bericht')" @click="openCreate" rounded unelevated class="q-ml-md" />
           </div>
         </div>
 
@@ -366,7 +366,7 @@
                     size="sm" 
                     @click.stop="onCopy(prop.node.data)"
                   >
-                    <q-tooltip>Kopieren</q-tooltip>
+                    <q-tooltip>{{ t('auto.kopieren') }}</q-tooltip>
                   </q-btn>
                   <q-btn 
                     flat round dense 
@@ -391,23 +391,23 @@
     <q-dialog v-model="showDefDialog" persistent backdrop-filter="blur(4px)">
       <q-card style="min-width: 450px;" :class="$q.dark.isActive ? 'bg-grey-10 text-white' : ''">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">Parameter definieren</div>
+          <div class="text-h6">{{ t('auto.parameter_definieren') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section>
-          <div class="text-caption q-mb-md">Bitte legen Sie Anzeige-Labels und Typen für die im SQL gefundenen Begriffe fest:</div>
+          <div class="text-caption q-mb-md">{{ t('auto.bitte_legen_sie_anzeige_labels_und_typen') }}</div>
           
           <q-list bordered separator rounded-borders>
             <q-item v-for="(d, index) in currentDefinitions" :key="d.term" class="q-py-md">
               <q-item-section>
                 <div class="row q-col-gutter-sm items-center">
                   <div class="col-12 text-weight-bold font-mono text-primary">`{{ d.term }}`</div>
-                  <q-input v-model="d.label" label="Anzeige-Label" dense outlined class="col-7" :autofocus="index === 0" />
+                  <q-input v-model="d.label" :label="t('auto.anzeige_label')" dense outlined class="col-7" :autofocus="index === 0" />
                   <q-select 
                     v-model="d.type" 
-                    label="Datentyp" 
+                    :label="t('auto.datentyp')" 
                     :options="['TEXT', 'NUMBER', 'DATE', 'BOOLEAN']" 
                     dense outlined class="col-5" 
                   />
@@ -418,8 +418,8 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="Abbrechen" color="grey" v-close-popup />
-          <q-btn label="Speichern & Weiter" color="primary" @click="saveDefinitions" unelevated rounded />
+          <q-btn flat :label="t('form.cancel')" color="grey" v-close-popup />
+          <q-btn :label="t('auto.speichern_weiter')" color="primary" @click="saveDefinitions" unelevated rounded />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -428,10 +428,10 @@
       <q-card style="min-width: 400px; border-radius: 12px;">
         <q-card-section class="bg-purple text-white row items-center">
           <q-icon name="filter_alt" size="sm" class="q-mr-sm" />
-          <div class="text-h6">Filter einstellen</div>
+          <div class="text-h6">{{ t('auto.filter_einstellen') }}</div>
           <q-space />
-          <q-btn label="Format def." color="white" flat icon="settings" dense class="q-mr-sm" @click="showQuickParamEdit = true">
-            <q-tooltip>Parameter & Format definieren</q-tooltip>
+          <q-btn :label="t('auto.format_def')" color="white" flat icon="settings" dense class="q-mr-sm" @click="showQuickParamEdit = true">
+            <q-tooltip>{{ t('auto.parameter_format_definieren') }}</q-tooltip>
           </q-btn>
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -521,14 +521,14 @@
 
         <q-separator />
         <q-card-section v-if="dialogSQLPreview" class="bg-dark text-amber-3 q-pa-sm font-mono text-caption scroll" style="max-height: 150px; white-space: pre-wrap;">
-          <div class="text-weight-bold q-mb-xs text-grey-5 uppercase">SQL-Vorschau (Live):</div>
+          <div class="text-weight-bold q-mb-xs text-grey-5 uppercase">{{ t('auto.sql_vorschau_live') }}</div>
           {{ dialogSQLPreview }}
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn label="Abbrechen" color="negative" flat v-close-popup />
-          <q-btn label="Report ausführen" color="primary" unelevated @click="confirmFilters" />
-          <q-btn v-if="currentReportType === 'S'" label="Drucken" color="orange-9" unelevated icon="print" @click="printSimpleReport" />
+          <q-btn :label="t('form.cancel')" color="negative" flat v-close-popup />
+          <q-btn :label="t('auto.report_ausfuehren')" color="primary" unelevated @click="confirmFilters" />
+          <q-btn v-if="currentReportType === 'S'" :label="t('auto.drucken')" color="orange-9" unelevated icon="print" @click="printSimpleReport" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -538,14 +538,14 @@
       <q-card style="width: 700px; max-width: 90vw;" :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-white'">
         <q-card-section class="row items-center bg-teal-8 text-white q-py-sm">
           <q-icon name="settings_suggest" size="sm" class="q-mr-md" />
-          <div class="text-h6">Parameter & Format definieren</div>
+          <div class="text-h6">{{ t('auto.parameter_format_definieren') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
         
         <q-card-section class="q-pa-md">
            <q-banner dense class="bg-blue-1 text-blue-9 rounded-borders q-mb-md">
-             Hier können Sie die Bezeichnungen und Eingabe-Typen für diesen Bericht anpassen.
+             {{ t('auto.hier_koennen_sie_die_bezeichnungen_und_e') }}
            </q-banner>
            
            <q-list bordered separator class="rounded-borders">
@@ -556,12 +556,12 @@
                      {{ d.term }}
                    </div>
                    <div class="col-12 col-md-5">
-                     <q-input v-model="d.label" label="Anzeige-Label" dense filled />
+                     <q-input v-model="d.label" :label="t('auto.anzeige_label')" dense filled />
                    </div>
                    <div class="col-12 col-md-4">
                      <q-select 
                         v-model="d.type" 
-                        label="Eingabe-Typ" 
+                        :label="t('auto.eingabe_typ')" 
                         :options="['TEXT', 'NUMBER', 'DATE', 'BOOLEAN']" 
                         dense filled 
                       />
@@ -573,8 +573,8 @@
         </q-card-section>
         
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn label="Abbrechen" color="grey" flat v-close-popup />
-          <q-btn label="Speichern" color="teal-8" unelevated icon="save" @click="saveQuickParams" />
+          <q-btn :label="t('form.cancel')" color="grey" flat v-close-popup />
+          <q-btn :label="t('form.save')" color="teal-8" unelevated icon="save" @click="saveQuickParams" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -606,7 +606,7 @@
                 <!-- SCHRITT 1: BASIS DATEN -->
                 <q-step
                   :name="1"
-                  title="1. Name & Art"
+                  :title="t('auto.1_name_art')"
                   icon="edit"
                   :done="configStep > 1"
                 >
@@ -614,7 +614,7 @@
                     <div class="col-12 col-md-6">
                       <q-input 
                         v-model="configForm.BESCHREIBUNG" 
-                        label="Bericht Titel (Anzeigename) *" 
+                        :label="t('auto.bericht_titel_anzeigename')" 
                         filled 
                         stack-label 
                         :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
@@ -625,7 +625,7 @@
                     <div class="col-12 col-md-6">
                       <q-select 
                         v-model="configForm.TYP_KZ" 
-                        label="Art des Berichts *" 
+                        :label="t('auto.art_des_berichts')" 
                         :options="[
                           {label: 'L - Einfache Liste', value: 'S'},
                           {label: 'T - Master-Detail (Template)', value: 'T'},
@@ -641,7 +641,7 @@
                     <div class="col-12 col-md-12">
                       <q-select 
                         v-model="configForm.ROOT_KZ" 
-                        label="Basis Kategorie (Root) *" 
+                        :label="t('auto.basis_kategorie_root')" 
                         :options="[
                           {label: 'Einfache Listen', value: 'L'},
                           {label: 'Master Detail(Template)', value: 'T'},
@@ -656,12 +656,12 @@
                       />
                     </div>
                     <div class="col-12 col-md-12 text-center q-pa-lg rounded-borders" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-blue-grey-1'">
-                      <p class="text-caption">Legen Sie zuerst den Typ fest, danach folgen die SQL-Statements.</p>
+                      <p class="text-caption">{{ t('auto.legen_sie_zuerst_den_typ_fest_danach_fol') }}</p>
                     </div>
                     <div class="col-12 col-md-12">
                       <q-checkbox 
                          v-model="configForm.IST_SUMMENZEILE" 
-                         label="Summenzeile am Ende des Berichts ausgeben" 
+                         :label="t('auto.summenzeile_am_ende_des_berichts_ausgebe')" 
                          color="orange-9" 
                          icon="add_circle"
                          keep-color
@@ -674,7 +674,7 @@
                 <!-- TEIL 2: MASTER & ÜBERSCHRIFT -->
                 <q-step
                   :name="2"
-                  title="Master & Header"
+                  :title="t('auto.master_header')"
                   icon="settings"
                   :done="configStep > 2"
                 >
@@ -682,7 +682,7 @@
                     <div class="col-12 col-md-9">
                       <q-input 
                         v-model="configForm.BESCHREIBUNG" 
-                        label="Beschreibung / Titel des Berichts *" 
+                        :label="t('auto.beschreibung_titel_des_berichts')" 
                         filled 
                         stack-label 
                         autofocus
@@ -695,7 +695,7 @@
                     <div class="col-12 col-md-3 flex items-center">
                       <q-checkbox 
                         v-model="configForm.SYSTEM_KZ" 
-                        label="System-Eintrag" 
+                        :label="t('auto.system_eintrag')" 
                         color="red"
                         :disable="!canEditSystem"
                       />
@@ -704,7 +704,7 @@
                     <div class="col-12 col-md-3">
                       <q-select 
                         v-model="configForm.ROOT_KZ" 
-                        label="Haupt-Kategorie (Root) *" 
+                        :label="t('auto.haupt_kategorie_root')" 
                         :options="[
                           {label: 'Einfache Listen', value: 'L'},
                           {label: 'Master Detail(Template)', value: 'T'},
@@ -723,7 +723,7 @@
                     <div class="col-12 col-md-3">
                       <q-select 
                         v-model="configForm.KATEGORIE_KZ" 
-                        label="Art des Eintrags *" 
+                        :label="t('auto.art_des_eintrags')" 
                         :options="[
                           {label: 'K - Kategorie / Ordner', value: 'K'}, 
                           {label: 'R - Report / Liste', value: 'L'}
@@ -742,7 +742,7 @@
                       <q-select 
                         v-if="configForm.KATEGORIE_KZ !== 'K'"
                         v-model="configForm.TYP_KZ" 
-                        label="Genaue Berichts-Art *" 
+                        :label="t('auto.genaue_berichts_art')" 
                         :options="[
                           {label: 'L - Einfache Liste', value: 'S'},
                           {label: 'T - Master-Detail (Template)', value: 'T'},
@@ -761,7 +761,7 @@
                       <q-select 
                         v-if="configForm.KATEGORIE_KZ !== 'K'"
                         v-model="configForm.GRUPPEN_KZ" 
-                        label="Zugeordneter Ordner"
+                        :label="t('auto.zugeordneter_ordner')"
                         :options="filteredFolderOptions"
                         emit-value
                         map-options
@@ -778,7 +778,7 @@
                       <q-input 
                         v-else
                         v-model="configForm.GRUPPEN_KZ" 
-                        label="Gruppen-Code (Eigener Code)" 
+                        :label="t('auto.gruppen_code_eigener_code')" 
                         filled 
                         stack-label 
                         maxlength="1"
@@ -791,11 +791,11 @@
                       <q-input 
                         v-if="['T', 'F'].includes(configForm.TYP_KZ) || configForm.KATEGORIE_KZ === 'F'"
                         v-model="configForm.TEMPLATE_NAME" 
-                        label="Template Name" 
+                        :label="t('auto.template_name')" 
                         filled 
                         stack-label 
                         :bg-color="$q.dark.isActive ? 'grey-9' : 'white'"
-                        placeholder="Name der .html Datei"
+                        :placeholder="t('auto.name_der_html_datei')"
                         :disable="isSystemLocked"
                       >
                         <template v-slot:append>
@@ -808,7 +808,7 @@
                             @click="openTemplateEditor()" 
                             :disable="!configForm.TEMPLATE_NAME"
                           >
-                            <q-tooltip>Template im Editor öffnen</q-tooltip>
+                            <q-tooltip>{{ t('auto.template_im_editor_oeffnen') }}</q-tooltip>
                           </q-btn>
                         </template>
                       </q-input>
@@ -822,13 +822,13 @@
                 <!-- TEIL 3: MASTER-SQL -->
                 <q-step
                   :name="3"
-                  title="3. Master-SQL (Ebene 2)"
+                  :title="t('auto.3_master_sql_ebene_2')"
                   icon="storage"
                   :done="configStep > 3"
                   :disable="configForm.KATEGORIE_KZ === 'K'"
                 >
                   <div class="q-pa-md">
-                    <div class="text-subtitle2 q-mb-sm" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">Technisches SQL (Intern)</div>
+                    <div class="text-subtitle2 q-mb-sm" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'">{{ t('auto.technisches_sql_intern') }}</div>
                     <q-input 
                       v-model="configForm.SQLSTATEMENT" 
                       type="textarea" 
@@ -841,12 +841,12 @@
                       :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-1'"
                       class="q-mb-md"
                     />
-                     <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">Master SQL (Nativ / Manuell)</div>
+                     <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">{{ t('auto.master_sql_nativ_manuell') }}</div>
                     <q-input 
                       v-model="configForm.SQLSTATEMENT_NATIVE" 
                       type="textarea" 
                       filled 
-                      placeholder="Hier Ihr manuelles SQL schreiben..." 
+                      :placeholder="t('auto.hier_ihr_manuelles_sql_schreiben')" 
                       rows="15" 
                       input-style="height: 300px;"
                       :input-class="$q.dark.isActive ? 'font-mono text-blue-2' : 'font-mono text-blue-9'" 
@@ -859,8 +859,8 @@
                     <!-- Vorschau für das generierte SQL -->
                     <div v-if="configForm.SQLSTATEMENT && configForm.SQLSTATEMENT !== configForm.SQLSTATEMENT_NATIVE" class="q-mt-md">
                       <div class="row items-center justify-between q-mb-xs">
-                        <div class="text-caption text-orange-9 weight-bold">Vorschlag vom SQL-Builder:</div>
-                        <q-btn size="sm" color="orange-9" label="In Editor übernehmen" icon="content_copy" flat @click="configForm.SQLSTATEMENT_NATIVE = configForm.SQLSTATEMENT" />
+                        <div class="text-caption text-orange-9 weight-bold">{{ t('auto.vorschlag_vom_sql_builder') }}</div>
+                        <q-btn size="sm" color="orange-9" :label="t('auto.in_editor_uebernehmen')" icon="content_copy" flat @click="configForm.SQLSTATEMENT_NATIVE = configForm.SQLSTATEMENT" />
                       </div>
                       <q-input 
                         v-model="configForm.SQLSTATEMENT" 
@@ -878,14 +878,14 @@
                     
                     <div class="row q-mt-md q-gutter-x-sm justify-between items-center">
                        <div class="row q-gutter-x-sm">
-                         <q-btn label="SQL bilden" icon="auto_fix_high" color="orange-9" unelevated @click="magicWandNative('SQLSTATEMENT')" />
-                         <q-btn label="SQL bereinigen" icon="text_format" color="teal" unelevated @click="cleanupSqlForExplorer('SQLSTATEMENT_NATIVE')">
-                           <q-tooltip>SQL vom QueryBuilder aufbereiten: Alles in Großbuchstaben, Hochkommas entfernen</q-tooltip>
+                         <q-btn :label="t('auto.sql_bilden')" icon="auto_fix_high" color="orange-9" unelevated @click="magicWandNative('SQLSTATEMENT')" />
+                         <q-btn :label="t('auto.sql_bereinigen')" icon="text_format" color="teal" unelevated @click="cleanupSqlForExplorer('SQLSTATEMENT_NATIVE')">
+                           <q-tooltip>{{ t('auto.sql_vom_querybuilder_aufbereiten_alles_i') }}</q-tooltip>
                          </q-btn>
-                         <q-btn label="Filter bilden" icon="filter_alt" color="primary" unelevated @click="openFilterBuilder('SQLSTATEMENT')" />
-                         <q-btn label="Where löschen" icon="filter_alt_off" flat color="grey-7" @click="clearWhere('SQLSTATEMENT')" />
+                         <q-btn :label="t('auto.filter_bilden')" icon="filter_alt" color="primary" unelevated @click="openFilterBuilder('SQLSTATEMENT')" />
+                         <q-btn :label="t('auto.where_loeschen')" icon="filter_alt_off" flat color="grey-7" @click="clearWhere('SQLSTATEMENT')" />
                        </div>
-                       <q-btn label="SQL Testen" icon="play_arrow" color="primary" unelevated @click="runSqlPreview(configForm.SQLSTATEMENT_NATIVE || configForm.SQLSTATEMENT)" />
+                       <q-btn :label="t('auto.sql_testen')" icon="play_arrow" color="primary" unelevated @click="runSqlPreview(configForm.SQLSTATEMENT_NATIVE || configForm.SQLSTATEMENT)" />
                     </div>
                   </div>
                 </q-step>
@@ -893,13 +893,13 @@
                 <!-- TEIL 4: DETAIL-SQL -->
                 <q-step
                   :name="4"
-                  title="4. Detail-SQL (Ebene 3)"
+                  :title="t('auto.4_detail_sql_ebene_3')"
                   icon="list"
                   :done="configStep > 4"
                   :disable="!['T', 'M'].includes(configForm.TYP_KZ)"
                 >
                   <div class="q-pa-md">
-                    <div class="text-subtitle2 q-mb-sm text-grey-7">Technisches Detail-SQL (Intern)</div>
+                    <div class="text-subtitle2 q-mb-sm text-grey-7">{{ t('auto.technisches_detail_sql_intern') }}</div>
                     <q-input 
                       v-model="configForm.DETAIL_SQL" 
                       type="textarea" 
@@ -912,12 +912,12 @@
                       :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-1'"
                       class="q-mb-md"
                     />
-                    <div class="text-subtitle1 text-weight-bold text-secondary q-mb-sm">Detail SQL (Nativ / Manuell)</div>
+                    <div class="text-subtitle1 text-weight-bold text-secondary q-mb-sm">{{ t('auto.detail_sql_nativ_manuell') }}</div>
                     <q-input 
                       v-model="configForm.DETAIL_SQL_NATIVE" 
                       type="textarea" 
                       filled 
-                      placeholder="Hier Ihr manuelles Detail-SQL schreiben..." 
+                      :placeholder="t('auto.hier_ihr_manuelles_detail_sql_schreiben')" 
                       rows="15" 
                       input-style="height: 300px;"
                       :input-class="$q.dark.isActive ? 'font-mono text-indigo-2' : 'font-mono text-indigo-9'" 
@@ -931,8 +931,8 @@
                     <!-- Vorschau für das generierte Detail-SQL -->
                     <div v-if="configForm.DETAIL_SQL && configForm.DETAIL_SQL !== configForm.DETAIL_SQL_NATIVE" class="q-mt-md">
                       <div class="row items-center justify-between q-mb-xs">
-                        <div class="text-caption text-secondary weight-bold">Vorschlag vom SQL-Builder (Detail):</div>
-                        <q-btn size="sm" color="secondary" label="In Editor übernehmen" icon="content_copy" flat @click="configForm.DETAIL_SQL_NATIVE = configForm.DETAIL_SQL" />
+                        <div class="text-caption text-secondary weight-bold">{{ t('auto.vorschlag_vom_sql_builder_detail') }}</div>
+                        <q-btn size="sm" color="secondary" :label="t('auto.in_editor_uebernehmen')" icon="content_copy" flat @click="configForm.DETAIL_SQL_NATIVE = configForm.DETAIL_SQL" />
                       </div>
                       <q-input 
                         v-model="configForm.DETAIL_SQL" 
@@ -950,14 +950,14 @@
                     
                     <div class="row q-mt-md q-gutter-x-sm justify-between items-center">
                        <div class="row q-gutter-x-sm">
-                         <q-btn label="SQL bilden" icon="auto_fix_high" color="orange-9" unelevated @click="magicWandNative('DETAIL_SQL')" />
-                         <q-btn label="SQL bereinigen" icon="text_format" color="teal" unelevated @click="cleanupSqlForExplorer('DETAIL_SQL_NATIVE')">
-                           <q-tooltip>SQL vom QueryBuilder aufbereiten: Alles in Großbuchstaben, Hochkommas entfernen</q-tooltip>
+                         <q-btn :label="t('auto.sql_bilden')" icon="auto_fix_high" color="orange-9" unelevated @click="magicWandNative('DETAIL_SQL')" />
+                         <q-btn :label="t('auto.sql_bereinigen')" icon="text_format" color="teal" unelevated @click="cleanupSqlForExplorer('DETAIL_SQL_NATIVE')">
+                           <q-tooltip>{{ t('auto.sql_vom_querybuilder_aufbereiten_alles_i') }}</q-tooltip>
                          </q-btn>
-                         <q-btn label="Filter bilden" icon="filter_alt" color="secondary" unelevated @click="openFilterBuilder('DETAIL_SQL')" />
-                         <q-btn label="Where löschen" icon="filter_alt_off" flat color="grey-7" @click="clearWhere('DETAIL_SQL')" />
+                         <q-btn :label="t('auto.filter_bilden')" icon="filter_alt" color="secondary" unelevated @click="openFilterBuilder('DETAIL_SQL')" />
+                         <q-btn :label="t('auto.where_loeschen')" icon="filter_alt_off" flat color="grey-7" @click="clearWhere('DETAIL_SQL')" />
                        </div>
-                       <q-btn label="SQL Testen" icon="play_arrow" color="secondary" unelevated @click="runSqlPreview(configForm.DETAIL_SQL_NATIVE || configForm.DETAIL_SQL)" />
+                       <q-btn :label="t('auto.sql_testen')" icon="play_arrow" color="secondary" unelevated @click="runSqlPreview(configForm.DETAIL_SQL_NATIVE || configForm.DETAIL_SQL)" />
                     </div>
                   </div>
                 </q-step>
@@ -965,7 +965,7 @@
                 <!-- TEIL 5: GRUPPIERUNG & LAYOUT -->
                 <q-step
                   :name="5"
-                  title="Gruppierung & Layout"
+                  :title="t('auto.gruppierung_layout')"
                   icon="layers"
                   :done="configStep > 5"
                   :disable="!['T', 'M', 'S'].includes(configForm.TYP_KZ)"
@@ -974,27 +974,27 @@
                     <div class="col-12 col-md-6">
                       <q-input 
                         v-model="configForm.GROUP_FIELD" 
-                        label="Gruppenwechsel nach Feld" 
+                        :label="t('auto.gruppenwechsel_nach_feld')" 
                         filled 
-                        placeholder="z.B. STALLNAME"
-                        hint="Bei Änderung des Wertes in diesem Feld wird ein Gruppen-Header eingefügt."
+                        :placeholder="t('auto.z_b_stallname')"
+                        :hint="t('auto.bei_aenderung_des_wertes_in_diesem_feld_')"
                         :bg-color="$q.dark.isActive ? 'grey-9' : 'white'"
                       />
                     </div>
                     <div class="col-12 col-md-6">
                       <q-input 
                         v-model.number="configForm.ROWS_PER_PAGE" 
-                        label="Zeilen pro Seite" 
+                        :label="t('auto.zeilen_pro_seite')" 
                         type="number" 
                         filled 
-                        placeholder="0 = unbegrenzt"
+                        :placeholder="t('auto.0_unbegrenzt')"
                         :bg-color="$q.dark.isActive ? 'grey-9' : 'white'"
                       />
                     </div>
                     <div class="col-12 col-md-6">
                       <q-select 
                         v-model="configForm.PAGE_ORIENTATION" 
-                        label="Seiten-Ausrichtung" 
+                        :label="t('auto.seiten_ausrichtung')" 
                         :options="[{label: 'Portrait (Hochkant)', value: 'P'}, {label: 'Landscape (Quer)', value: 'L'}]"
                         filled 
                         emit-value
@@ -1008,21 +1008,21 @@
                 <!-- TEIL 6: GRID-OPTIONEN -->
                 <q-step
                   :name="6"
-                  title="Grid & Anzeige"
+                  :title="t('auto.grid_anzeige')"
                   icon="grid_on"
                   :disable="configForm.KATEGORIE_KZ === 'K'"
                 >
                    <div class="q-pa-md">
                     <q-banner :class="$q.dark.isActive ? 'bg-indigo-9 text-indigo-1' : 'bg-indigo-1 text-indigo-9'" class="rounded-borders q-mb-lg">
                       <template v-slot:avatar><q-icon name="visibility" /></template>
-                      Legen Sie fest, ob die Daten zusätzlich oder alternativ als interaktive Tabelle (Grid) angezeigt werden sollen.
+                      {{ t('auto.legen_sie_fest_ob_die_daten_zusaetzlich_') }}
                     </q-banner>
                     <div class="row q-col-gutter-md">
                       <div class="col-12 col-md-6">
-                        <q-checkbox v-model="configForm.SHOW_MASTER_GRID" label="Master-Daten im Dashboard Grid anzeigen" color="primary" />
+                        <q-checkbox v-model="configForm.SHOW_MASTER_GRID" :label="t('auto.master_daten_im_dashboard_grid_anzeigen')" color="primary" />
                       </div>
                       <div class="col-12 col-md-6">
-                        <q-checkbox v-model="configForm.SHOW_DETAIL_GRID" label="Detail-Daten im Dashboard Grid anzeigen" color="secondary" />
+                        <q-checkbox v-model="configForm.SHOW_DETAIL_GRID" :label="t('auto.detail_daten_im_dashboard_grid_anzeigen')" color="secondary" />
                       </div>
                     </div>
                   </div>
@@ -1031,28 +1031,26 @@
                 <!-- TEIL 7: SUMMENZEILE -->
                 <q-step
                   :name="7"
-                  title="Summenzeile"
+                  :title="t('auto.summenzeile')"
                   icon="calculate"
                 >
                   <div class="q-pa-md">
                     <q-banner v-if="!configForm.IST_SUMMENZEILE" :class="$q.dark.isActive ? 'bg-red-9 text-red-1' : 'bg-red-1 text-red-9'" class="rounded-borders q-mb-lg border-red">
                       <template v-slot:avatar><q-icon name="warning" /></template>
-                      <strong>Hinweis:</strong> Die Summenzeile ist für diesen Bericht aktuell in Schritt 1 deaktiviert. 
-                      Sie können das SQL hier zwar vorbereiten, es wird aber erst ausgeführt, wenn Sie den Schalter "Summenzeile ausgeben" in Schritt 1 umlegen.
+                      <strong>{{ t('auto.hinweis') }}</strong> {{ t('auto.die_summenzeile_ist_fuer_diesen_bericht_') }}
                     </q-banner>
 
                     <q-banner v-else :class="$q.dark.isActive ? 'bg-orange-9 text-orange-1' : 'bg-orange-1 text-orange-9'" class="rounded-borders q-mb-lg">
                       <template v-slot:avatar><q-icon name="functions" /></template>
-                      Hier können Sie ein SQL-Statement definieren, das eine einzelne Zeile mit Summen oder Statistiken liefert.
-                      Diese Zeile wird am Ende des Berichts (beim Druck/Export) angefügt.
+                      {{ t('auto.hier_koennen_sie_ein_sql_statement_defin') }}
                     </q-banner>
                     
-                    <div class="text-subtitle1 text-weight-bold text-orange-9 q-mb-sm">Summen-SQL (Nativ)</div>
+                    <div class="text-subtitle1 text-weight-bold text-orange-9 q-mb-sm">{{ t('auto.summen_sql_nativ') }}</div>
                     <q-input 
                       v-model="tempSummenSql" 
                       type="textarea" 
                       filled 
-                      placeholder="SELECT SUM(MENGE) as GESAMT, AVG(PREIS) as DURCHSCHNITT FROM ..." 
+                      :placeholder="t('auto.select_sum_menge_as_gesamt_avg_preis_as_')" 
                       rows="8" 
                       :input-class="$q.dark.isActive ? 'font-mono text-orange-2' : 'font-mono text-orange-9'" 
                       :bg-color="$q.dark.isActive ? 'grey-10' : 'orange-1'" 
@@ -1065,11 +1063,11 @@
                     
                     <div class="row q-mt-md q-gutter-x-sm justify-between items-center">
                        <div class="row q-gutter-x-sm">
-                         <q-btn label="SQL Summenzeilen erstellen" icon="auto_fix_high" color="orange-9" unelevated @click="magicWandNative('SUMMENZEILE')" />
-                         <q-btn label="Filter bilden" icon="filter_alt" color="primary" unelevated @click="openFilterBuilder('SUMMENZEILE')" />
-                         <q-btn label="SQL leeren" icon="delete_sweep" flat color="negative" @click="configForm.SUMMENZEILE = ''" />
+                         <q-btn :label="t('auto.sql_summenzeilen_erstellen')" icon="auto_fix_high" color="orange-9" unelevated @click="magicWandNative('SUMMENZEILE')" />
+                         <q-btn :label="t('auto.filter_bilden')" icon="filter_alt" color="primary" unelevated @click="openFilterBuilder('SUMMENZEILE')" />
+                         <q-btn :label="t('auto.sql_leeren')" icon="delete_sweep" flat color="negative" @click="configForm.SUMMENZEILE = ''" />
                        </div>
-                       <q-btn label="Summen-Test" icon="play_arrow" color="orange-9" unelevated @click="runSqlPreview(configForm.SUMMENZEILE)" />
+                       <q-btn :label="t('auto.summen_test')" icon="play_arrow" color="orange-9" unelevated @click="runSqlPreview(configForm.SUMMENZEILE)" />
                     </div>
                   </div>
                 </q-step>
@@ -1077,20 +1075,20 @@
                 <!-- TEIL 8: PARAMETER DEFINITIONEN -->
                 <q-step
                   :name="8"
-                  title="8. Abfrage-Parameter"
+                  :title="t('auto.8_abfrage_parameter')"
                   icon="contact_support"
                 >
                   <div class="q-pa-md">
                     <q-banner :class="$q.dark.isActive ? 'bg-blue-9 text-blue-1' : 'bg-blue-1 text-blue-9'" class="rounded-borders q-mb-lg">
                       <template v-slot:avatar><q-icon name="info" /></template>
-                      Legen Sie hier fest, wie die im SQL gefundenen Abfragen (z.B. `Datum`) benannt und welcher Typ sie sein sollen.
+                      {{ t('auto.legen_sie_hier_fest_wie_die_im_sql_gefun') }}
                     </q-banner>
 
                     <div v-if="currentDefinitions.length === 0" class="text-center q-pa-xl text-grey-6 border-dashed rounded-borders">
                       <q-icon name="search_off" size="4em" class="q-mb-md" />
-                      <div class="text-h6">Keine Parameter erkannt</div>
-                      <p>Keine Begriffe in Backticks oder Prozent-Platzhalter im SQL gefunden.</p>
-                      <q-btn label="SQL scannen" icon="refresh" color="primary" flat @click="syncParamsFromSql" />
+                      <div class="text-h6">{{ t('auto.keine_parameter_erkannt') }}</div>
+                      <p>{{ t('auto.keine_begriffe_in_backticks_oder_prozent') }}</p>
+                      <q-btn :label="t('auto.sql_scannen')" icon="refresh" color="primary" flat @click="syncParamsFromSql" />
                     </div>
 
                     <q-list v-else bordered separator class="rounded-borders">
@@ -1101,12 +1099,12 @@
                               <q-badge color="primary" outline>{{ d.term }}</q-badge>
                             </div>
                             <div class="col-12 col-md-5">
-                              <q-input v-model="d.label" label="Anzeige-Label (Fragetext)" dense filled />
+                              <q-input v-model="d.label" :label="t('auto.anzeige_label_fragetext')" dense filled />
                             </div>
                             <div class="col-12 col-md-4">
                               <q-select 
                                 v-model="d.type" 
-                                label="Eingabe-Typ" 
+                                :label="t('auto.eingabe_typ')" 
                                 :options="['TEXT', 'NUMBER', 'DATE', 'BOOLEAN']" 
                                 dense filled 
                               />
@@ -1120,18 +1118,18 @@
 
                 <template v-slot:navigation>
                   <q-stepper-navigation class="q-pt-md row items-center q-gutter-x-sm">
-                    <q-btn v-if="configStep === 1" label="Template erstellen" color="orange-9" icon="auto_fix_high" @click="createBoilerplateTemplate" unelevated rounded />
-                    <q-btn v-if="configStep === 1" label="Template Anzeigen" color="teal-7" icon="visibility" @click="showTemplatePreview" outline rounded />
-                    <q-btn v-if="configStep === 1" label="Vorschau Ausdruck" color="blue-grey-7" icon="print" @click="showPrintPreview" outline rounded />
+                    <q-btn v-if="configStep === 1" :label="t('auto.template_erstellen')" color="orange-9" icon="auto_fix_high" @click="createBoilerplateTemplate" unelevated rounded />
+                    <q-btn v-if="configStep === 1" :label="t('auto.template_anzeigen')" color="teal-7" icon="visibility" @click="showTemplatePreview" outline rounded />
+                    <q-btn v-if="configStep === 1" :label="t('auto.vorschau_ausdruck')" color="blue-grey-7" icon="print" @click="showPrintPreview" outline rounded />
                     
                     <q-space />
                     
-                    <q-btn v-if="configStep > 1" flat color="primary" @click="configStep--" label="Zurück" icon="chevron_left" />
-                    <q-btn v-if="configStep < 8 && !(configStep === 2 && configForm.KATEGORIE_KZ === 'K')" color="primary" @click="() => { if (configStep === 7) syncParamsFromSql(); configStep++; }" label="Weiter" icon-right="chevron_right" />
+                    <q-btn v-if="configStep > 1" flat color="primary" @click="configStep--" :label="t('form.back')" icon="chevron_left" />
+                    <q-btn v-if="configStep < 8 && !(configStep === 2 && configForm.KATEGORIE_KZ === 'K')" color="primary" @click="() => { if (configStep === 7) syncParamsFromSql(); configStep++; }" :label="t('auto.weiter')" icon-right="chevron_right" />
                     
                     <q-btn 
                       v-if="configStep === 8 || (configStep === 2 && configForm.KATEGORIE_KZ === 'K')" 
-                      label="Bericht Speichern" 
+                      :label="t('auto.bericht_speichern')" 
                       color="positive" 
                       icon="save" 
                       @click="onConfigSubmit" 
@@ -1147,15 +1145,15 @@
             <div class="col-12 col-md-3 border-left q-pl-md">
               <div class="column full-height">
                 <div class="text-subtitle2 q-mb-sm row items-center" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-8'">
-                  <q-icon name="storage" class="q-mr-xs" /> DB-Explorer
+                  <q-icon name="storage" class="q-mr-xs" /> {{ t('auto.db_explorer') }}
                 </div>
-                <q-input v-model="filterTableText" dense filled placeholder="Tabelle suchen..." class="q-mb-sm shadow-1" :bg-color="$q.dark.isActive ? 'grey-9' : 'white'">
+                <q-input v-model="filterTableText" dense filled :placeholder="t('auto.tabelle_suchen')" class="q-mb-sm shadow-1" :bg-color="$q.dark.isActive ? 'grey-9' : 'white'">
                    <template v-slot:append><q-icon name="search" size="xs" /></template>
                  </q-input>
                  
                  <div class="row q-gutter-sm q-mb-sm" v-if="selectedExplorerCols.length > 0">
                    <q-btn 
-                     label="Einfügen" 
+                     :label="t('auto.einfuegen')" 
                      color="primary" 
                      dense 
                      unelevated 
@@ -1164,7 +1162,7 @@
                      @click="appendSelectedExplorerCols"
                    >
                      <q-badge color="orange" floating>{{ selectedExplorerCols.length }}</q-badge>
-                     <q-tooltip>Markierte Felder mit Komma getrennt einfügen</q-tooltip>
+                     <q-tooltip>{{ t('auto.markierte_felder_mit_komma_getrennt_einf') }}</q-tooltip>
                    </q-btn>
                    <q-btn 
                      icon="clear_all" 
@@ -1174,7 +1172,7 @@
                      round
                      @click="selectedExplorerCols = []"
                    >
-                     <q-tooltip>Auswahl aufheben</q-tooltip>
+                     <q-tooltip>{{ t('auto.auswahl_aufheben') }}</q-tooltip>
                    </q-btn>
                  </div>
                 
@@ -1229,14 +1227,14 @@
                               </q-btn>
                             </q-item-section>
                           </q-item>
-                          <div v-if="tableColumns.length === 0" class="text-center q-pa-sm text-grey-5">Lade...</div>
+                          <div v-if="tableColumns.length === 0" class="text-center q-pa-sm text-grey-5">{{ t('auto.lade') }}</div>
                         </q-card-section>
                       </q-card>
                     </q-expansion-item>
                   </q-list>
                 </div>
                 <div class="text-caption text-grey-6 q-mt-sm italic">
-                  Klicken um Feld zum aktuellen SQL-Block hinzuzufügen.
+                  {{ t('auto.klicken_um_feld_zum_aktuellen_sql_block_') }}
                 </div>
               </div>
             </div>
@@ -1244,7 +1242,7 @@
         </q-card-section>
 
         <q-card-actions align="right" :class="[$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white', 'q-pa-md border-top']">
-          <q-btn label="Abbrechen" color="grey-7" flat v-close-popup icon="cancel" />
+          <q-btn :label="t('form.cancel')" color="grey-7" flat v-close-popup icon="cancel" />
           <q-btn 
             :label="isEditing ? 'Aktualisieren' : 'Speichern'" 
             color="primary" 
@@ -1264,7 +1262,7 @@
         <q-card-section class="row items-center bg-secondary text-white q-py-sm">
           <q-icon name="edit_note" size="sm" class="q-mr-md" />
           <div class="column">
-            <div class="text-subtitle1 text-weight-bold">Template-Editor</div>
+            <div class="text-subtitle1 text-weight-bold">{{ t('auto.template_editor') }}</div>
             <div class="text-caption text-grey-4">{{ templateEditorName }}</div>
           </div>
           <q-space />
@@ -1278,13 +1276,13 @@
           
           <div class="row items-center q-mb-sm text-grey-8">
             <q-icon name="info" class="q-mr-xs" />
-            <div class="text-caption">Geladene Zeichen: <strong>{{ templateContent.length }}</strong></div>
+            <div class="text-caption">{{ t('auto.geladene_zeichen') }} <strong>{{ templateContent.length }}</strong></div>
           </div>
 
           <q-input
             v-model="templateContent"
             type="textarea"
-            label="Template HTML Quellcode"
+            :label="t('auto.template_html_quellcode')"
             filled
             outlined
             square
@@ -1292,7 +1290,7 @@
             class="full-width font-mono"
             :input-class="$q.dark.isActive ? 'q-pa-md line-height-relaxed text-blue-2' : 'q-pa-md line-height-relaxed text-black'"
             :style="{ fontSize: '14px', background: $q.dark.isActive ? '#1d1d1d' : '#fff', color: $q.dark.isActive ? '#90caf9' : '#000' }"
-            placeholder="Hier den HTML Code eingeben..."
+            :placeholder="t('auto.hier_den_html_code_eingeben')"
           />
         </q-card-section>
 
@@ -1300,12 +1298,12 @@
           <div class="row items-center q-gutter-x-md full-width">
             <q-icon name="help_outline" color="grey-7" size="sm">
               <q-tooltip anchor="top middle" self="bottom middle">
-                Verwenden Sie Platzhalter wie &lt;Master.FELD&gt;, &lt;Detail.FELD&gt; oder &lt;Summe.FELD&gt;.
+                {{ t('auto.verwenden_sie_platzhalter_wie_lt_master_') }}
               </q-tooltip>
             </q-icon>
             <q-space />
-            <q-btn label="Abbrechen" color="grey" flat v-close-popup />
-            <q-btn label="Template Speichern" color="secondary" icon="save" unelevated @click="saveTemplate" />
+            <q-btn :label="t('form.cancel')" color="grey" flat v-close-popup />
+            <q-btn :label="t('auto.template_speichern')" color="secondary" icon="save" unelevated @click="saveTemplate" />
           </div>
         </q-card-actions>
       </q-card>
@@ -1315,7 +1313,7 @@
     <q-dialog v-model="showTestParamsDialog" persistent>
       <q-card style="min-width: 400px">
         <q-card-section class="bg-amber-8 text-white row items-center">
-          <div class="text-h6">SQL-Parameter eingeben</div>
+          <div class="text-h6">{{ t('auto.sql_parameter_eingeben') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -1343,8 +1341,8 @@
         </q-card-section>
 
         <q-card-actions align="right" class="bg-grey-1">
-          <q-btn label="Abbrechen" color="grey" flat v-close-popup />
-          <q-btn label="SQL jetzt ausführen" color="secondary" unelevated @click="runSqlPreview(currentTestSql, true); showTestParamsDialog = false" />
+          <q-btn :label="t('form.cancel')" color="grey" flat v-close-popup />
+          <q-btn :label="t('auto.sql_jetzt_ausfuehren')" color="secondary" unelevated @click="runSqlPreview(currentTestSql, true); showTestParamsDialog = false" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1354,16 +1352,16 @@
       <q-card style="min-width: 400px; max-height: 80vh">
         <q-card-section class="row items-center q-pb-none bg-purple text-white q-py-sm">
           <q-icon name="filter_alt" size="sm" class="q-mr-sm" />
-          <div class="text-h6">Filter-Builder</div>
+          <div class="text-h6">{{ t('auto.filter_builder') }}</div>
           <q-space />
-          <q-btn label="Parameter def." color="white" flat icon="settings" dense class="q-mr-sm" @click="() => { showFilterBuilderDialog = false; configStep = 8; }">
-            <q-tooltip>Zu den Parameter-Definitionen springen</q-tooltip>
+          <q-btn :label="t('auto.parameter_def')" color="white" flat icon="settings" dense class="q-mr-sm" @click="() => { showFilterBuilderDialog = false; configStep = 8; }">
+            <q-tooltip>{{ t('auto.zu_den_parameter_definitionen_springen') }}</q-tooltip>
           </q-btn>
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
         <q-card-section>
-          <div class="text-subtitle2 q-mb-xs text-grey-7">Tabelle auswählen (aus SQL erkannt):</div>
+          <div class="text-subtitle2 q-mb-xs text-grey-7">{{ t('auto.tabelle_auswaehlen_aus_sql_erkannt') }}</div>
           <q-select
             v-model="filterBuilderSelectedTable"
             :options="filterBuilderTables"
@@ -1379,7 +1377,7 @@
           </q-select>
 
           <div class="row items-center q-mb-sm">
-            <div class="text-subtitle1 text-weight-bold">Spalten wählen</div>
+            <div class="text-subtitle1 text-weight-bold">{{ t('auto.spalten_waehlen') }}</div>
             <q-space />
             <div class="text-caption text-grey-6">{{ availableFilterCols.length }} verfügbar</div>
           </div>
@@ -1400,7 +1398,7 @@
                           :options="operatorOptions"
                           dense
                           outlined
-                          label="Op"
+                          :label="t('auto.op')"
                           style="width: 80px"
                           class="bg-white"
                           options-dense
@@ -1410,7 +1408,7 @@
                           :options="['TEXT', 'DATE', 'NUMBER', 'BOOLEAN']"
                           dense
                           outlined
-                          label="Typ"
+                          :label="t('auto.typ')"
                           style="width: 100px"
                           class="bg-white"
                           options-dense
@@ -1419,15 +1417,15 @@
                     </q-item-section>
                   </q-item>
                   <q-item v-if="availableFilterCols.length === 0" class="text-grey italic">
-                    <q-item-section>Alle verfügbaren Spalten sind bereits im Filter.</q-item-section>
+                    <q-item-section>{{ t('auto.alle_verfuegbaren_spalten_sind_bereits_i') }}</q-item-section>
                   </q-item>
                 </q-list>
           </q-scroll-area>
         </q-card-section>
 
         <q-card-actions align="right" class="bg-grey-1">
-          <q-btn flat label="Abbrechen" color="grey" v-close-popup />
-          <q-btn label="Filter einsetzen" color="primary" @click="applyFilterBuilder" icon="check" />
+          <q-btn flat :label="t('form.cancel')" color="grey" v-close-popup />
+          <q-btn :label="t('auto.filter_einsetzen')" color="primary" @click="applyFilterBuilder" icon="check" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1438,7 +1436,7 @@
         <q-card-section class="row items-center q-pb-none bg-secondary text-white">
           <div class="text-h6">
             <q-icon name="visibility" class="q-mr-sm" />
-            SQL Ergebnis Vorschau (Nativ)
+            {{ t('auto.sql_ergebnis_vorschau_nativ') }}
           </div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
@@ -1460,7 +1458,7 @@
             <template v-slot:no-data>
               <div class="full-width row flex-center text-grey q-gutter-sm q-pa-lg">
                 <q-icon size="2em" name="sentiment_dissatisfied" />
-                <span>Keine Daten gefunden. Das SQL-Statement lieferte 0 Zeilen zurück.</span>
+                <span>{{ t('auto.keine_daten_gefunden_das_sql_statement_l') }}</span>
               </div>
             </template>
           </q-table>
@@ -1470,7 +1468,7 @@
           <div class="text-weight-bold q-mr-md">
             {{ previewRows.length }} Datensätze
           </div>
-          <q-btn label="Schließen" color="primary" unelevated v-close-popup />
+          <q-btn :label="t('form.close')" color="primary" unelevated v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -1479,6 +1477,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 console.log('DynamicReportPage.vue: Script setup running...');
 import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
 import { useRoute } from 'vue-router';

@@ -2,8 +2,8 @@
   <q-page padding>
     <div class="row items-center q-mb-lg">
       <div class="col">
-        <h1 class="text-h4 q-my-none">Datenbank Wiederherstellung (Restore)</h1>
-        <div class="text-subtitle1 text-grey-7">Wählen Sie eine Backup-Datei aus, um den aktuellen Datenbestand zu überschreiben.</div>
+        <h1 class="text-h4 q-my-none">{{ t('auto.datenbank_wiederherstellung_restore') }}</h1>
+        <div class="text-subtitle1 text-grey-7">{{ t('auto.waehlen_sie_eine_backup_datei_aus_um_den') }}</div>
       </div>
     </div>
 
@@ -12,13 +12,12 @@
         <q-card flat bordered class="rounded-borders">
           <q-card-section class="bg-warning text-black row items-center">
             <q-icon name="warning" size="md" class="q-mr-md" />
-            <div class="text-h6 text-weight-bold">Achtung: Überschreiben von Daten</div>
+            <div class="text-h6 text-weight-bold">{{ t('auto.achtung_ueberschreiben_von_daten') }}</div>
           </q-card-section>
           
           <q-card-section>
             <p>
-              Beim Wiederherstellen wird die aktuelle Datenbank <strong>vollständig durch das ausgewählte Backup ersetzt</strong>.
-              Nicht gespeicherte Änderungen gehen verloren. Vor dem Restore wird automatisch ein Sicherheits-Backup der aktuellen Datenbank erstellt.
+              {{ t('auto.beim_wiederherstellen_wird_die_aktuelle_') }} <strong>{{ t('auto.vollstaendig_durch_das_ausgewaehlte_back') }}</strong>{{ t('auto.nicht_gespeicherte_aenderungen_gehen_ver') }}
             </p>
           </q-card-section>
 
@@ -26,11 +25,11 @@
 
           <q-card-section v-if="loading" class="text-center q-pa-xl">
             <q-spinner color="primary" size="3em" />
-            <div class="q-mt-md">Lade verfügbare Backups...</div>
+            <div class="q-mt-md">{{ t('auto.lade_verfuegbare_backups') }}</div>
           </q-card-section>
 
           <q-list v-else-if="backups.length > 0" separator>
-            <q-item-label header>Verfügbare Backup-Dateien</q-item-label>
+            <q-item-label header>{{ t('auto.verfuegbare_backup_dateien') }}</q-item-label>
             <q-item v-for="file in backups" :key="file.path" clickable @click="selectedFile = file" :active="selectedFile?.path === file.path" active-class="bg-blue-1 text-primary">
               <q-item-section avatar>
                 <q-icon name="storage" />
@@ -47,15 +46,15 @@
 
           <q-card-section v-else class="text-center q-pa-xl text-grey-7">
             <q-icon name="folder_off" size="3em" />
-            <div class="q-mt-md">Keine Backup-Dateien gefunden.</div>
+            <div class="q-mt-md">{{ t('auto.keine_backup_dateien_gefunden') }}</div>
           </q-card-section>
 
           <q-separator />
 
           <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat label="Abbrechen" color="grey-7" to="/" :disable="processing" />
-            <q-btn flat label="Liste aktualisieren" icon="refresh" @click="loadBackups" :disable="processing" />
-            <q-btn color="negative" label="Wiederherstellen" icon="settings_backup_restore" @click="confirmRestore" :disable="!selectedFile || processing" :loading="processing" unelevated />
+            <q-btn flat :label="t('form.cancel')" color="grey-7" to="/" :disable="processing" />
+            <q-btn flat :label="t('auto.liste_aktualisieren')" icon="refresh" @click="loadBackups" :disable="processing" />
+            <q-btn color="negative" :label="t('auto.wiederherstellen')" icon="settings_backup_restore" @click="confirmRestore" :disable="!selectedFile || processing" :loading="processing" unelevated />
           </q-card-actions>
         </q-card>
       </div>
@@ -63,18 +62,17 @@
       <div class="col-12 col-md-4">
         <q-card flat bordered class="rounded-borders">
           <q-card-section class="bg-primary text-white">
-            <div class="text-h6">Informationen</div>
+            <div class="text-h6">{{ t('auto.informationen') }}</div>
           </q-card-section>
           <q-card-section>
-            <div class="text-subtitle2 q-mb-xs">Aktive Datenbank:</div>
+            <div class="text-subtitle2 q-mb-xs">{{ t('auto.aktive_datenbank') }}</div>
             <div class="text-caption text-grey-8 word-break-all">{{ currentDB }}</div>
             
             <q-separator class="q-my-md" />
             
-            <div class="text-subtitle2 q-mb-xs">Hinweis:</div>
+            <div class="text-subtitle2 q-mb-xs">{{ t('auto.hinweis') }}</div>
             <div class="text-caption">
-              Backups befinden sich normalerweise im Unterordner <code>backups/</code> des Datenbank-Verzeichnisses. 
-              Sollte eine Datei fehlen, prüfen Sie den Backup-Pfad in den Einstellungen oder auf dem Server.
+              {{ t('auto.backups_befinden_sich_normalerweise_im_u') }} <code>{{ t('auto.backups') }}</code> {{ t('auto.des_datenbank_verzeichnisses_sollte_eine') }}
             </div>
           </q-card-section>
         </q-card>
@@ -84,10 +82,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
 import { ref, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from '../boot/api';
 
+const { t } = useI18n();
 const $q = useQuasar();
 const loading = ref(false);
 const processing = ref(false);
@@ -105,17 +105,17 @@ async function loadBackups() {
     // Oder wir zeigen einfach alle an, die .db im Namen haben
     const files = res.data.files as string[];
     backups.value = files
-      .filter(p => p !== currentDB.value) // Aktuelle DB nicht als Restore-Quelle (macht keinen Sinn)
+      .filter(p => p !== currentDB.value)
       .map(p => ({
         name: p.split('/').pop() || p,
         path: p
       }))
-      .sort((a, b) => b.name.localeCompare(a.name)); // Neueste (nach Zeitstempel im Namen) meist oben
+      .sort((a, b) => b.name.localeCompare(a.name));
       
   } catch (err: any) {
     $q.notify({
       color: 'negative',
-      message: 'Fehler beim Laden der Backups: ' + (err.response?.data?.error || err.message)
+      message: t('auto.error_loading_backups') + ': ' + (err.response?.data?.error || err.message)
     });
   } finally {
     loading.value = false;
@@ -126,13 +126,13 @@ function confirmRestore() {
   if (!selectedFile.value) return;
   
   $q.dialog({
-    title: 'Wiederherstellung bestätigen',
-    message: `Möchten Sie die Datenbank wirklich durch <b>${selectedFile.value.name}</b> ersetzen? <br><br>Dies wird die aktuelle Datenbank überschreiben!`,
+    title: t('auto.confirm_restore_title'),
+    message: t('auto.confirm_restore_msg', { filename: selectedFile.value.name }),
     html: true,
     cancel: true,
     persistent: true,
     ok: {
-      label: 'Ja, Wiederherstellen',
+      label: t('auto.yes_restore'),
       color: 'negative',
       unelevated: true
     }
@@ -152,12 +152,11 @@ async function runRestore() {
     
     $q.notify({
       type: 'positive',
-      message: 'Wiederherstellung erfolgreich abgeschlossen!',
-      caption: `Sicherheitskopie erstellt: ${res.data.safety}`,
+      message: t('auto.restore_success'),
+      caption: t('auto.safety_backup_created') + ': ' + res.data.safety,
       timeout: 5000
     });
     
-    // Seite neu laden nach 2 Sekunden um DB-State im Frontend zu refreshen
     setTimeout(() => {
       window.location.reload();
     }, 2000);
@@ -165,7 +164,7 @@ async function runRestore() {
   } catch (err: any) {
     $q.notify({
       color: 'negative',
-      message: 'Fehler bei der Wiederherstellung: ' + (err.response?.data?.error || err.message),
+      message: t('auto.restore_failed') + ': ' + (err.response?.data?.error || err.message),
       timeout: 0,
       actions: [{ label: 'OK', color: 'white' }]
     });

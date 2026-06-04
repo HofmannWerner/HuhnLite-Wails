@@ -3,9 +3,9 @@
     <!-- Header with Action on Left, Title on Right -->
     <div class="row items-center justify-between q-mb-md">
       <div class="row q-gutter-md">
-        <q-btn color="primary" icon="add" label="Neue Buchung" @click="openCreate" rounded unelevated />
+        <q-btn color="primary" icon="add" :label="t('auto.neue_buchung')" @click="openCreate" rounded unelevated />
       </div>
-      <div class="text-h6 text-primary">Leistungs-Buchung</div>
+      <div class="text-h6 text-primary">{{ t('auto.leistungs_buchung') }}</div>
     </div>
 
     <div class="row q-col-gutter-md q-mb-md items-center">
@@ -18,7 +18,7 @@
           emit-value
           map-options
           clearable
-          label="Herde filtern"
+          :label="t('auto.herde_filtern')"
           filled
           stack-label
           :bg-color="$q.dark.isActive ? 'grey-9' : 'bg-white'"
@@ -30,17 +30,17 @@
         </q-select>
       </div>
       <div class="col-auto">
-        <q-checkbox v-model="nurAktiveFilter" label="Nur aktive Herden" color="positive" :dark="$q.dark.isActive" />
+        <q-checkbox v-model="nurAktiveFilter" :label="t('auto.nur_aktive_herden')" color="positive" :dark="$q.dark.isActive" />
       </div>
 
       <div class="col-12 col-sm-4 col-md-3">
-        <q-input filled v-model="filterDateRangeText" label="Zeitraum *" stack-label readonly dense>
+        <q-input filled v-model="filterDateRangeText" :label="t('auto.zeitraum')" stack-label readonly dense>
           <template v-slot:prepend>
             <q-icon name="event" class="cursor-pointer">
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
                 <q-date v-model="filterDateRange" range>
                   <div class="row items-center justify-end">
-                    <q-btn v-close-popup label="Schließen" color="primary" flat />
+                    <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                   </div>
                 </q-date>
               </q-popup-proxy>
@@ -100,16 +100,16 @@
               <div v-if="extractString(props.row.VERMITTELT) === 'V'" class="text-weight-bold text-primary">
                 V
                 <q-icon name="info" size="xs" color="grey-6" class="q-ml-xs">
-                  <q-tooltip>Automatisch vermittelte Buchung (verteilt)</q-tooltip>
+                  <q-tooltip>{{ t('auto.automatisch_vermittelte_buchung_verteilt') }}</q-tooltip>
                 </q-icon>
               </div>
               <div v-else-if="extractString(props.row.VERMITTELT) === 'S'" class="text-weight-bold text-amber-8">
-                S
+                {{ t('auto.s') }}
                 <q-icon name="history" size="xs" color="amber-7" class="q-ml-xs">
-                  <q-tooltip>Original-Sammelsatz (Referenz - wird nicht summiert)</q-tooltip>
+                  <q-tooltip>{{ t('auto.original_sammelsatz_referenz_wird_nicht_') }}</q-tooltip>
                 </q-icon>
               </div>
-              <div v-else class="text-grey-5">N</div>
+              <div v-else class="text-grey-5">{{ t('auto.n') }}</div>
             </template>
 
             <!-- Standard-Werte mit Tausender-Trennzeichen -->
@@ -155,7 +155,7 @@
                   option-label="BEZEICHNUNG"
                   emit-value
                   map-options
-                  label="Herde *"
+                  :label="t('auto.herde')"
                   filled
                   stack-label
                   :readonly="isEditing"
@@ -170,7 +170,7 @@
                 <q-input
                   v-model="bookingDateOnly"
                   type="date"
-                  label="Buchungsdatum *"
+                  :label="t('auto.buchungsdatum')"
                   filled
                   stack-label
                   :readonly="isEditing"
@@ -188,18 +188,18 @@
                 />
               </div>
               <div class="col-auto" style="width: 80px">
-                <q-input :model-value="calculatedLegewoche === '-' ? '' : calculatedLegewoche" label="LW" filled stack-label readonly hide-bottom-space :bg-color="$q.dark.isActive ? 'grey-9' : undefined">
-                  <q-tooltip>Leistungs-Woche (seit Legebeginn)</q-tooltip>
+                <q-input :model-value="calculatedLegewoche === '-' ? '' : calculatedLegewoche" :label="t('auto.lw')" filled stack-label readonly hide-bottom-space :bg-color="$q.dark.isActive ? 'grey-9' : undefined">
+                  <q-tooltip>{{ t('auto.leistungs_woche_seit_legebeginn') }}</q-tooltip>
                 </q-input>
               </div>
               <div class="col-auto" style="width: 80px">
-                <q-input :model-value="calculatedAlterswoche === '-' ? '' : calculatedAlterswoche" label="AW" filled stack-label readonly hide-bottom-space :bg-color="$q.dark.isActive ? 'grey-9' : undefined">
-                   <q-tooltip>Alter in Wochen</q-tooltip>
+                <q-input :model-value="calculatedAlterswoche === '-' ? '' : calculatedAlterswoche" :label="t('auto.aw')" filled stack-label readonly hide-bottom-space :bg-color="$q.dark.isActive ? 'grey-9' : undefined">
+                   <q-tooltip>{{ t('auto.alter_in_wochen') }}</q-tooltip>
                 </q-input>
               </div>
               <div class="col-auto" style="width: 100px">
-                <q-input v-model.number="form.TIERBESTAND" type="number" label="Tierbestand" filled stack-label readonly hide-bottom-space :bg-color="$q.dark.isActive ? 'grey-9' : undefined">
-                   <q-tooltip>Aktueller Hennenbestand</q-tooltip>
+                <q-input v-model.number="form.TIERBESTAND" type="number" :label="t('auto.tierbestand')" filled stack-label readonly hide-bottom-space :bg-color="$q.dark.isActive ? 'grey-9' : undefined">
+                   <q-tooltip>{{ t('auto.aktueller_hennenbestand') }}</q-tooltip>
                 </q-input>
               </div>
             </div>
@@ -214,7 +214,7 @@
                 </div>
                 <div class="text-caption">
                   <template v-if="vermittlungDays === 100">
-                    Diese Buchung war Teil einer automatischen Verteilung auf mehrere Tage.
+                    {{ t('auto.diese_buchung_war_teil_einer_automatisch') }}
                   </template>
                   <template v-else>
                     Es besteht eine Lücke von {{ vermittlungDays }} Tagen zur letzten Buchung.
@@ -226,13 +226,13 @@
 
             <q-separator />
 
-            <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">Leistung & Gewicht</div>
+            <div class="text-subtitle1 text-weight-bold text-primary q-mb-sm">{{ t('auto.leistung_gewicht') }}</div>
             <div class="row q-col-gutter-sm q-mb-md">
               <div class="col-auto" style="width: 140px">
                 <q-input
                   v-model.number="form.GEWICHTPROBE"
                   type="number"
-                  label="Gewichtsprobe"
+                  :label="t('auto.gewichtsprobe')"
                   filled
                   stack-label
                   dense
@@ -244,7 +244,7 @@
               <div class="col-auto" style="width: 140px">
                 <q-input
                   v-model="displayKontrollgewicht"
-                  label="Kontrollgew. KG"
+                  :label="t('auto.kontrollgew_kg')"
                   filled
                   stack-label
                   dense
@@ -255,7 +255,7 @@
               <div class="col-auto" style="width: 140px">
                 <q-input
                   v-model="displayVerpackung"
-                  label="Verpackung KG"
+                  :label="t('auto.verpackung_kg')"
                   filled
                   stack-label
                   dense
@@ -268,7 +268,7 @@
                   ref="klasseAInput"
                   v-model.number="form.KLASSEA"
                   type="number"
-                  label="Klasse A"
+                  :label="t('auto.klasse_a')"
                   filled
                   stack-label
                   dense
@@ -284,7 +284,7 @@
                 <q-input
                   v-model="displayVollei"
                   type="text"
-                  label="Vollei KG"
+                  :label="t('auto.vollei_kg')"
                   filled
                   stack-label
                   dense
@@ -298,7 +298,7 @@
                 <q-input
                   v-model="displayDgewicht"
                   type="text"
-                  label="Eigewicht g"
+                  :label="t('auto.eigewicht_g')"
                   filled
                   stack-label
                   dense
@@ -351,7 +351,7 @@
 
             <!-- Eilager Indicators -->
             <div class="row q-col-gutter-sm q-mt-md" v-if="editId">
-              <div class="col-12 text-subtitle2 text-grey-8">Bereits verbuchte Mengen (Eilager/Pseudo):</div>
+              <div class="col-12 text-subtitle2 text-grey-8">{{ t('auto.bereits_verbuchte_mengen_eilager_pseudo') }}</div>
               <div class="col-2" v-for="s in (['JUMBOS', 'XL', 'LARGE', 'MEDIUM', 'SMALL'] as const)" :key="s">
                 <div class="bg-blue-1 text-blue-9 q-pa-xs rounded-borders text-center text-caption shadow-1">
                   <span class="text-weight-bold">{{ s.substring(0, 1) }}:</span> {{ (usedStock as any)[s] || 0 }}
@@ -359,36 +359,36 @@
               </div>
               <div class="col-2" v-if="getParamBool('vollei')">
                 <div class="bg-blue-1 text-blue-9 q-pa-xs rounded-borders text-center text-caption shadow-1">
-                  <span class="text-weight-bold">V:</span> {{ usedStock.VOLLEIKG || 0 }}
+                  <span class="text-weight-bold">{{ t('auto.v') }}</span> {{ usedStock.VOLLEIKG || 0 }}
                 </div>
               </div>
             </div>
 
             <div class="row justify-between items-center q-mt-lg q-pt-md border-top-grey-3">
               <div class="row q-gutter-sm">
-                <q-btn label="Ins Eilager übertragen" color="warning" icon="warehouse" @click="triggerLagerBuchung(false)"
+                <q-btn :label="t('auto.ins_eilager_uebertragen')" color="warning" icon="warehouse" @click="triggerLagerBuchung(false)"
                        v-if="!getParamBool('LAGERBUCHUNGBEIBUCHUNG')"
                        :disable="!((computedKlasseA || 0) > 0) || hasEggOverflow"
                        rounded unelevated>
-                  <q-tooltip v-if="hasEggOverflow">Menge übersteigt Tierbestand!</q-tooltip>
+                  <q-tooltip v-if="hasEggOverflow">{{ t('auto.menge_uebersteigt_tierbestand') }}</q-tooltip>
                   <q-tooltip v-else-if="!((computedKlasseA || 0) > 0)">
                     Deaktiviert, da keine Eier-Mengen erfasst wurden
                   </q-tooltip>
                 </q-btn>
 
-                <q-btn label="Verluste buchen" color="negative" icon="remove_circle" @click="openVerlustDialog" :disable="!form.ID_HERDEN" rounded unelevated />
+                <q-btn :label="t('auto.verluste_buchen')" color="negative" icon="remove_circle" @click="openVerlustDialog" :disable="!form.ID_HERDEN" rounded unelevated />
 
-                <q-btn label="Anderweitige Verwendung" color="blue" icon="swap_horiz" @click="triggerLagerBuchung(true)"
+                <q-btn :label="t('auto.anderweitige_verwendung')" color="blue" icon="swap_horiz" @click="triggerLagerBuchung(true)"
                        :disable="isVermittelt || hasEggOverflow"
                        v-if="getParamBool('pseudolager')" rounded unelevated>
-                  <q-tooltip v-if="hasEggOverflow">Menge übersteigt Tierbestand!</q-tooltip>
+                  <q-tooltip v-if="hasEggOverflow">{{ t('auto.menge_uebersteigt_tierbestand') }}</q-tooltip>
                   <q-tooltip v-else-if="isVermittelt">
-                    Deaktiviert bei vermittelten Buchungen
+                    {{ t('auto.deaktiviert_bei_vermittelten_buchungen') }}
                   </q-tooltip>
                 </q-btn>
               </div>
               <div class="row q-gutter-sm">
-                <q-btn label="Abbrechen" color="negative" outline @click="closeDialog" rounded padding="xs lg" />
+                <q-btn :label="t('form.cancel')" color="negative" outline @click="closeDialog" rounded padding="xs lg" />
                 <q-btn :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
               </div>
             </div>
@@ -403,7 +403,7 @@
       <q-card style="min-width: 500px; border-radius: 16px;">
         <q-card-section class="bg-warning text-white q-pa-md">
           <div class="text-h6 text-weight-bold">{{ isPseudoBooking ? 'Anderweitige Verwendung' : 'Übertrag an Eierlager' }}</div>
-          <div class="text-caption">Charge erstellen und Bestand einbuchen</div>
+          <div class="text-caption">{{ t('auto.charge_erstellen_und_bestand_einbuchen') }}</div>
         </q-card-section>
 
         <q-card-section class="q-pa-lg">
@@ -418,7 +418,7 @@
                   option-label="BEZEICHNUNG"
                   emit-value
                   map-options
-                  label="Ziel-Lager auswählen *"
+                  :label="t('auto.ziel_lager_auswaehlen')"
                   filled stack-label
                   :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
                   :rules="[val => !!val || 'Bitte wählen Sie ein Lager aus']"
@@ -433,7 +433,7 @@
                   option-label="betreff"
                   emit-value
                   map-options
-                  label="Verwendungstext *"
+                  :label="t('auto.verwendungstext')"
                   filled stack-label
                   :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
                   :rules="[val => !!val || 'Bitte wählen Sie eine Verwendung aus']"
@@ -447,7 +447,7 @@
                   option-label="BEZEICHNUNG"
                   emit-value
                   map-options
-                  label="Lagerplatz / Ort *"
+                  :label="t('auto.lagerplatz_ort')"
                   filled stack-label
                   :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
                   :rules="[val => !!val || 'Bitte wählen Sie einen Lagerplatz aus']"
@@ -456,7 +456,7 @@
                   <template v-slot:no-option>
                     <q-item>
                       <q-item-section class="text-grey">
-                        Keine Plätze für dieses Lager gefunden
+                        {{ t('auto.keine_plaetze_fuer_dieses_lager_gefunden') }}
                       </q-item-section>
                     </q-item>
                   </template>
@@ -465,19 +465,19 @@
             </div>
 
             <div class="bg-grey-2 q-pa-md rounded-borders q-mb-md" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'">
-                <div class="text-subtitle2 q-mb-xs">Aktueller Lagerbestand (Referenz)</div>
+                <div class="text-subtitle2 q-mb-xs">{{ t('auto.aktueller_lagerbestand_referenz') }}</div>
                 <div class="row q-col-gutter-sm text-caption">
                   <div class="col-2" v-for="s in (['JUMBOS', 'XL', 'LARGE', 'MEDIUM', 'SMALL'] as const)" :key="s">
                     <span class="text-weight-bold">{{ s.toUpperCase() }}:</span> {{ (vStock as any)[s] }}
                   </div>
                   <div class="col-2" v-if="getParamBool('vollei')">
-                    <span class="text-weight-bold">Vollei:</span> {{ vStock.VOLLEIKG }}kg
+                    <span class="text-weight-bold">{{ t('auto.vollei') }}</span> {{ vStock.VOLLEIKG }}kg
                   </div>
                 </div>
             </div>
 
             <div class="q-pa-sm bg-blue-1 text-blue-9 rounded-borders q-mb-md">
-              <div class="text-weight-bold q-mb-xs">Verfügbar (v = b - e)</div>
+              <div class="text-weight-bold q-mb-xs">{{ t('auto.verfuegbar_v_b_e') }}</div>
               <div class="row q-col-gutter-sm text-caption">
                 <div class="col-4 col-sm-2" :class="v_jumbos < 0 ? 'text-negative text-weight-bold' : ''">
                   J: {{ v_jumbos }}
@@ -501,7 +501,7 @@
               </div>
               <div v-if="hasValidationError" class="text-negative text-weight-bold q-mt-xs">
                 <q-icon name="warning"/>
-                Nicht genügend Eier vorhanden!
+                {{ t('auto.nicht_genuegend_eier_vorhanden') }}
               </div>
             </div>
 
@@ -522,7 +522,7 @@
                 <q-input
                   v-model.number="eilagerForm.VOLLEIKG"
                   type="number"
-                  label="Vollei KG"
+                  :label="t('auto.vollei_kg')"
                   filled dense stack-label
                   :bg-color="$q.dark.isActive ? 'grey-9' : undefined"
                   :readonly="!getParamBool('charegevollei')"
@@ -534,7 +534,7 @@
 
             <q-input
               v-model="eilagerForm.CHARGE"
-              label="Chargennummer (Vorschlag)"
+              :label="t('auto.chargennummer_vorschlag')"
               filled
               stack-label
               :bg-color="$q.dark.isActive ? 'grey-9' : 'yellow-1'"
@@ -545,8 +545,8 @@
             </q-input>
 
             <div class="row justify-end q-gutter-sm q-mt-lg">
-              <q-btn label="Abbrechen" color="negative" flat v-close-popup />
-              <q-btn label="Bestand einbuchen" color="warning" type="submit" unelevated :disable="hasValidationError"/>
+              <q-btn :label="t('form.cancel')" color="negative" flat v-close-popup />
+              <q-btn :label="t('auto.bestand_einbuchen')" color="warning" type="submit" unelevated :disable="hasValidationError"/>
             </div>
           </q-form>
         </q-card-section>
@@ -558,7 +558,7 @@
       <q-card style="min-width: 350px; border-radius: 16px;">
         <q-card-section class="bg-negative text-white q-pa-md row items-center">
           <q-icon name="remove_circle" size="sm" class="q-mr-sm" />
-          <div class="text-h6 text-weight-bold">Verluste buchen</div>
+          <div class="text-h6 text-weight-bold">{{ t('auto.verluste_buchen') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup color="white" />
         </q-card-section>
@@ -579,7 +579,7 @@
 
           <q-input
             v-model.number="verlustForm.VERLUSTE"
-            label="Anzahl verendete/ausgeschiedene Tiere *"
+            :label="t('auto.anzahl_verendete_ausgeschiedene_tiere')"
             type="number"
             filled
             stack-label
@@ -592,7 +592,7 @@
             :options="verlustReasons"
             option-value="ID"
             option-label="BETREFF"
-            label="Grund/Ursache *"
+            :label="t('auto.grund_ursache')"
             filled
             emit-value
             map-options
@@ -602,7 +602,7 @@
 
           <q-input
             v-model="verlustForm.MEMO"
-            label="Bemerkung"
+            :label="t('auto.bemerkung')"
             filled
             stack-label
             type="textarea"
@@ -611,8 +611,8 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn label="Abbrechen" flat v-close-popup />
-          <q-btn label="Speichern" color="negative" rounded unelevated @click="submitVerlust" />
+          <q-btn :label="t('form.cancel')" flat v-close-popup />
+          <q-btn :label="t('form.save')" color="negative" rounded unelevated @click="submitVerlust" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -620,6 +620,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue';
 import { useQuasar, date } from 'quasar';
 import { api } from '../boot/api';

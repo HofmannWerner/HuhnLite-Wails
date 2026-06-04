@@ -1,8 +1,8 @@
 <template>
   <div class="q-pa-md">
     <div class="row q-gutter-md q-mb-md items-center">
-      <q-btn color="primary" icon="add" label="Eierlager anlegen" @click="openCreate" />
-      <q-input v-model="searchTerm" placeholder="Suchen..." dense outlined class="bg-white" style="width: 250px">
+      <q-btn color="primary" icon="add" :label="t('auto.eierlager_anlegen')" @click="openCreate" />
+      <q-input v-model="searchTerm" :placeholder="t('auto.suchen')" dense outlined class="bg-white" style="width: 250px">
         <template v-slot:append><q-icon name="search" /></template>
       </q-input>
       <q-select
@@ -12,7 +12,7 @@
         option-label="BETREFF"
         emit-value
         map-options
-        label="Typ Filter"
+        :label="t('auto.typ_filter')"
         filled
         dense
         stack-label
@@ -80,7 +80,7 @@
           <q-form @submit="onSubmit" class="q-gutter-md">
             <q-input
               v-model.number="form.LAGERNUMMER"
-              label="Lagernummer *"
+              :label="t('auto.lagernummer')"
               type="number"
               outlined
               dense
@@ -93,14 +93,14 @@
               option-label="BETREFF"
               emit-value
               map-options
-              label="Lagertyp *"
+              :label="t('auto.lagertyp')"
               outlined
               dense
               :rules="[val => !!val || 'Pflichtfeld']"
             />
             <q-input
               v-model="form.BEZEICHNUNG"
-              label="Bezeichnung"
+              :label="t('grid.designation')"
               outlined
               dense
             />
@@ -108,24 +108,24 @@
             <div class="row q-col-gutter-sm bg-grey-1 q-pa-sm rounded-borders border-grey-4">
               <div class="col-12 text-caption text-grey-7 q-mb-xs">
                 <q-icon name="info" size="xs"/>
-                Bestände (Read-Only - Verwaltung über Eilagerbuchungen)
+                {{ t('auto.bestaende_read_only_verwaltung_ueber_eil') }}
               </div>
               <div class="col-6">
-                <q-input v-model.number="form.JUMBOS" label="Jumbos" type="number" outlined dense readonly
+                <q-input v-model.number="form.JUMBOS" :label="t('auto.jumbos')" type="number" outlined dense readonly
                          bg-color="grey-2"/>
               </div>
               <div class="col-6">
                 <q-input v-model.number="form.XL" label="XL" type="number" outlined dense readonly bg-color="grey-2"/>
               </div>
               <div class="col-6">
-                <q-input v-model.number="form.LARGE" label="L" type="number" outlined dense readonly bg-color="grey-2"/>
+                <q-input v-model.number="form.LARGE" :label="t('auto.l')" type="number" outlined dense readonly bg-color="grey-2"/>
               </div>
               <div class="col-6">
-                <q-input v-model.number="form.MEDIUM" label="M" type="number" outlined dense readonly
+                <q-input v-model.number="form.MEDIUM" :label="t('auto.m')" type="number" outlined dense readonly
                          bg-color="grey-2"/>
               </div>
               <div class="col-6">
-                <q-input v-model.number="form.SMALL" label="S" type="number" outlined dense readonly bg-color="grey-2"/>
+                <q-input v-model.number="form.SMALL" :label="t('auto.s')" type="number" outlined dense readonly bg-color="grey-2"/>
               </div>
               <div class="col-6">
                 <q-input v-model.number="form.VOLLEIKG" label="Vollei (kg)" type="number" outlined dense readonly
@@ -134,7 +134,7 @@
             </div>
 
             <div class="row justify-end q-mt-md">
-              <q-btn label="Abbrechen" color="grey" flat v-close-popup />
+              <q-btn :label="t('form.cancel')" color="grey" flat v-close-popup />
               <q-btn :label="isEditing ? 'Speichern' : 'Anlegen'" type="submit" color="primary" class="q-ml-sm" :loading="saving" />
             </div>
           </q-form>
@@ -145,6 +145,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted, reactive, computed } from 'vue';
 import { api } from '../boot/api';
 import { useQuasar } from 'quasar';

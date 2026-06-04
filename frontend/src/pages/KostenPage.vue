@@ -164,7 +164,7 @@
     <q-dialog v-model="showDialog" persistent @show="onDialogShow">
       <q-card style="min-width: 400px; border-radius: 16px;">
         <q-card-section class="row items-center q-pb-none bg-primary text-white q-pa-md">
-          <div class="text-h6 text-weight-bold">{{ isEditing ? 'Kosten bearbeiten' : 'Neue Kosten-Position' }}</div>
+          <div class="text-h6 text-weight-bold">{{ isEditing ? t('auto.edit_kosten') : t('auto.new_kosten') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -197,8 +197,8 @@
             </div>
 
             <div class="row justify-end q-mt-md">
-              <q-btn ref="cancelBtn" label="Abbrechen" color="grey" flat v-close-popup />
-              <q-btn ref="saveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" unelevated rounded />
+              <q-btn ref="cancelBtn" :label="t('form.cancel')" color="grey" flat v-close-popup />
+              <q-btn ref="saveBtn" :label="isEditing ? t('form.update') : t('form.save')" type="submit" color="primary" unelevated rounded />
             </div>
           </q-form>
         </q-card-section>

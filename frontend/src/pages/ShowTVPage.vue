@@ -5,8 +5,8 @@
       <div class="row items-center q-mb-xl">
         <div class="col">
           <h1 class="text-h3 text-weight-bolder text-primary q-my-none">
-            Anzeige Steuerung
-            <span class="text-subtitle1 text-grey-7 block text-weight-medium" :class="$q.dark.isActive ? 'text-grey-4' : ''">Tierbewegungen Sichtbarkeit konfigurieren</span>
+            {{ t('auto.anzeige_steuerung') }}
+            <span class="text-subtitle1 text-grey-7 block text-weight-medium" :class="$q.dark.isActive ? 'text-grey-4' : ''">{{ t('auto.tierbewegungen_sichtbarkeit_konfiguriere') }}</span>
           </h1>
         </div>
         <div class="col-auto">
@@ -18,7 +18,7 @@
             size="lg"
             @click="loadData"
           >
-            <q-tooltip>Daten neu laden</q-tooltip>
+            <q-tooltip>{{ t('auto.daten_neu_laden') }}</q-tooltip>
           </q-btn>
         </div>
       </div>
@@ -31,9 +31,9 @@
       <div v-else-if="items.length === 0" class="row justify-center q-pa-xl text-center">
         <q-card flat bordered class="q-pa-xl rounded-borders shadow-2" style="max-width: 500px">
           <q-icon name="visibility_off" size="xl" color="grey-5" />
-          <div class="text-h6 q-mt-md text-grey-7" :class="$q.dark.isActive ? 'text-grey-3' : ''">Keine Einträge gefunden.</div>
-          <p class="text-grey-6 q-mb-lg" :class="$q.dark.isActive ? 'text-grey-5' : ''">Es sind noch keine Steuerungselemente in der Datenbank hinterlegt.</p>
-          <q-btn color="primary" outline label="Jetzt aktualisieren" icon="refresh" @click="loadData" />
+          <div class="text-h6 q-mt-md text-grey-7" :class="$q.dark.isActive ? 'text-grey-3' : ''">{{ t('auto.keine_eintraege_gefunden') }}</div>
+          <p class="text-grey-6 q-mb-lg" :class="$q.dark.isActive ? 'text-grey-5' : ''">{{ t('auto.es_sind_noch_keine_steuerungselemente_in') }}</p>
+          <q-btn color="primary" outline :label="t('auto.jetzt_aktualisieren')" icon="refresh" @click="loadData" />
         </q-card>
       </div>
 
@@ -60,7 +60,7 @@
                     keep-color
                     @update:model-value="saveItem(item)"
                   >
-                    <q-tooltip>Anzeigen ein/aus</q-tooltip>
+                    <q-tooltip>{{ t('auto.anzeigen_ein_aus') }}</q-tooltip>
                   </q-checkbox>
                 </div>
               </div>
@@ -76,13 +76,15 @@
       <!-- Footer Info -->
       <div class="q-mt-xl text-center text-grey-6 text-italic" :class="$q.dark.isActive ? 'text-grey-5' : ''">
         <q-icon name="info" class="q-mr-xs" />
-        Änderungen werden beim Verlassen des Feldes oder beim Umschalten automatisch gespeichert.
+        {{ t('auto.aenderungen_werden_beim_verlassen_des_fe') }}
       </div>
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { api } from 'src/boot/api';
 import { useQuasar } from 'quasar';

@@ -2,7 +2,7 @@
   <div class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="text-h6 text-primary">Silo-Verwaltung</div>
-      <q-btn color="primary" icon="add" label="Neues Silo" @click="openCreate" rounded unelevated />
+      <q-btn color="primary" icon="add" :label="t('grid.newSilo')" @click="openCreate" rounded unelevated />
     </div>
 
     <!-- Table -->
@@ -44,24 +44,24 @@
     <q-dialog v-model="showDialog" persistent @show="onDialogShow">
       <q-card style="min-width: 400px; max-width: 600px;">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">{{ isEditing ? 'Silo bearbeiten' : 'Neues Silo' }}</div>
+          <div class="text-h6">{{ isEditing ? t('grid.editSilo') : t('grid.newSilo') }}</div>
           <q-space />
           <q-btn icon="close" round dense v-close-popup @click="closeDialog" unelevated />
         </q-card-section>
         <q-card-section>
           <q-form @submit="onSubmit" class="q-gutter-md">
-            <q-input v-model.number="form.SILONUMMER" type="number" label="Silonummer *" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => val !== null && val !== '' || 'Silonummer ist ein Pflichtfeld']" />
-            <q-input v-model="form.BEZEICHNUNG" label="Bezeichnung *" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => !!val || 'Bezeichnung darf nicht leer sein']" />
-            <q-input v-model="form.INVENTURDATUMALT" type="date" label="Inventur Datum Alt" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
-            <q-input v-model="form.INVENTURDATUMNEU" type="date" label="Inventur Datum Neu" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
-            <q-input v-model.number="form.MAXFUELLMENGE" type="number" label="Maximale Füllmenge (kg)" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
-            <q-input v-model.number="form.MINFUELLMENGE" type="number" label="Minimale Füllmenge (kg)" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
-            <q-input v-model.number="form.INVENTURFUELLMENGE" type="number" label="Inventur Füllmenge (kg)" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
-            <q-input v-model.number="form.PERSONENNUMMER" type="number" label="Personennummer" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
-            <q-input v-model.number="form.ID_LIEFERANT" type="number" label="ID Lieferant" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
+            <q-input v-model.number="form.SILONUMMER" type="number" :label="t('grid.siloNumberRequired')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => val !== null && val !== '' || 'Silonummer ist ein Pflichtfeld']" />
+            <q-input v-model="form.BEZEICHNUNG" :label="t('grid.designationRequired')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => !!val || 'Bezeichnung darf nicht leer sein']" />
+            <q-input v-model="form.INVENTURDATUMALT" type="date" :label="t('auto.inventur_datum_alt')" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
+            <q-input v-model="form.INVENTURDATUMNEU" type="date" :label="t('auto.inventur_datum_neu')" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
+            <q-input v-model.number="form.MAXFUELLMENGE" type="number" :label="t('auto.maximale_fuellmenge_kg')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
+            <q-input v-model.number="form.MINFUELLMENGE" type="number" :label="t('auto.minimale_fuellmenge_kg')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
+            <q-input v-model.number="form.INVENTURFUELLMENGE" type="number" :label="t('auto.inventur_fuellmenge_kg')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
+            <q-input v-model.number="form.PERSONENNUMMER" type="number" :label="t('auto.personennummer')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
+            <q-input v-model.number="form.ID_LIEFERANT" type="number" :label="t('auto.id_lieferant')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" />
             <div class="q-mt-md">
               <q-btn ref="saveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated />
-              <q-btn ref="cancelBtn" label="Abbrechen" color="negative" class="q-ml-sm" @click="closeDialog" rounded unelevated />
+              <q-btn ref="cancelBtn" :label="t('form.cancel')" color="negative" class="q-ml-sm" @click="closeDialog" rounded unelevated />
             </div>
           </q-form>
         </q-card-section>
@@ -71,6 +71,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

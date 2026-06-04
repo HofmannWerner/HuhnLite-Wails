@@ -1,7 +1,7 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-lg">
-      <div class="text-h4 text-weight-bolder text-primary">System-Wartung (DIREKT-MODUS)</div>
+      <div class="text-h4 text-weight-bolder text-primary">{{ t('auto.system_wartung_direkt_modus') }}</div>
     </div>
 
     <div class="row q-col-gutter-lg">
@@ -9,7 +9,7 @@
         <q-card flat bordered class="rounded-borders shadow-5">
           <q-card-section class="bg-primary text-white row items-center q-pa-md">
             <q-icon name="manage_accounts" size="md" class="q-mr-md" />
-            <div class="text-h6 text-weight-bold">Datumswerte verschieben</div>
+            <div class="text-h6 text-weight-bold">{{ t('auto.datumswerte_verschieben') }}</div>
           </q-card-section>
 
           <q-card-section class="q-pa-xl">
@@ -17,19 +17,19 @@
 
               <!-- Eingabe links -->
               <div class="col-12 col-sm-6">
-                <div class="text-subtitle1 text-weight-bold q-mb-sm">Tage verschieben:</div>
+                <div class="text-subtitle1 text-weight-bold q-mb-sm">{{ t('auto.tage_verschieben') }}</div>
                 <q-input
                   v-model="daysInput"
                   filled
                   bg-color="white"
                   outlined
-                  placeholder="Zahl eingeben"
+                  :placeholder="t('auto.zahl_eingeben')"
                   input-style="font-size: 2rem; text-align: center; font-weight: bold;"
-                  hint="Positive Zahl = Zukunft, Negative Zahl = Vergangenheit"
+                  :hint="t('auto.positive_zahl_zukunft_negative_zahl_verg')"
                 />
 
                 <div class="q-mt-md text-grey-7">
-                  Aktuellstes Datum in DB: <br>
+                  {{ t('auto.aktuellstes_datum_in_db') }} <br>
                   <strong class="text-primary text-h6">{{ latestDate || 'Lade...' }}</strong>
                 </div>
               </div>
@@ -49,7 +49,7 @@
                   @click="confirmAndRun"
                 />
                 <q-btn
-                  label="Abbrechen"
+                  :label="t('form.cancel')"
                   color="grey-7"
                   outline
                   rounded
@@ -65,7 +65,7 @@
             </div>
 
             <div class="q-mt-xl bg-red-1 text-red-9 q-pa-md rounded-borders border-red shadow-1">
-               <strong>WARNUNG:</strong> Diese Aktion ändert alle Datumsfelder im gesamten System.
+               <strong>{{ t('auto.warnung') }}</strong> {{ t('auto.diese_aktion_aendert_alle_datumsfelder_i') }}
             </div>
           </q-card-section>
         </q-card>
@@ -75,6 +75,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { useQuasar, date as qDate } from 'quasar';
 import { api } from '../boot/api';

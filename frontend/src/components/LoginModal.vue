@@ -6,8 +6,8 @@
       </q-card-section>
 
       <q-card-section>
-        <div class="text-h5 text-center text-weight-bold">HuhnLite Anmeldung</div>
-        <div class="text-subtitle2 text-center" :class="sessionStore.darkMode ? 'text-grey-4' : 'text-grey-7'">Bitte identifizieren Sie sich</div>
+        <div class="text-h5 text-center text-weight-bold">{{ t('auto.huhnlite_anmeldung') }}</div>
+        <div class="text-subtitle2 text-center" :class="sessionStore.darkMode ? 'text-grey-4' : 'text-grey-7'">{{ t('auto.bitte_identifizieren_sie_sich') }}</div>
       </q-card-section>
 
       <q-card-section class="q-gutter-y-md">
@@ -15,7 +15,7 @@
           id="login-username-input"
           ref="usernameInput"
           v-model="username"
-          label="Benutzername"
+          :label="t('auto.benutzername')"
           outlined
           autocomplete="off"
           :dark="sessionStore.darkMode"
@@ -29,7 +29,7 @@
 
         <q-input
           v-model="password"
-          label="Passwort"
+          :label="t('auto.passwort')"
           outlined
           autocomplete="new-password"
           :dark="sessionStore.darkMode"
@@ -53,7 +53,7 @@
 
       <q-card-actions align="center" class="q-pb-lg q-gutter-x-sm">
         <q-btn
-          label="Abbrechen"
+          :label="t('form.cancel')"
           color="grey-7"
           flat
           class="col"
@@ -61,7 +61,7 @@
           :disable="loading"
         />
         <q-btn
-          label="Anmelden"
+          :label="t('auto.anmelden')"
           color="primary"
           class="col q-py-sm"
           unelevated
@@ -77,6 +77,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar, date } from 'quasar';

@@ -2,8 +2,8 @@
   <q-page padding>
     <div class="row items-center q-mb-lg">
       <div class="col">
-        <h1 class="text-h4 q-my-none">Profil-Berechtigungen</h1>
-        <div class="text-subtitle1 text-grey-7">Verwalten Sie die Zugriffsbeschränkungen für die verschiedenen Benutzergruppen.</div>
+        <h1 class="text-h4 q-my-none">{{ t('auto.profil_berechtigungen') }}</h1>
+        <div class="text-subtitle1 text-grey-7">{{ t('auto.verwalten_sie_die_zugriffsbeschraenkunge') }}</div>
       </div>
     </div>
 
@@ -12,9 +12,9 @@
       <div class="col-12 col-md-3">
         <q-list bordered separator padding :class="[$q.dark.isActive ? 'bg-grey-10' : 'bg-white', 'rounded-borders']">
           <q-item-label header class="row items-center justify-between">
-            Verfügbare Profile
+            {{ t('auto.verfuegbare_profile') }}
             <q-btn flat round dense color="primary" icon="add" @click="openCreateDialog">
-              <q-tooltip>Neues Profil anlegen</q-tooltip>
+              <q-tooltip>{{ t('auto.neues_profil_anlegen') }}</q-tooltip>
             </q-btn>
           </q-item-label>
           <q-item
@@ -36,7 +36,7 @@
             </q-item-section>
             <q-item-section side v-if="p.PROFIL_KZ !== 'A'">
               <q-btn flat round dense size="sm" color="negative" icon="delete" @click.stop="confirmDelete(p)">
-                <q-tooltip>Profil löschen</q-tooltip>
+                <q-tooltip>{{ t('auto.profil_loeschen') }}</q-tooltip>
               </q-btn>
             </q-item-section>
           </q-item>
@@ -52,18 +52,18 @@
               <div class="text-h6">Berechtigungen für Profil: {{ selectedProfileKz }}</div>
               <q-checkbox
                 v-model="allPermissions"
-                label="Alle Funktionen ein-/ausschalten"
+                :label="t('auto.alle_funktionen_ein_ausschalten')"
                 color="primary"
                 @update:model-value="toggleAll"
               />
             </div>
             <q-input
               v-model="form.BESCHREIBUNG"
-              label="Profilbeschreibung"
+              :label="t('auto.profilbeschreibung')"
               outlined
               dense
               :bg-color="$q.dark.isActive ? 'grey-9' : 'white'"
-              placeholder="z.B. Gastzugriff ohne Schreibrechte"
+              :placeholder="t('auto.z_b_gastzugriff_ohne_schreibrechte')"
             />
           </q-card-section>
 
@@ -74,23 +74,23 @@
             <div class="row q-col-gutter-md">
               <!-- Gruppe: Stammdaten & Dashboard -->
               <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 q-mb-sm text-primary">Basis & Stammdaten</div>
+                <div class="text-subtitle2 q-mb-sm text-primary">{{ t('auto.basis_stammdaten') }}</div>
                 <div class="column q-gutter-y-xs">
-                  <q-checkbox v-model="form.F_DASHBOARD" label="Dashboard anzeigen"/>
-                  <q-checkbox v-model="form.F_HERDEN_VERWALTEN" label="Herden verwalten"/>
-                  <q-checkbox v-model="form.F_EINRICHTUNGEN_VERWALTEN" label="Einrichtungen verwalten"/>
-                  <q-checkbox v-model="form.F_PERSONEN_VERWALTEN" label="Personen verwalten"/>
+                  <q-checkbox v-model="form.F_DASHBOARD" :label="t('auto.dashboard_anzeigen')"/>
+                  <q-checkbox v-model="form.F_HERDEN_VERWALTEN" :label="t('auto.herden_verwalten')"/>
+                  <q-checkbox v-model="form.F_EINRICHTUNGEN_VERWALTEN" :label="t('auto.einrichtungen_verwalten')"/>
+                  <q-checkbox v-model="form.F_PERSONEN_VERWALTEN" :label="t('auto.personen_verwalten')"/>
                 </div>
               </div>
 
               <!-- Gruppe: Buchungen & Reports -->
               <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 q-mb-sm text-primary">Operativ & Auswertung</div>
+                <div class="text-subtitle2 q-mb-sm text-primary">{{ t('auto.operativ_auswertung') }}</div>
                 <div class="column q-gutter-y-xs">
-                  <q-checkbox v-model="form.F_BUCHUNGEN_ERFASSEN" label="Buchungen erfassen"/>
-                  <q-checkbox v-model="form.F_AUSWERTUNGEN_ANZEIGEN" label="Reports/Auswertungen anzeigen"/>
-                  <q-checkbox v-model="form.F_KOSTEN_VERWALTEN" label="Kosten verwalten"/>
-                  <q-checkbox v-model="form.F_TABELLEN_ANZEIGEN" label="Roh-Tabellen anzeigen (Mist)"/>
+                  <q-checkbox v-model="form.F_BUCHUNGEN_ERFASSEN" :label="t('auto.buchungen_erfassen')"/>
+                  <q-checkbox v-model="form.F_AUSWERTUNGEN_ANZEIGEN" :label="t('auto.reports_auswertungen_anzeigen')"/>
+                  <q-checkbox v-model="form.F_KOSTEN_VERWALTEN" :label="t('auto.kosten_verwalten')"/>
+                  <q-checkbox v-model="form.F_TABELLEN_ANZEIGEN" :label="t('auto.roh_tabellen_anzeigen_mist')"/>
                 </div>
               </div>
 
@@ -98,21 +98,21 @@
 
               <!-- Gruppe: Systemverwaltung -->
               <div class="col-12 col-sm-6">
-                <div class="text-subtitle2 q-mb-sm text-warning text-uppercase">System & Admin</div>
+                <div class="text-subtitle2 q-mb-sm text-warning text-uppercase">{{ t('auto.system_admin') }}</div>
                 <div class="column q-gutter-y-xs">
-                  <q-checkbox v-model="form.F_SYSTEM_VERWALTUNG" label="Zugriff Systemverwaltung (Panel)"/>
-                  <q-checkbox v-model="form.F_BENUTZER_PROFILE" label="Benutzer & Profile verwalten"/>
-                  <q-checkbox v-model="form.F_SQL_STRUKTUR_VERWALTEN" label="Berichtsstruktur verwalten"/>
-                  <q-checkbox v-model="form.F_PARAMETER_EDITIEREN" label="Parameter editieren"/>
-                  <q-checkbox v-model="form.F_TEXTE_VERWALTEN" label="Texte verwalten"/>
-                  <q-checkbox v-model="form.F_BACKUP_ERSTELLEN" label="Backups erstellen"/>
+                  <q-checkbox v-model="form.F_SYSTEM_VERWALTUNG" :label="t('auto.zugriff_systemverwaltung_panel')"/>
+                  <q-checkbox v-model="form.F_BENUTZER_PROFILE" :label="t('auto.benutzer_profile_verwalten')"/>
+                  <q-checkbox v-model="form.F_SQL_STRUKTUR_VERWALTEN" :label="t('auto.berichtsstruktur_verwalten')"/>
+                  <q-checkbox v-model="form.F_PARAMETER_EDITIEREN" :label="t('auto.parameter_editieren')"/>
+                  <q-checkbox v-model="form.F_TEXTE_VERWALTEN" :label="t('auto.texte_verwalten')"/>
+                  <q-checkbox v-model="form.F_BACKUP_ERSTELLEN" :label="t('auto.backups_erstellen')"/>
                 </div>
               </div>
             </div>
           </q-card-section>
 
           <q-card-actions align="right" :class="['q-pa-md', $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-1']">
-            <q-btn label="Speichern" color="primary" icon="save" @click="savePermissions" unelevated :loading="saving" />
+            <q-btn :label="t('form.save')" color="primary" icon="save" @click="savePermissions" unelevated :loading="saving" />
           </q-card-actions>
         </q-card>
       </div>
@@ -120,7 +120,7 @@
       <div v-else :class="['col-12 col-md-9 flex flex-center j-center rounded-borders', $q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2']" style="min-height: 300px">
         <div class="text-h6 text-grey-6 text-center">
           <q-icon name="arrow_back" size="lg" class="q-mb-md" /><br />
-          Bitte wählen Sie links ein Profil zur Bearbeitung aus.
+          {{ t('auto.bitte_waehlen_sie_links_ein_profil_zur_b') }}
         </div>
       </div>
     </div>
@@ -128,13 +128,13 @@
     <q-dialog v-model="createDialogVisible" persistent>
       <q-card style="min-width: 350px">
         <q-card-section>
-          <div class="text-h6">Neues Profil anlegen</div>
+          <div class="text-h6">{{ t('auto.neues_profil_anlegen') }}</div>
         </q-card-section>
 
         <q-card-section class="q-pt-none">
           <q-input
             v-model="newProfileKz"
-            label="Profil-Kennzeichen (1 Zeichen)"
+            :label="t('auto.profil_kennzeichen_1_zeichen')"
             outlined
             dense
             autofocus
@@ -144,7 +144,7 @@
           />
           <q-input
             v-model="newProfileDesc"
-            label="Beschreibung"
+            :label="t('auto.beschreibung')"
             outlined
             dense
             class="q-mt-md"
@@ -154,8 +154,8 @@
 
 
         <q-card-actions align="right" class="text-primary">
-          <q-btn flat label="Abbrechen" v-close-popup />
-          <q-btn flat label="Anlegen" @click="createProfile" :disable="!newProfileKz" />
+          <q-btn flat :label="t('form.cancel')" v-close-popup />
+          <q-btn flat :label="t('auto.anlegen')" @click="createProfile" :disable="!newProfileKz" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -165,6 +165,8 @@
 
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted, watch } from 'vue';
 import { api } from 'src/boot/api';
 import { useQuasar } from 'quasar';

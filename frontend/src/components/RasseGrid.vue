@@ -28,7 +28,7 @@
         </template>
 
         <template v-slot:top-right>
-          <q-btn color="primary" icon="add" label="Neue Rasse" @click="openCreate" rounded unelevated />
+          <q-btn color="primary" icon="add" :label="t('grid.newBreed')" @click="openCreate" rounded unelevated />
         </template>
         <template v-slot:body-cell-actions="props">
           <q-td :props="props" auto-width>
@@ -45,7 +45,7 @@
     <q-dialog v-model="showDialog" persistent>
       <q-card style="min-width: 400px; max-width: 600px; border-radius: 16px;">
         <q-card-section class="row items-center q-pb-none bg-primary text-white q-pa-md">
-          <div class="text-h6 text-weight-bold">{{ isEditing ? 'Rasse bearbeiten' : 'Neue Rasse' }}</div>
+          <div class="text-h6 text-weight-bold">{{ isEditing ? t('grid.editBreed') : t('grid.newBreed') }}</div>
           <q-space />
           <q-btn icon="close" round dense v-close-popup @click="closeDialog" unelevated color="white" flat />
         </q-card-section>
@@ -53,14 +53,14 @@
           <q-form @submit="onSubmit" class="q-gutter-md">
             <q-input
               v-model="newRasse"
-              label="Rassenbezeichnung *"
+              :label="t('grid.breedDesignation')"
               filled
               stack-label
               :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
               :rules="[val => !!val || 'Feld darf nicht leer sein']"
             />
             <div class="row justify-end q-mt-lg q-gutter-x-sm">
-              <q-btn label="Abbrechen" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
+              <q-btn :label="t('form.cancel')" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
               <q-btn :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
             </div>
           </q-form>
@@ -71,6 +71,9 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

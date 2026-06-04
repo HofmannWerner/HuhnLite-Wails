@@ -145,13 +145,17 @@ func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
-func (a *App) getHelpFilePaths() []string {
+func (a *App) getHelpFilePaths(lang string) []string {
+	if lang == "" {
+		lang = "de"
+	}
+	fileName := fmt.Sprintf("HuhnLite-%s.html", lang)
 	var pathsToCheck []string
 
 	// 1. If SQLite, check its directory
 	if a.database != nil && a.database.Engine == "sqlite" && a.database.Config.DBConnectionString != "" {
 		dbDir := filepath.Dir(a.database.Config.DBConnectionString)
-		pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, fileName))
 	}
 
 	// 2. Check executable directory (BundleDir)
@@ -160,38 +164,38 @@ func (a *App) getHelpFilePaths() []string {
 		if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
 			bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
 		}
-		pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, fileName))
 	}
 
 	// 3. Check CWD
 	if cwd, err := os.Getwd(); err == nil {
-		pathsToCheck = append(pathsToCheck, filepath.Join(cwd, "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(cwd, fileName))
 	}
 
 	// 4. Check AppDataDir (Roaming/HuhnLite-Wails & Roaming)
 	if configDir, err := os.UserConfigDir(); err == nil {
-		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", "HuhnLite-de.html"))
-		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", fileName))
+		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, fileName))
 	}
 
 	// 5. Check LOCALAPPDATA environment variable (Local/HuhnLite-Wails & Local)
 	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
-		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", "HuhnLite-de.html"))
-		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", fileName))
+		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, fileName))
 	}
 
 	// 6. Check APPDATA environment variable (Roaming/HuhnLite-Wails & Roaming)
 	if appData := os.Getenv("APPDATA"); appData != "" {
-		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", "HuhnLite-de.html"))
-		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-de.html"))
+		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", fileName))
+		pathsToCheck = append(pathsToCheck, filepath.Join(appData, fileName))
 	}
 
 	return pathsToCheck
 }
 
-// GetHelpContent reads HuhnLite-de.html and returns its HTML content as a string
-func (a *App) GetHelpContent() (string, error) {
-	pathsToCheck := a.getHelpFilePaths()
+// GetHelpContent reads HuhnLite-[lang].html and returns its HTML content as a string
+func (a *App) GetHelpContent(lang string) (string, error) {
+	pathsToCheck := a.getHelpFilePaths(lang)
 
 	var targetPath string
 	for _, p := range pathsToCheck {
@@ -202,8 +206,14 @@ func (a *App) GetHelpContent() (string, error) {
 		}
 	}
 
+	// Fallback to German if not found and requested language is not German
+	if targetPath == "" && lang != "de" {
+		log.Printf("[Help] Help file HuhnLite-%s.html not found, falling back to German ('de')", lang)
+		return a.GetHelpContent("de")
+	}
+
 	if targetPath == "" {
-		return "", fmt.Errorf("Die Hilfedatei 'HuhnLite-de.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab.")
+		return "", fmt.Errorf("Die Hilfedatei 'HuhnLite-%s.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab.", lang)
 	}
 
 	content, err := os.ReadFile(targetPath)
@@ -214,9 +224,9 @@ func (a *App) GetHelpContent() (string, error) {
 	return string(content), nil
 }
 
-// OpenHelp searches for HuhnLite-de.html analogously to HuhnLite.db and opens it in the browser
-func (a *App) OpenHelp() string {
-	pathsToCheck := a.getHelpFilePaths()
+// OpenHelp searches for HuhnLite-[lang].html analogously to HuhnLite.db and opens it in the browser
+func (a *App) OpenHelp(lang string) string {
+	pathsToCheck := a.getHelpFilePaths(lang)
 
 	// Find first existing file
 	var targetPath string
@@ -228,9 +238,15 @@ func (a *App) OpenHelp() string {
 		}
 	}
 
+	// Fallback to German if not found and requested language is not German
+	if targetPath == "" && lang != "de" {
+		log.Printf("[Help] Help file HuhnLite-%s.html not found, falling back to German ('de')", lang)
+		return a.OpenHelp("de")
+	}
+
 	if targetPath == "" {
-		log.Printf("[Help] Help file HuhnLite-de.html not found in any checked locations")
-		return "Die Hilfedatei 'HuhnLite-de.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab."
+		log.Printf("[Help] Help file HuhnLite-%s.html not found in any checked locations", lang)
+		return fmt.Sprintf("Die Hilfedatei 'HuhnLite-%s.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab.", lang)
 	}
 
 	absPath, err := filepath.Abs(targetPath)

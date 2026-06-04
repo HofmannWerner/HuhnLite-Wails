@@ -69,6 +69,8 @@
 /* Einheitliches Grid-Design für HuhnLite (Sticky Header + feste Höhe) */
 .huhnlite-grid-standard {
   height: 800px; /* Ermöglicht Sichtbarkeit von ca. 15 Zeilen vor Scrollen */
+  width: 100%;
+  max-width: 100%;
   
   .q-table__middle {
     max-height: 100%;

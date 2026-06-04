@@ -9,10 +9,10 @@
       align="left"
       narrow-indicator
     >
-      <q-tab name="stamm" label="Herden-Dashboard" icon="dashboard" />
-      <q-tab name="parameter" label="Parameter" icon="settings"/>
-      <q-tab name="uebersicht" label="Details / Statistik" icon="list" />
-      <q-tab name="grafik" label="Grafik" icon="pie_chart" />
+      <q-tab name="stamm" :label="t('auto.herden_dashboard')" icon="dashboard" />
+      <q-tab name="parameter" :label="t('auto.parameter')" icon="settings"/>
+      <q-tab name="uebersicht" :label="t('auto.details_statistik')" icon="list" />
+      <q-tab name="grafik" :label="t('auto.grafik')" icon="pie_chart" />
     </q-tabs>
 
     <q-separator class="q-mb-md" />
@@ -35,12 +35,12 @@
             <div class="full-width row items-center justify-between q-px-sm">
               <div class="row items-center q-gutter-md">
                 <div class="text-h6 text-weight-bold text-grey-8">Übersicht</div>
-                <q-checkbox v-model="nurAktive" label="Nur aktive" color="positive" class="q-ml-sm" />
+                <q-checkbox v-model="nurAktive" :label="t('grid.onlyActive')" color="positive" class="q-ml-sm" />
               </div>
               <div class="row q-gutter-sm items-center">
                 <q-input
                   v-model="filter"
-                  label="Herden suchen"
+                  :label="t('grid.searchHerds')"
                   dense
                   filled
                   rounded
@@ -54,7 +54,7 @@
                     <q-icon name="search" />
                   </template>
                 </q-input>
-                <q-btn color="primary" icon="add" label="Neue Herde" rounded unelevated @click="openCreate" />
+                <q-btn color="primary" icon="add" :label="t('grid.newHerd')" rounded unelevated @click="openCreate" />
               </div>
             </div>
           </template>
@@ -73,7 +73,7 @@
                     <div class="text-h6 text-weight-bolder" style="line-height: 1.1;">{{ (props.row.bezeichnung || props.row.BEZEICHNUNG) || '-' }}</div>
                     <div class="row items-center q-mt-xs">
                       <div class="text-caption text-uppercase text-grey-2" style="font-size: 10px; letter-spacing: 1px;">Herde {{ (props.row.herdennummer || props.row.HERDENNUMMER) || '-' }}</div>
-                      <q-badge v-if="props.row.aktiv === 1 || props.row.AKTIV === 1" color="positive" class="q-ml-sm" label="Aktiv" rounded size="xs" />
+                      <q-badge v-if="props.row.aktiv === 1 || props.row.AKTIV === 1" color="positive" class="q-ml-sm" :label="t('auto.aktiv')" rounded size="xs" />
                     </div>
                   </div>
                   <div class="row items-center q-gutter-x-sm">
@@ -87,23 +87,23 @@
                     <div class="col-8 q-pl-md">
                       <div class="column q-gutter-y-xs">
                         <div class="column">
-                          <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">Rasse / Bezeichnung</div>
+                          <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">{{ t('auto.rasse_bezeichnung') }}</div>
                           <div class="text-weight-medium text-primary">{{ getRasseName(props.row.ID_RASSE) }}</div>
                         </div>
                         <div class="column">
-                          <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">Züchter / Händler</div>
+                          <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">{{ t('auto.zuechter_haendler') }}</div>
                           <div>{{ getPersonName(props.row.ID_ZUECHTER) }}</div>
                         </div>
                         <div class="row q-col-gutter-x-sm">
                           <div class="col-6">
                             <div class="column">
-                              <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">Einstallung</div>
+                              <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">{{ t('auto.einstallung') }}</div>
                               <div>{{ props.row.EINSTALLDATUM || '-' }}</div>
                             </div>
                           </div>
                           <div class="col-6">
                             <div class="column">
-                              <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">Legedatum</div>
+                              <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">{{ t('auto.legedatum') }}</div>
                               <div>{{ props.row.LEGEDATUM || '-' }}</div>
                             </div>
                           </div>
@@ -111,7 +111,7 @@
                         <div class="row q-col-gutter-x-sm">
                           <div class="col-6">
                             <div class="column">
-                              <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">Anfangsbestand</div>
+                              <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">{{ t('auto.anfangsbestand') }}</div>
                               <div class="text-weight-bold">{{ formatNumber(props.row.anfangsbestand || props.row.ANFANGSBESTAND || 0) }}</div>
                             </div>
                           </div>
@@ -123,7 +123,7 @@
                           </div>
                         </div>
                         <div class="column">
-                          <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">Einstandskosten</div>
+                          <div class="text-caption text-weight-bold text-uppercase text-grey-7" style="font-size: 10px; line-height: 1;">{{ t('auto.einstandskosten') }}</div>
                           <div>{{ formatCurrency(props.row.EINSTALLKOSTEN || 0) }}</div>
                         </div>
                       </div>
@@ -134,7 +134,7 @@
                       :class="$q.dark.isActive ? 'bg-transparent' : 'bg-white'"
                       :style="{ border: $q.dark.isActive ? '1px solid #424242' : '1px solid #eee' }"
                     >
-                      <div class="text-caption text-weight-bold text-uppercase q-mb-xs" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-6'" style="font-size: 9px;">Mix (S-XL)</div>
+                      <div class="text-caption text-weight-bold text-uppercase q-mb-xs" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-6'" style="font-size: 9px;">{{ t('auto.mix_s_xl') }}</div>
                       <apexchart
                         type="pie"
                         height="90"
@@ -149,11 +149,11 @@
                         ]"
                       />
                       <div class="column q-mt-xs q-gutter-y-xs q-pl-xs">
-                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #3f51b5; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">S (Small)</div></div>
-                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #2196f3; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">M (Medium)</div></div>
-                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">L (Large)</div></div>
-                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #fbc02d; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">XL (Extra Large)</div></div>
-                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #f44336; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">V (Verluste)</div></div>
+                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #3f51b5; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">{{ t('auto.s_small') }}</div></div>
+                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #2196f3; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">{{ t('auto.m_medium') }}</div></div>
+                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">{{ t('auto.l_large') }}</div></div>
+                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #fbc02d; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">{{ t('auto.xl_extra_large') }}</div></div>
+                        <div class="row items-center no-wrap"><div style="width: 8px; height: 8px; border-radius: 50%; background: #f44336; margin-right: 4px;"></div><div class="text-grey-7" style="font-size: 9px;">{{ t('auto.v_verluste') }}</div></div>
                       </div>
                     </div>
 
@@ -164,7 +164,7 @@
                         style="border-left: 4px solid #fbc02d;"
                       >
                         <div class="row items-center justify-between">
-                          <div class="text-caption text-weight-bolder text-uppercase" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'" style="font-size: 10px;">Summe Klasse A</div>
+                          <div class="text-caption text-weight-bolder text-uppercase" :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'" style="font-size: 10px;">{{ t('auto.summe_klasse_a') }}</div>
                           <div class="text-weight-bolder text-warning" style="font-size: 20px;">{{ formatNumber(props.row.EGGSTATS?.SUM_KLASSE_A) }}</div>
                         </div>
                       </div>
@@ -182,15 +182,15 @@
         <q-card flat bordered :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-grey-2'" style="border-radius: 16px;">
           <q-card-section :class="$q.dark.isActive ? '' : 'bg-white'" class="q-ma-md rounded-borders shadow-1">
             <div class="row q-mb-md items-center q-gutter-md">
-              <q-checkbox v-model="firmaAktiv" label="Globale Herdenparameter" color="primary" size="lg"/>
+              <q-checkbox v-model="firmaAktiv" :label="t('auto.globale_herdenparameter')" color="primary" size="lg"/>
               <q-select v-if="!firmaAktiv" v-model="selectedHerdeId" use-input input-debounce="0"
                         :options="filteredHerdeOptions" @filter="filterHerde" option-value="ID" option-label="label"
-                        emit-value map-options label="Herde suchen / auswählen"
+                        emit-value map-options :label="t('auto.herde_suchen_auswaehlen')"
                         :bg-color="$q.dark.isActive ? 'grey-10' : 'grey-2'" style="min-width: 400px" filled stack-label
                         clearable hide-selected fill-input>
                 <template v-slot:no-option>
                   <q-item>
-                    <q-item-section class="text-grey">Keine Herde gefunden</q-item-section>
+                    <q-item-section class="text-grey">{{ t('auto.keine_herde_gefunden') }}</q-item-section>
                   </q-item>
                 </template>
                 <template v-slot:option="scope">
@@ -206,7 +206,7 @@
                 </template>
               </q-select>
               <q-select v-model="copySourceId" :options="copyHerdeOptions" option-value="ID" option-label="label"
-                        emit-value map-options label="Herde mit Parametersatz wählen" filled stack-label dense
+                        emit-value map-options :label="t('auto.herde_mit_parametersatz_waehlen')" filled stack-label dense
                         style="min-width: 300px" :bg-color="$q.dark.isActive ? 'grey-10' : 'grey-2'"
                         @update:model-value="onCopySourceSelected" clearable>
                 <template v-slot:prepend>
@@ -217,8 +217,7 @@
                    class="row items-center q-gutter-x-md bg-white q-px-md q-py-sm rounded-borders shadow-2 border-primary"
                    style="height: 56px; border-left: 5px solid #1976D2;">
                 <div class="column justify-center">
-                  <div class="text-caption text-uppercase text-grey-7" style="font-size: 10px; line-height: 1">Aktuell
-                    aktiv
+                  <div class="text-caption text-uppercase text-grey-7" style="font-size: 10px; line-height: 1">{{ t('auto.aktuell_aktiv') }}
                   </div>
                   <div class="text-subtitle1 text-weight-bolder text-primary" style="line-height: 1.2">
                     {{ selectedHerde.HERDENNUMMER }} - {{ selectedHerde.BEZEICHNUNG }}
@@ -232,37 +231,37 @@
                 <div class="col-12">
                   <div class="row q-col-gutter-md">
                     <div class="col-12 col-sm-3">
-                      <q-input v-model.number="paramForm.MASSVOLLEI" type="number" label="Mass Vollei" dense filled
+                      <q-input v-model.number="paramForm.MASSVOLLEI" type="number" :label="t('auto.mass_vollei')" dense filled
                                stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-2">
-                      <q-input v-model.number="paramForm.ANZAHLKONTROLLW" type="number" label="Anzahl Kontrolle" dense
+                      <q-input v-model.number="paramForm.ANZAHLKONTROLLW" type="number" :label="t('auto.anzahl_kontrolle')" dense
                                filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-2">
-                      <q-input v-model.number="paramForm.LAUFZEITWOCHEN" type="number" label="Laufzeit (W)" dense filled
+                      <q-input v-model.number="paramForm.LAUFZEITWOCHEN" type="number" :label="t('auto.laufzeit_w')" dense filled
                                stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-2">
                       <q-input v-model.number="paramForm.SCHLACHTERLOESHENNE" type="number" step="0.01"
-                               label="Schlachterlös (€)" dense filled stack-label
+                               :label="t('auto.schlachterloes')" dense filled stack-label
                                :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-3">
-                      <q-input v-model.number="paramForm.PRODUKTIONSDAUER" type="number" label="Prod. Dauer" dense
+                      <q-input v-model.number="paramForm.PRODUKTIONSDAUER" type="number" :label="t('auto.prod_dauer')" dense
                                filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-2">
-                      <q-input v-model.number="paramForm.LEGEBEGINN_LW" type="number" label="Legebeg. (LW)" dense filled
+                      <q-input v-model.number="paramForm.LEGEBEGINN_LW" type="number" :label="t('auto.legebeg_lw')" dense filled
                                stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-1">
-                      <q-checkbox v-model="paramForm.BIO" label="BIO" dense color="primary"
+                      <q-checkbox v-model="paramForm.BIO" :label="t('auto.bio')" dense color="primary"
                                   class="full-height items-center q-pt-sm"/>
                     </div>
                     <div class="col-12 col-sm-3">
                       <q-input v-model.number="paramForm.BIOAUFSCHLAG" type="number" step="0.01"
-                               label="Bio-Aufschlag (€)" dense filled stack-label
+                               :label="t('auto.bio_aufschlag')" dense filled stack-label
                                :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" prefix="€"/>
                     </div>
                     <div class="col-12 col-sm-3">
@@ -276,18 +275,18 @@
                                dense filled stack-label :bg-color="$q.dark.isActive ? 'grey-8' : 'white'"/>
                     </div>
                     <div class="col-12 col-sm-3">
-                      <q-input v-model.number="paramForm.MAXTAGEVERMITTELN" type="number" label="Max. Tage Vermittlung"
+                      <q-input v-model.number="paramForm.MAXTAGEVERMITTELN" type="number" :label="t('auto.max_tage_vermittlung')"
                                dense filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-6">
                       <q-select v-model="paramForm.ID_TABELLEALTER" :options="alterTabellenOptions" option-value="ID"
-                                option-label="BEZEICHNUNG" emit-value map-options label="Referenz Alterstabelle" filled
+                                option-label="BEZEICHNUNG" emit-value map-options :label="t('auto.referenz_alterstabelle')" filled
                                 stack-label dense :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                     <div class="col-12 col-sm-6">
                       <q-select v-model="paramForm.ID_TABELLEGEWICHT" :options="gewichtTabellenOptions"
                                 option-value="ID" option-label="BEZEICHNUNG" emit-value map-options
-                                label="Referenz Gewichtstabelle" filled stack-label dense
+                                :label="t('auto.referenz_gewichtstabelle')" filled stack-label dense
                                 :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"/>
                     </div>
                   </div>
@@ -297,24 +296,24 @@
                   <div class="text-subtitle2 q-mb-sm text-primary text-weight-bold">Chargen-Einstellungen</div>
                   <div class="row q-col-gutter-md q-mb-md">
                     <div class="col-12 col-sm-4">
-                      <q-input v-model="paramForm.CHARGEPREFIXFIRMA" label="Präfix für Chargennummer" filled stack-label
+                      <q-input v-model="paramForm.CHARGEPREFIXFIRMA" :label="t('auto.praefix_fuer_chargennummer')" filled stack-label
                                dense :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" disable/>
                     </div>
                     <div class="col-12 col-sm-8 row q-col-gutter-sm items-center">
                       <div class="col-4 col-sm-2">
-                        <q-checkbox v-model="paramForm.CHARGEJUMBOS" label="Jumbos" dense color="primary" disable/>
+                        <q-checkbox v-model="paramForm.CHARGEJUMBOS" :label="t('auto.jumbos')" dense color="primary" disable/>
                       </div>
                       <div class="col-4 col-sm-2">
                         <q-checkbox v-model="paramForm.CHARGEXL" label="XL" dense color="primary" disable/>
                       </div>
                       <div class="col-4 col-sm-2">
-                        <q-checkbox v-model="paramForm.CHARGELARGE" label="Large" dense color="primary" disable/>
+                        <q-checkbox v-model="paramForm.CHARGELARGE" :label="t('auto.large')" dense color="primary" disable/>
                       </div>
                       <div class="col-4 col-sm-2">
-                        <q-checkbox v-model="paramForm.CHARGEMEDIUM" label="Medium" dense color="primary" disable/>
+                        <q-checkbox v-model="paramForm.CHARGEMEDIUM" :label="t('auto.medium')" dense color="primary" disable/>
                       </div>
                       <div class="col-4 col-sm-2">
-                        <q-checkbox v-model="paramForm.CHARGESMALL" label="Small" dense color="primary" disable/>
+                        <q-checkbox v-model="paramForm.CHARGESMALL" :label="t('auto.small')" dense color="primary" disable/>
                       </div>
                       <div class="col-4 col-sm-2">
                         <q-checkbox v-model="paramForm.CHARGEVOLLEI" label="Vollei" dense color="primary" disable/>
@@ -322,15 +321,15 @@
                     </div>
                     <div class="col-12 row q-col-gutter-sm items-center">
                       <div class="col-12 col-sm-4">
-                        <q-checkbox v-model="paramForm.CHARGEPREFIXHERDENNUMMER" label="Herdennummer einbeziehen" dense
+                        <q-checkbox v-model="paramForm.CHARGEPREFIXHERDENNUMMER" :label="t('auto.herdennummer_einbeziehen')" dense
                                     color="primary" disable/>
                       </div>
                       <div class="col-12 col-sm-4">
-                        <q-checkbox v-model="paramForm.CHARGEDATUM" label="Datum einbeziehen" dense color="primary"
+                        <q-checkbox v-model="paramForm.CHARGEDATUM" :label="t('auto.datum_einbeziehen')" dense color="primary"
                                     disable/>
                       </div>
                       <div class="col-12 col-sm-4">
-                        <q-checkbox v-model="paramForm.CHARGELAGERNUMMER" label="Lagernummer einbeziehen" dense
+                        <q-checkbox v-model="paramForm.CHARGELAGERNUMMER" :label="t('auto.lagernummer_einbeziehen')" dense
                                     color="primary" disable/>
                       </div>
                     </div>
@@ -338,74 +337,74 @@
                 </div>
                 <div class="col-12">
                   <q-separator class="q-my-md"/>
-                  <div class="text-subtitle2 q-mb-sm text-primary text-weight-bold">Optionen</div>
+                  <div class="text-subtitle2 q-mb-sm text-primary text-weight-bold">{{ t('auto.optionen') }}</div>
                   <div class="row q-col-gutter-sm">
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.JUMBOS" label="Jumbos erfassen" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.JUMBOS" :label="t('auto.jumbos_erfassen')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.KLASSENERFASSEN" label="Gewichtsklassen" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.KLASSENERFASSEN" :label="t('auto.gewichtsklassen')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.KLASSEAERFASSEN" label="KlasseA erfassen" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.KLASSEAERFASSEN" :label="t('auto.klassea_erfassen')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.KLASSEAERRECHNEN" label="KlasseA errechnen" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.KLASSEAERRECHNEN" :label="t('auto.klassea_errechnen')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.KLASSEAVERMITTELN" label="KlasseA vermitteln" dense
+                      <q-checkbox v-model="paramForm.KLASSEAVERMITTELN" :label="t('auto.klassea_vermitteln')" dense
                                   color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.ERFASSESCHMUTZEI" label="Schmutzeier" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.ERFASSESCHMUTZEI" :label="t('auto.schmutzeier')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.ERFASSEKNICKEI" label="Knickeier" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.ERFASSEKNICKEI" :label="t('auto.knickeier')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.ERFASSEBRUCHEI" label="Brucheier" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.ERFASSEBRUCHEI" :label="t('auto.brucheier')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.ERFASSEVOLLEI" label="Vollei (Stück)" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.ERFASSEVOLLEI" :label="t('auto.vollei_stueck')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
                       <q-checkbox v-model="paramForm.ERFASSEVOLLEIKG" label="Vollei (kg)" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.AUFTEILUNGGEWICHT" label="Aufteilung Gewicht" dense
+                      <q-checkbox v-model="paramForm.AUFTEILUNGGEWICHT" :label="t('auto.aufteilung_gewicht')" dense
                                   color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.AUFTEILUNGALTER" label="Aufteilung Alter" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.AUFTEILUNGALTER" :label="t('auto.aufteilung_alter')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.KONTROLLWIEGUNG" label="Kontrollwiegung" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.KONTROLLWIEGUNG" :label="t('auto.kontrollwiegung')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
                       <q-checkbox v-model="paramForm.VERLUSTEBEIBUCHUNG"
-                                  label="Verluste direkt bei Leistungsbuchung erfassen" dense color="primary"/>
+                                  :label="t('auto.verluste_direkt_bei_leistungsbuchung_erf')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
                       <q-checkbox v-model="paramForm.LAGERBUCHUNGBEIBUCHUNG"
-                                  label="Lagerbuchungen automatisch bei Leistung ausführen" dense color="primary"/>
+                                  :label="t('auto.lagerbuchungen_automatisch_bei_leistung_')" dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.BEIVERMITTELNDATUMAKTUELL" label="Aktuelles Datum vorschlagen"
+                      <q-checkbox v-model="paramForm.BEIVERMITTELNDATUMAKTUELL" :label="t('auto.aktuelles_datum_vorschlagen')"
                                   dense color="primary"/>
                     </div>
                     <div class="col-6 col-md-4">
-                      <q-checkbox v-model="paramForm.PSEUDOLAGER" label="PseudoLager erlauben" dense color="primary"/>
+                      <q-checkbox v-model="paramForm.PSEUDOLAGER" :label="t('auto.pseudolager_erlauben')" dense color="primary"/>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="row justify-end q-mt-lg">
-                <q-btn label="Parameter Speichern" type="submit" color="primary" rounded unelevated padding="xs xl"/>
+                <q-btn :label="t('auto.parameter_speichern')" type="submit" color="primary" rounded unelevated padding="xs xl"/>
               </div>
             </q-form>
             <div v-else class="text-center q-pa-xl">
               <q-icon name="info" size="xl" color="grey-5"/>
-              <div class="text-subtitle1 text-grey-7 q-mt-md">Bitte Herde auswählen, um Parameter zu laden.</div>
+              <div class="text-subtitle1 text-grey-7 q-mt-md">{{ t('auto.bitte_herde_auswaehlen_um_parameter_zu_l') }}</div>
             </div>
           </q-card-section>
         </q-card>
@@ -443,11 +442,11 @@
 
           <template v-slot:top-right>
               <div class="row q-gutter-sm items-center">
-                <q-checkbox v-model="nurAktive" label="Nur aktive Herden anzeigen" class="q-mr-md" color="primary" :dark="$q.dark.isActive" />
-                <q-input v-model="filter" label="Herden suchen" dense filled rounded stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" style="width: 250px" clearable>
+                <q-checkbox v-model="nurAktive" :label="t('auto.nur_aktive_herden_anzeigen')" class="q-mr-md" color="primary" :dark="$q.dark.isActive" />
+                <q-input v-model="filter" :label="t('grid.searchHerds')" dense filled rounded stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" style="width: 250px" clearable>
                   <template v-slot:append><q-icon name="search" /></template>
                 </q-input>
-                <q-btn color="secondary" icon="unfold_more" label="Alle aus-/einklappen" @click="toggleAllSubgrids" rounded unelevated outline />
+                <q-btn color="secondary" icon="unfold_more" :label="t('auto.alle_aus_einklappen')" @click="toggleAllSubgrids" rounded unelevated outline />
               </div>
             </template>
 
@@ -495,7 +494,7 @@
                 option-label="label"
                 emit-value
                 map-options
-                label="Herde auswählen"
+                :label="t('auto.herde_auswaehlen')"
                 filled
                 stack-label
                 @update:model-value="onChartHerdeChange"
@@ -505,7 +504,7 @@
             <q-select
               v-model="filterYear"
               :options="yearOptions"
-              label="Jahr"
+              :label="t('auto.jahr')"
               filled
               stack-label
               clearable
@@ -524,7 +523,7 @@
               ]"
               emit-value
               map-options
-              label="Quartal"
+              :label="t('auto.quartal')"
               filled
               stack-label
               :disable="!filterYear || filterMonth !== 0"
@@ -537,7 +536,7 @@
               :options="monthOptions"
               emit-value
               map-options
-              label="Monat"
+              :label="t('auto.monat')"
               filled
               stack-label
               :disable="!filterYear || filterQuarter !== 0"
@@ -545,7 +544,7 @@
             />
           </div>
           <div class="col-12 col-sm-2">
-            <q-btn label="Reset" color="grey" flat @click="resetChartFilters" class="full-width" />
+            <q-btn :label="t('auto.reset')" color="grey" flat @click="resetChartFilters" class="full-width" />
           </div>
         </div>
 
@@ -571,7 +570,7 @@
                 />
                </div>
                <div class="q-mt-md text-center">
-                 <div class="text-caption text-grey-7 text-uppercase">Gesamt Klasse A</div>
+                 <div class="text-caption text-grey-7 text-uppercase">{{ t('auto.gesamt_klasse_a') }}</div>
                  <div class="text-h5 text-weight-bolder">{{ formatNumber(filteredStats.SUM_KLASSE_A) }}</div>
                </div>
             </q-card>
@@ -580,7 +579,7 @@
           <div class="col-12 col-md-6">
             <q-card v-if="filteredStatsActive" flat bordered class="q-pa-lg shadow-2 full-height" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'" style="border-radius: 20px;">
                <div class="text-h6 text-center text-weight-bold q-mb-lg" :class="$q.dark.isActive ? 'text-white' : 'text-positive'">
-                 Produktion (Alle aktiven Herden)
+                 {{ t('auto.produktion_alle_aktiven_herden') }}
                </div>
 
                <div style="min-height: 300px;">
@@ -598,7 +597,7 @@
                 />
                </div>
                <div class="q-mt-md text-center">
-                 <div class="text-caption text-grey-7 text-uppercase">Gesamt Klasse A (Aktiv)</div>
+                 <div class="text-caption text-grey-7 text-uppercase">{{ t('auto.gesamt_klasse_a_aktiv') }}</div>
                  <div class="text-h5 text-weight-bolder text-positive">{{ formatNumber(filteredStatsActive.SUM_KLASSE_A) }}</div>
                </div>
             </q-card>
@@ -616,7 +615,7 @@
         </div>
         <div v-else class="column items-center justify-center q-pa-xl" style="min-height: 400px;">
            <q-icon name="analytics" size="6rem" color="grey-3" />
-           <div class="text-h6 text-grey-5 q-mt-md">Wählen Sie Herde und Zeitraum für die Analyse</div>
+           <div class="text-h6 text-grey-5 q-mt-md">{{ t('auto.waehlen_sie_herde_und_zeitraum_fuer_die_') }}</div>
         </div>
       </q-tab-panel>
 
@@ -627,21 +626,21 @@
     <q-dialog v-model="showHerdenMaske" persistent @show="onHerdenDialogShow">
       <q-card style="min-width: 500px; max-width: 800px; border-radius: 16px;">
         <q-card-section class="row items-center q-pb-none bg-primary text-white q-pa-md">
-          <div class="text-h6 text-weight-bold">{{ isEditing ? 'Herde bearbeiten' : 'Neue Herde' }}</div>
+          <div class="text-h6 text-weight-bold">{{ isEditing ? t('grid.editHerd') : t('grid.newHerd') }}</div>
           <q-space />
           <q-btn icon="close" round dense v-close-popup @click="closeDialog" unelevated color="white" flat />
         </q-card-section>
         <q-card-section class="q-pa-lg">
           <q-form @submit="onSubmit" class="q-gutter-md">
             <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-4"><q-input v-model.number="form.HERDENNUMMER" type="number" label="Interne Herdennummer *" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => val !== null && val !== '' || 'Erforderlich']" /></div>
-              <div class="col-12 col-md-8"><q-input v-model="form.BEZEICHNUNG" label="Bezeichnung / Name" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
-              <div class="col-12 col-md-6"><q-select v-model="form.ID_RASSE" :options="rasseOptions" option-value="ID" option-label="RASSE_NAME" emit-value map-options label="Rasse *" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => !!val || 'Erforderlich']" /></div>
-              <div class="col-12 col-md-6"><q-select v-model="form.ID_ZUECHTER" :options="zuechterOptions" option-value="ID" option-label="label" emit-value map-options label="Züchter/Händler" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
-              <div class="col-12 col-sm-6 col-md-3"><q-input v-model.number="form.ANFANGSBESTAND" type="number" label="Bestand (Tiere)" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
-              <div class="col-12 col-sm-6 col-md-3"><q-input v-model="form.EINSTALLDATUM" type="date" label="Einstalldatum" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
-              <div class="col-12 col-sm-6 col-md-3"><q-input v-model="form.LEGEDATUM" type="date" label="Legebeginn" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
-              <div class="col-12 col-sm-6 col-md-3"><q-input v-model.number="form.EINSTALLKOSTEN" type="number" label="Einstandskosten (€)" step="0.01" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 col-md-4"><q-input v-model.number="form.HERDENNUMMER" type="number" :label="t('grid.internalHerdNumber')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => val !== null && val !== '' || 'Erforderlich']" /></div>
+              <div class="col-12 col-md-8"><q-input v-model="form.BEZEICHNUNG" :label="t('grid.designationName')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 col-md-6"><q-select v-model="form.ID_RASSE" :options="rasseOptions" option-value="ID" option-label="RASSE_NAME" emit-value map-options :label="t('grid.breedRequired')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" :rules="[val => !!val || 'Erforderlich']" /></div>
+              <div class="col-12 col-md-6"><q-select v-model="form.ID_ZUECHTER" :options="zuechterOptions" option-value="ID" option-label="label" emit-value map-options :label="t('grid.breederMerchant')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 col-sm-6 col-md-3"><q-input v-model.number="form.ANFANGSBESTAND" type="number" :label="t('grid.stockAnimals')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 col-sm-6 col-md-3"><q-input v-model="form.EINSTALLDATUM" type="date" :label="t('grid.housingDate')" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 col-sm-6 col-md-3"><q-input v-model="form.LEGEDATUM" type="date" :label="t('grid.layStart')" stack-label filled :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 col-sm-6 col-md-3"><q-input v-model.number="form.EINSTALLKOSTEN" type="number" :label="t('grid.costPrice')" step="0.01" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
               <div class="col-12 col-sm-4">
                 <q-select
                   v-model="form.ID_STALL"
@@ -654,17 +653,17 @@
                   fill-input
                   hide-selected
                   @filter="filterStall"
-                  label="Stall"
+                  :label="t('grid.stall')"
                   filled
                   stack-label
                   :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'"
                 />
               </div>
-              <div class="col-12 col-sm-4"><q-select v-model="form.ID_SILO" :options="siloOptions" option-value="ID" option-label="label" emit-value map-options label="Silo" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
-              <div class="col-12 col-sm-4"><q-select v-model="form.ID_EILAGER" :options="eilagerOptions" option-value="ID" option-label="label" emit-value map-options label="Eilager" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
-              <div class="col-12 flex items-center justify-end q-gutter-x-md"><q-checkbox v-model="form.ALLE_BUCHUNGEN_MIT_DATUM" label="Buchungen zwingend mit Datum" color="primary" :true-value="1" :false-value="0" /><q-checkbox v-model="form.AKTIV" label="Herde ist Aktiv" color="positive" :true-value="1" :false-value="0" /></div>
+              <div class="col-12 col-sm-4"><q-select v-model="form.ID_SILO" :options="siloOptions" option-value="ID" option-label="label" emit-value map-options :label="t('grid.silo')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 col-sm-4"><q-select v-model="form.ID_EILAGER" :options="eilagerOptions" option-value="ID" option-label="label" emit-value map-options :label="t('grid.eggStorage')" filled stack-label :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" /></div>
+              <div class="col-12 flex items-center justify-end q-gutter-x-md"><q-checkbox v-model="form.ALLE_BUCHUNGEN_MIT_DATUM" :label="t('grid.bookingsMustHaveDate')" color="primary" :true-value="1" :false-value="0" /><q-checkbox v-model="form.AKTIV" :label="t('grid.herdIsActive')" color="positive" :true-value="1" :false-value="0" /></div>
             </div>
-            <div class="row justify-end q-mt-lg q-gutter-x-sm"><q-btn ref="herdenCancelBtn" label="Abbrechen" color="negative" outline rounded @click="closeDialog" /><q-btn ref="herdenSaveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated /></div>
+            <div class="row justify-end q-mt-lg q-gutter-x-sm"><q-btn ref="herdenCancelBtn" :label="t('form.cancel')" color="negative" outline rounded @click="closeDialog" /><q-btn ref="herdenSaveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated /></div>
           </q-form>
         </q-card-section>
       </q-card>
@@ -673,6 +672,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

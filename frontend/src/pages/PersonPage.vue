@@ -214,7 +214,7 @@
     <q-dialog v-model="showDialog" persistent @show="onDialogShow">
       <q-card style="min-width: 450px; max-width: 600px; border-radius: 16px;">
         <q-card-section class="row items-center q-pb-none bg-primary text-white q-pa-md">
-          <div class="text-h6 text-weight-bold">{{ isEditing ? 'Person bearbeiten' : 'Neue Person hinzufügen' }}</div>
+          <div class="text-h6 text-weight-bold">{{ isEditing ? t('auto.person_bearbeiten') : t('auto.neue_person_hinzufuegen') }}</div>
           <q-space />
           <q-btn icon="close" round dense v-close-popup @click="closeDialog" unelevated color="white" flat />
         </q-card-section>
@@ -339,8 +339,8 @@
                      :bg-color="$q.dark.isActive ? 'grey-9' : 'grey-2'" placeholder="https://..."/>
 
             <div class="row justify-end q-mt-lg q-gutter-x-sm">
-              <q-btn ref="cancelBtn" label="Abbrechen" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
-              <q-btn ref="saveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
+              <q-btn ref="cancelBtn" :label="t('form.cancel')" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
+              <q-btn ref="saveBtn" :label="isEditing ? t('form.update') : t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl" />
             </div>
           </q-form>
         </q-card-section>
@@ -350,6 +350,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, watch, onMounted, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from '../boot/api';

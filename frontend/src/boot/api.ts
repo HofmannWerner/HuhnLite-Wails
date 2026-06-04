@@ -22,7 +22,7 @@ export default boot(async ({app}) => {
     if (config.params === undefined) {
       config.params = {};
     }
-    config.params.lang = sessionStore.selectedLanguage;
+    config.params.lang = localStorage.getItem('selectedLanguage') || sessionStore.selectedLanguage || 'de';
 
     return config;
   });

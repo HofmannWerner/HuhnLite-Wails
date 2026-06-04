@@ -3,7 +3,7 @@
     <div style="max-width: 800px;">
       <div class="row items-center justify-between q-mb-md">
         <div class="text-h6 text-primary">Stall-Verwaltung</div>
-        <q-btn color="primary" icon="add" label="Neuer Stall" @click="openCreate" rounded unelevated />
+        <q-btn color="primary" icon="add" :label="t('grid.newStall')" @click="openCreate" rounded unelevated />
       </div>
 
       <!-- Table -->
@@ -53,12 +53,12 @@
         </q-card-section>
         <q-card-section>
           <q-form @submit="onSubmit" class="q-gutter-md">
-            <q-input v-model.number="form.STALLNUMMER" type="number" label="Stallnummer *" filled stack-label :rules="[val => !!val || 'Feld darf nicht leer sein']" />
-            <q-input v-model="form.BEZEICHNUNG" label="Stallbezeichnung *" filled stack-label :rules="[val => !!val || 'Feld darf nicht leer sein']"
+            <q-input v-model.number="form.STALLNUMMER" type="number" :label="t('grid.stallNumberRequired')" filled stack-label :rules="[val => !!val || 'Feld darf nicht leer sein']" />
+            <q-input v-model="form.BEZEICHNUNG" :label="t('grid.stallDesignationRequired')" filled stack-label :rules="[val => !!val || 'Feld darf nicht leer sein']"
             />
             <div class="q-mt-md">
               <q-btn ref="saveBtn" :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated />
-              <q-btn ref="cancelBtn" label="Abbrechen" color="negative" class="q-ml-sm" @click="closeDialog" rounded unelevated />
+              <q-btn ref="cancelBtn" :label="t('form.cancel')" color="negative" class="q-ml-sm" @click="closeDialog" rounded unelevated />
             </div>
           </q-form>
         </q-card-section>
@@ -68,6 +68,9 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);

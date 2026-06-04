@@ -16,8 +16,8 @@
         narrow-indicator
         :class="$q.dark.isActive ? 'bg-grey-10 text-grey-4' : 'bg-white text-grey-7'"
       >
-        <q-tab name="herden" label="Herden-Stamm" icon="pets"/>
-        <q-tab name="rassen" label="Rassen" icon="category"/>
+        <q-tab name="herden" :label="t('grid.herdenStamm')" icon="pets"/>
+        <q-tab name="rassen" :label="t('grid.rassen')" icon="category"/>
       </q-tabs>
 
       <q-separator/>
@@ -36,6 +36,9 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 import {ref} from 'vue';
 import {useQuasar} from 'quasar';
 import HerdeGrid from '../components/HerdeGrid.vue';

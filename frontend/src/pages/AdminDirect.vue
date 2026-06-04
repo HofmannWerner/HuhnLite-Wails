@@ -1,24 +1,24 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-lg">
-      <div class="text-h4 text-weight-bolder text-primary">Direkt-Update (ERZWUNGEN)</div>
+      <div class="text-h4 text-weight-bolder text-primary">{{ t('auto.direkt_update_erzwungen') }}</div>
     </div>
 
     <q-card flat bordered class="rounded-borders shadow-10" style="max-width: 600px; margin: auto;">
       <q-card-section class="bg-primary text-white row items-center q-pa-md">
         <q-icon name="speed" size="md" class="q-mr-md" />
-        <div class="text-h6">Daten-Verschiebung V3</div>
+        <div class="text-h6">{{ t('auto.daten_verschiebung_v3') }}</div>
       </q-card-section>
 
       <q-card-section class="q-pa-xl">
-        <div class="text-h6 q-mb-md">Wieviele Tage verschieben?</div>
+        <div class="text-h6 q-mb-md">{{ t('auto.wieviele_tage_verschieben') }}</div>
 
         <q-input
           v-model="days"
           filled
           bg-color="white"
           outlined
-          placeholder="Zahl hier eingeben"
+          :placeholder="t('auto.zahl_hier_eingeben')"
           class="q-mb-lg"
           input-style="font-size: 2.5rem; text-align: center; color: #1976D2;"
         />
@@ -36,7 +36,7 @@
         />
 
         <q-btn
-          label="Abbrechen"
+          :label="t('form.cancel')"
           color="grey-7"
           flat
           rounded
@@ -46,7 +46,7 @@
         />
 
         <div class="q-mt-lg text-center text-grey-8">
-          DB-Stand: <strong>{{ latestDate || 'Lade...' }}</strong> | Vorschlag: <strong>{{ suggested }}</strong>
+          {{ t('auto.db_stand') }} <strong>{{ latestDate || 'Lade...' }}</strong> {{ t('auto.vorschlag') }} <strong>{{ suggested }}</strong>
         </div>
       </q-card-section>
     </q-card>
@@ -54,6 +54,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { useQuasar, date as qDate } from 'quasar';
 import { api } from '../boot/api';

@@ -2,7 +2,7 @@
   <div class="q-pa-md">
     <q-card flat bordered class="q-mb-md bg-grey-1">
       <q-card-section class="row items-center q-gutter-sm">
-        <div class="text-h6 text-primary">Eilager Buchungen</div>
+        <div class="text-h6 text-primary">{{ t('auto.eilager_buchungen') }}</div>
         <q-space />
         <q-select
           v-model="selectedLagerId"
@@ -11,7 +11,7 @@
           option-label="dropdownLabel"
           emit-value
           map-options
-          label="Lager wählen (Alle, wenn leer)"
+          :label="t('auto.lager_waehlen_alle_wenn_leer')"
           filled
           dense
           clearable
@@ -25,14 +25,14 @@
           option-label="betreff"
           emit-value
           map-options
-          label="Typ Filter"
+          :label="t('auto.typ_filter')"
           filled
           dense
           clearable
           style="min-width: 150px"
           @update:model-value="onKzFilterChange"
         />
-        <q-btn color="primary" icon="add" label="Neu" @click="openCreate" rounded unelevated />
+        <q-btn color="primary" icon="add" :label="t('auto.neu')" @click="openCreate" rounded unelevated />
         <span class="text-caption q-ml-sm text-grey">Debug KZ: {{ currentViewKz }}</span>
       </q-card-section>
     </q-card>
@@ -67,7 +67,7 @@
               <q-tooltip>Bearbeiten</q-tooltip>
             </q-btn>
             <q-btn v-if="currentViewKz === 'E'" dense round icon="shopping_cart" color="orange" @click="onSell(props.row)" unelevated size="sm">
-              <q-tooltip>Verkauf / Umbuchung erstellen</q-tooltip>
+              <q-tooltip>{{ t('auto.verkauf_umbuchung_erstellen') }}</q-tooltip>
             </q-btn>
             <q-btn dense round icon="delete" color="negative" @click="onDelete(props.row)" unelevated size="sm">
               <q-tooltip>Löschen</q-tooltip>
@@ -94,7 +94,7 @@
           <q-form @submit="onSubmit" class="q-gutter-md">
             <div class="row q-col-gutter-sm">
               <div class="col-12 col-sm-6">
-                <q-input v-model="form.BUCHUNGSDATUM" type="date" label="Buchungsdatum *" filled stack-label :rules="[val => !!val || 'Pflichtfeld']" />
+                <q-input v-model="form.BUCHUNGSDATUM" type="date" :label="t('auto.buchungsdatum')" filled stack-label :rules="[val => !!val || 'Pflichtfeld']" />
               </div>
               <div class="col-12 col-sm-6">
                 <q-select
@@ -104,7 +104,7 @@
                   option-label="betreff"
                   emit-value
                   map-options
-                  label="Buchungstyp *"
+                  :label="t('auto.buchungstyp')"
                   filled stack-label
                   @update:model-value="onTypeChange"
                 />
@@ -120,7 +120,7 @@
                   option-label="dropdownLabel"
                   emit-value
                   map-options
-                  label="Lager *"
+                  :label="t('auto.lager')"
                   filled stack-label
                   :readonly="isMove"
                   @update:model-value="updateStockReference"
@@ -134,7 +134,7 @@
                   option-label="dropdownLabel"
                   emit-value
                   map-options
-                  label="Ziel-Lager (für Umbuchung)"
+                  :label="t('auto.ziel_lager_fuer_umbuchung')"
                   filled stack-label
                   clearable
                   @update:model-value="onTargetLagerChange"
@@ -151,7 +151,7 @@
                   option-label="bezeichnung"
                   emit-value
                   map-options
-                  label="Lagerplatz"
+                  :label="t('auto.lagerplatz')"
                   filled stack-label
                   clearable
                 />
@@ -164,12 +164,12 @@
                   option-label="dropdownLabel"
                   emit-value
                   map-options
-                  label="Bezug zur Legeleistung (Optional)"
+                  :label="t('auto.bezug_zur_legeleistung_optional')"
                   filled stack-label
                   clearable
                   :readonly="isMove"
                   @update:model-value="onBuchungChange"
-                  hint="Wähle eine Leistung aus für Restmengen-Prüfung und Lager-Vorbelegung"
+                  :hint="t('auto.waehle_eine_leistung_aus_fuer_restmengen')"
                 />
               </div>
             </div>
@@ -177,7 +177,7 @@
 
             <!-- Row 1: Stock Reference -->
             <div class="row q-col-gutter-sm items-center q-mb-sm">
-              <div class="col-12 col-md-2 text-weight-bold text-primary">Bestand Lager:</div>
+              <div class="col-12 col-md-2 text-weight-bold text-primary">{{ t('auto.bestand_lager') }}</div>
               <div class="col-4 col-md" v-for="s in eggFields" :key="'stock-'+s">
                 <q-input :model-value="availableQuantities[s as keyof typeof availableQuantities].toString()" :label="s" dense filled stack-label readonly />
               </div>
@@ -187,27 +187,27 @@
 
             <!-- Row 2: Mengen Inputs -->
             <div class="row q-col-gutter-sm items-center">
-              <div class="col-12 col-md-2 text-weight-bold text-secondary">Mengen:</div>
+              <div class="col-12 col-md-2 text-weight-bold text-secondary">{{ t('auto.mengen') }}</div>
               <div class="col-4 col-md" v-for="s in eggFields" :key="'input-'+s">
                  <q-input v-model.number="form[s as keyof typeof form]" type="number" :label="s" dense filled stack-label
                           :bg-color="$q.dark.isActive ? 'grey-10' : 'blue-1'" 
                           :error="!!form.ID_BUCHUNG && isFieldNegative(s)"
                           hide-bottom-space/>
               </div>
-              <div class="col-4 col-md"><q-input v-model.number="form.SCHMUTZ" type="number" label="Schmutz" dense filled stack-label /></div>
-              <div class="col-4 col-md"><q-input v-model.number="form.KNICKEIER" type="number" label="Knick" dense filled stack-label /></div>
-              <div class="col-4 col-md"><q-input v-model.number="form.BRUCHEIER" type="number" label="Bruch" dense filled stack-label /></div>
+              <div class="col-4 col-md"><q-input v-model.number="form.SCHMUTZ" type="number" :label="t('auto.schmutz')" dense filled stack-label /></div>
+              <div class="col-4 col-md"><q-input v-model.number="form.KNICKEIER" type="number" :label="t('auto.knick')" dense filled stack-label /></div>
+              <div class="col-4 col-md"><q-input v-model.number="form.BRUCHEIER" type="number" :label="t('auto.bruch')" dense filled stack-label /></div>
             </div>
 
             <div class="row q-col-gutter-sm q-mt-sm">
-              <div class="col-12 col-sm-6"><q-input v-model="form.CHARGE" label="Charge" filled stack-label :disable="isEditing" /></div>
+              <div class="col-12 col-sm-6"><q-input v-model="form.CHARGE" :label="t('auto.charge')" filled stack-label :disable="isEditing" /></div>
               <div class="col-12 col-sm-6 flex items-center">
-                <q-checkbox v-model="form.VERKAUF" label="Automatisch Verkauf anlegen" color="primary" />
+                <q-checkbox v-model="form.VERKAUF" :label="t('auto.automatisch_verkauf_anlegen')" color="primary" />
               </div>
             </div>
 
             <div class="q-mt-md row justify-end">
-              <q-btn label="Abbrechen" color="negative" outline class="q-mr-sm" @click="closeDialog" rounded unelevated />
+              <q-btn :label="t('form.cancel')" color="negative" outline class="q-mr-sm" @click="closeDialog" rounded unelevated />
               <q-btn :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated
                      :disable="!!form.ID_BUCHUNG && hasValidationError"/>
             </div>
@@ -219,6 +219,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useQuasar, date } from 'quasar';
 import { api } from '../boot/api';

@@ -2,11 +2,11 @@
   <q-page padding>
     <div class="row items-center q-mb-lg">
       <div class="col">
-        <h1 class="text-h4 q-my-none">Benutzerverwaltung</h1>
-        <div class="text-subtitle1 text-grey-7">Hier können Sie Benutzer anlegen und Profile zuweisen.</div>
+        <h1 class="text-h4 q-my-none">{{ t('auto.benutzerverwaltung') }}</h1>
+        <div class="text-subtitle1 text-grey-7">{{ t('auto.hier_koennen_sie_benutzer_anlegen_und_pr') }}</div>
       </div>
       <div class="col-auto">
-        <q-btn color="primary" icon="person_add" label="Neuer Benutzer" @click="openDialog()" unelevated />
+        <q-btn color="primary" icon="person_add" :label="t('auto.neuer_benutzer')" @click="openDialog()" unelevated />
       </div>
     </div>
 
@@ -36,13 +36,13 @@
         </q-card-section>
 
         <q-card-section class="q-gutter-y-md">
-          <q-input v-model="form.USERNAME" label="Username" outlined dense :readonly="editMode" />
-          <q-input v-model="form.KLARNAME" label="Klarname (Anzeige)" outlined dense />
-          <q-input v-model="form.PASSWORT" label="Passwort" type="password" outlined dense />
+          <q-input v-model="form.USERNAME" :label="t('auto.username')" outlined dense :readonly="editMode" />
+          <q-input v-model="form.KLARNAME" :label="t('auto.klarname_anzeige')" outlined dense />
+          <q-input v-model="form.PASSWORT" :label="t('auto.passwort')" type="password" outlined dense />
           <q-select
             v-model="form.ID_BENUTZER_PROFILE"
             :options="profileOptions"
-            label="Profil"
+            :label="t('auto.profil')"
             emit-value
             map-options
             outlined
@@ -55,8 +55,8 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-mt-md">
-          <q-btn flat label="Abbrechen" color="grey" v-close-popup />
-          <q-btn unelevated label="Speichern" color="primary" @click="saveUser" />
+          <q-btn flat :label="t('form.cancel')" color="grey" v-close-popup />
+          <q-btn unelevated :label="t('form.save')" color="primary" @click="saveUser" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -64,6 +64,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { api } from 'src/boot/api';
 import { useQuasar } from 'quasar';

@@ -35,6 +35,34 @@
 
         <q-btn round dense :icon="sessionStore.darkMode ? 'dark_mode' : 'light_mode'" @click="sessionStore.setDarkMode(!sessionStore.darkMode)" aria-label="Toggle Dark Mode" unelevated />
 
+        <q-btn flat round dense class="q-ml-sm" aria-label="Language">
+          <span class="text-h6" style="font-size: 1.5rem; line-height: 1;">
+            {{ sessionStore.selectedLanguage === 'de' ? '🇩🇪' : sessionStore.selectedLanguage === 'en' ? '🇬🇧' : '🇮🇹' }}
+          </span>
+          <q-menu auto-close>
+            <q-list style="min-width: 120px">
+              <q-item clickable :active="sessionStore.selectedLanguage === 'de'" @click="sessionStore.setLanguage('de')">
+                <q-item-section avatar class="q-pr-none" style="min-width: auto">
+                  <span style="font-size: 1.5rem;">🇩🇪</span>
+                </q-item-section>
+                <q-item-section class="q-pl-sm">Deutsch</q-item-section>
+              </q-item>
+              <q-item clickable :active="sessionStore.selectedLanguage === 'en'" @click="sessionStore.setLanguage('en')">
+                <q-item-section avatar class="q-pr-none" style="min-width: auto">
+                  <span style="font-size: 1.5rem;">🇬🇧</span>
+                </q-item-section>
+                <q-item-section class="q-pl-sm">English</q-item-section>
+              </q-item>
+              <q-item clickable :active="sessionStore.selectedLanguage === 'it'" @click="sessionStore.setLanguage('it')">
+                <q-item-section avatar class="q-pr-none" style="min-width: auto">
+                  <span style="font-size: 1.5rem;">🇮🇹</span>
+                </q-item-section>
+                <q-item-section class="q-pl-sm">Italiano</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
+
         <div v-if="session.isLoggedIn" class="q-ml-md row items-center gt-xs">
           <q-icon name="person" size="xs" class="q-mr-xs"/>
           <span class="text-weight-bold text-grey-3">{{ session.klarname || session.username }}</span>
@@ -42,7 +70,7 @@
 
         <q-btn v-if="session.isLoggedIn && session.authEnabled" flat round dense icon="logout" @click="handleLogout"
                class="q-ml-sm" unelevated>
-          <q-tooltip>Abmelden</q-tooltip>
+          <q-tooltip>{{ t('layout.logout') }}</q-tooltip>
         </q-btn>
       </q-toolbar>
     </q-header>
@@ -61,26 +89,26 @@
         <q-item-section avatar>
             <q-icon name="dashboard" />
           </q-item-section>
-          <q-item-section class="text-weight-medium">Dashboard</q-item-section>
+          <q-item-section class="text-weight-medium">{{ t('menu.dashboard') }}</q-item-section>
         </q-item>
 
         <q-separator class="q-my-md" />
 
         <!-- Stammdaten -->
-        <q-item-label header class="text-weight-bold text-uppercase" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Stammdaten</q-item-label>
+        <q-item-label header class="text-weight-bold text-uppercase" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">{{ t('menu.stammdaten') }}</q-item-label>
 
         <q-item v-if="session.can('herden_verwalten')" clickable v-ripple to="/herden"
                 :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
 
         <q-item-section avatar><q-icon name="pets" /></q-item-section>
-          <q-item-section>Herden & Rassen</q-item-section>
+          <q-item-section>{{ t('menu.herden') }}</q-item-section>
         </q-item>
 
         <q-item v-if="session.can('einrichtungen_verwalten')" clickable v-ripple to="/einrichtungen"
                 :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
 
           <q-item-section avatar><q-icon name="warehouse" /></q-item-section>
-          <q-item-section>Einrichtungen</q-item-section>
+          <q-item-section>{{ t('menu.einrichtungen') }}</q-item-section>
         </q-item>
 
 
@@ -88,20 +116,20 @@
                 :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
 
         <q-item-section avatar><q-icon name="people" /></q-item-section>
-          <q-item-section>Personen</q-item-section>
+          <q-item-section>{{ t('menu.personen') }}</q-item-section>
         </q-item>
 
 
         <q-separator class="q-my-md" />
 
         <!-- Bewegungsdaten -->
-        <q-item-label header class="text-weight-bold text-uppercase" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Bewegungsdaten</q-item-label>
+        <q-item-label header class="text-weight-bold text-uppercase" :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">{{ t('menu.bewegungsdaten') }}</q-item-label>
 
         <q-item v-if="session.can('buchungen_erfassen')" clickable v-ripple to="/buchungen"
                 :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
 
           <q-item-section avatar><q-icon name="receipt_long" /></q-item-section>
-          <q-item-section>Buchungen</q-item-section>
+          <q-item-section>{{ t('menu.buchungen') }}</q-item-section>
         </q-item>
 
 
@@ -111,13 +139,13 @@
           <q-item-section avatar>
             <q-icon name="assessment"/>
           </q-item-section>
-          <q-item-section>Reports</q-item-section>
+          <q-item-section>{{ t('menu.reports') }}</q-item-section>
         </q-item>
         <q-separator class="q-my-md"/>
 
         <!-- Kosten & Einstellungen -->
         <q-item-label header class="text-weight-bold text-uppercase"
-                      :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">Kosten & Einstellungen
+                      :class="$q.dark.isActive ? 'text-grey-5' : 'text-grey-6'">{{ t('menu.kosten_einstellungen') }}
         </q-item-label>
 
         <q-item v-if="session.can('parameter_editieren')" clickable v-ripple to="/settings"
@@ -126,14 +154,14 @@
           <q-item-section avatar>
             <q-icon name="settings"/>
           </q-item-section>
-          <q-item-section>Parameter</q-item-section>
+          <q-item-section>{{ t('menu.parameter') }}</q-item-section>
         </q-item>
 
         <q-item v-if="session.can('kosten_verwalten')" clickable v-ripple to="/kosten"
                 :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
 
         <q-item-section avatar><q-icon name="attach_money" /></q-item-section>
-          <q-item-section>Kosten</q-item-section>
+          <q-item-section>{{ t('menu.kosten') }}</q-item-section>
         </q-item>
         <q-item v-if="session.can('tabellen_anzeigen')" clickable v-ripple to="/mist"
                 :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
@@ -141,13 +169,13 @@
           <q-item-section avatar>
             <q-icon name="table_chart"/>
           </q-item-section>
-          <q-item-section>Tabellen</q-item-section>
+          <q-item-section>{{ t('menu.tabellen') }}</q-item-section>
         </q-item>
         <q-item v-if="session.can('texte_verwalten')" clickable v-ripple to="/textverwaltung"
                 :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
 
         <q-item-section avatar><q-icon name="description" /></q-item-section>
-          <q-item-section>Textverwaltung</q-item-section>
+          <q-item-section>{{ t('menu.textverwaltung') }}</q-item-section>
         </q-item>
 
         <q-separator class="q-my-md" />
@@ -155,7 +183,7 @@
         <q-expansion-item
           v-if="session.can('system_verwaltung')"
           icon="admin_panel_settings"
-          label="Systemverwaltung"
+          :label="t('menu.systemverwaltung')"
           header-class="text-weight-bold"
           expand-separator
           :content-inset-level="0.5"
@@ -168,7 +196,7 @@
             <q-item-section avatar>
               <q-icon name="manage_accounts"/>
             </q-item-section>
-            <q-item-section>Benutzerverwaltung</q-item-section>
+            <q-item-section>{{ t('menu.benutzerverwaltung') }}</q-item-section>
           </q-item>
 
           <q-item v-if="session.can('benutzer_profile')" clickable v-ripple to="/profile"
@@ -176,7 +204,7 @@
             <q-item-section avatar>
               <q-icon name="security"/>
             </q-item-section>
-            <q-item-section>Profilverwaltung</q-item-section>
+            <q-item-section>{{ t('menu.profilverwaltung') }}</q-item-section>
           </q-item>
 
 
@@ -186,7 +214,7 @@
             <q-item-section avatar>
               <q-icon name="storage"/>
             </q-item-section>
-            <q-item-section>Wartung / Stunden-Shift</q-item-section>
+            <q-item-section>{{ t('menu.wartung') }}</q-item-section>
           </q-item>
 
           <q-item v-if="session.permissions.backup_erstellen" clickable v-ripple @click="runBackup"
@@ -195,7 +223,7 @@
               <q-icon v-if="!backupLoading" name="backup"/>
               <q-spinner v-else color="primary" size="2em"/>
             </q-item-section>
-            <q-item-section>Backup erstellen</q-item-section>
+            <q-item-section>{{ t('menu.backup') }}</q-item-section>
           </q-item>
 
             <q-item v-if="session.can('system_verwaltung')" clickable v-ripple to="/showtv"
@@ -203,7 +231,7 @@
             <q-item-section avatar>
               <q-icon name="visibility"/>
             </q-item-section>
-            <q-item-section>Anzeige Steuerung</q-item-section>
+            <q-item-section>{{ t('menu.anzeige') }}</q-item-section>
           </q-item>
 
           <q-item v-if="session.can('system_verwaltung')" clickable v-ripple to="/restore"
@@ -211,7 +239,7 @@
             <q-item-section avatar>
               <q-icon name="settings_backup_restore"/>
             </q-item-section>
-            <q-item-section>Restore (Wiederherstellung)</q-item-section>
+            <q-item-section>{{ t('menu.restore') }}</q-item-section>
           </q-item>
         </q-expansion-item>
 
@@ -222,7 +250,7 @@
           <q-item-section avatar>
             <q-icon name="help_outline"/>
           </q-item-section>
-          <q-item-section>Hilfe</q-item-section>
+          <q-item-section>{{ t('menu.hilfe') }}</q-item-section>
         </q-item>
       </q-list>
 
@@ -233,7 +261,7 @@
           <q-item-section avatar>
             <q-icon name="power_settings_new" color="negative" />
           </q-item-section>
-          <q-item-section class="text-weight-bold">Programm beenden</q-item-section>
+          <q-item-section class="text-weight-bold">{{ t('menu.beenden') }}</q-item-section>
         </q-item>
       </div>
     </q-drawer>
@@ -279,6 +307,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar, date } from 'quasar';
 import { api } from 'src/boot/api';
+import { useI18n } from 'vue-i18n';
 
 import { useSessionStore } from '../stores/session';
 import LoginModal from '../components/LoginModal.vue';
@@ -288,6 +317,13 @@ const $q = useQuasar();
 const router = useRouter();
 const sessionStore = useSessionStore();
 const session = sessionStore;
+const { t, locale } = useI18n({ useScope: 'global' });
+
+locale.value = sessionStore.selectedLanguage || 'de';
+watch(() => sessionStore.selectedLanguage, (val) => {
+  locale.value = val || 'de';
+});
+
 const leftDrawerOpen = ref(false);
 const backupLoading = ref(false);
 
@@ -397,27 +433,41 @@ async function openHelp() {
   helpLoading.value = true;
   helpUrl.value = '';
 
+  const activeLang = sessionStore.selectedLanguage || 'de';
+
   if (window.go && window.go.main && window.go.main.App) {
     try {
-      // Check if file is accessible
-      await window.go.main.App.GetHelpContent();
-      
-      // Determine base URL from Axios boot config or fallback to default port
+      // Retrieve file content directly via Wails
+      const htmlContent = await window.go.main.App.GetHelpContent(activeLang);
+
+      // Inject <base> tag to resolve relative image paths against the static files server
       const baseApiUrl = api.defaults.baseURL || 'http://localhost:8080';
-      helpUrl.value = `${baseApiUrl}/help/HuhnLite-de.html`;
+      const baseTag = `<base href="${baseApiUrl}/help/">`;
+
+      let modifiedHtml = htmlContent;
+      if (htmlContent.includes('<head>')) {
+        modifiedHtml = htmlContent.replace('<head>', `<head>${baseTag}`);
+      } else if (htmlContent.includes('<HEAD>')) {
+        modifiedHtml = htmlContent.replace('<HEAD>', `<HEAD>${baseTag}`);
+      } else {
+        modifiedHtml = `${baseTag}${htmlContent}`;
+      }
+
+      helpUrl.value = 'data:text/html;charset=utf-8,' + encodeURIComponent(modifiedHtml);
     } catch (err) {
       console.error('Error loading help content:', err);
-      // Fallback to open natively if reading content fails
-      const errMsg = await window.go.main.App.OpenHelp();
+      // Fallback: Try to open natively
+      const errMsg = await window.go.main.App.OpenHelp(activeLang);
       if (errMsg) {
         $q.notify({
           type: 'negative',
-          message: 'Hilfe konnte nicht geladen werden: ' + String(err),
+          message: 'Hilfe konnte nicht geladen werden: ' + String(errMsg),
           position: 'top',
           timeout: 5000
         });
-        helpDialogOpen.value = false;
       }
+      // Close the in-app help dialog since it's blank or opened natively
+      helpDialogOpen.value = false;
     } finally {
       helpLoading.value = false;
     }
@@ -432,7 +482,7 @@ async function openHelp() {
           </style>
         </head>
         <body>
-          <h1>Hilfe-Dokument (Entwicklungsmodus)</h1>
+          <h1>Hilfe-Dokument (Entwicklungsmodus - ${activeLang})</h1>
           <p>Die Wails-Laufzeitumgebung ist nicht verfügbar. Im Live-System wird hier das Handbuch geladen.</p>
         </body>
       </html>
@@ -536,15 +586,15 @@ async function checkAktionen() {
       });
 
       $q.dialog({
-        title: 'Offene Aktionen',
-        message: `Es sind ${relevantActions.length} offene Aktionen vom Typ 'B' (fällig bis heute) vorhanden.`,
+        title: t('message.openActions'),
+        message: t('message.openActionsMsg').replace('{count}', String(relevantActions.length)),
         ok: {
-          label: 'Anzeigen',
+          label: t('message.show'),
           color: 'primary',
           unelevated: true
         },
         cancel: {
-          label: 'Später',
+          label: t('message.later'),
           flat: true,
           color: 'grey-7'
         },

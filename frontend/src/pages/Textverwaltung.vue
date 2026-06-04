@@ -142,7 +142,7 @@
     <q-dialog v-model="showTypeDialog" persistent @show="onTypeDialogShow">
       <q-card style="min-width: 400px; border-radius: 16px;">
         <q-card-section class="bg-primary text-white q-pa-md row items-center">
-          <div class="text-h6 text-weight-bold">{{ editTypeData.id ? 'Texttyp bearbeiten' : 'Neuer Texttyp' }}</div>
+          <div class="text-h6 text-weight-bold">{{ editTypeData.id ? t('auto.edit_texttyp') : t('auto.new_texttyp') }}</div>
           <q-space/>
           <q-btn icon="close" flat round dense v-close-popup/>
         </q-card-section>
@@ -191,7 +191,7 @@
     <q-dialog v-model="showTextDialog" persistent @show="onTextDialogShow">
       <q-card style="min-width: 550px; border-radius: 16px;">
         <q-card-section class="bg-primary text-white q-pa-md row items-center">
-          <div class="text-h6 text-weight-bold">{{ editTextData.id ? 'Text bearbeiten' : 'Neuer Text' }}</div>
+          <div class="text-h6 text-weight-bold">{{ editTextData.id ? t('auto.edit_text') : t('auto.new_text') }}</div>
           <q-space/>
           <q-btn icon="close" flat round dense v-close-popup/>
         </q-card-section>
@@ -268,6 +268,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t, locale } = useI18n();
 import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import type { QTableProps } from 'quasar';
@@ -297,36 +299,36 @@ const canEditSystem = computed(() => sessionStore.systemEditEnabled);
 // Grid Typen
 const typenRows = ref<any[]>([]);
 const loadingTypen = ref(false);
-const typenColumns: QTableProps['columns'] = [
-  { name: 'actions', label: 'Aktion', align: 'center', field: 'actions' },
-  {name: 'kz', label: 'KZ', align: 'left', field: (row: any) => extractString(row.kz), sortable: true},
+const typenColumns = computed<QTableProps['columns']>(() => [
+  { name: 'actions', label: t('grid.action'), align: 'center', field: 'actions' },
+  { name: 'kz', label: 'KZ', align: 'left', field: (row: any) => extractString(row.kz), sortable: true },
   {
     name: 'bezeichnung',
-    label: 'Bezeichnung',
+    label: t('grid.designation'),
     align: 'left',
     field: (row: any) => extractString(row.bezeichnung),
     sortable: true
   },
-  {name: 'system', label: 'System', align: 'center', field: (row: any) => extractInt(row.system), sortable: true}
-];
+  { name: 'system', label: t('auto.system'), align: 'center', field: (row: any) => extractInt(row.system), sortable: true }
+]);
 
 // Grid Texte
 const texteRows = ref<any[]>([]);
 const loadingTexte = ref(false);
-const texteColumns: QTableProps['columns'] = [
-  { name: 'actions', label: 'Aktion', align: 'center', field: 'actions' },
+const texteColumns = computed<QTableProps['columns']>(() => [
+  { name: 'actions', label: t('grid.action'), align: 'center', field: 'actions' },
   {
     name: 'text_typ_kz',
-    label: 'Typ',
+    label: t('auto.texttyp'),
     align: 'left',
     field: (row: any) => extractString(row.text_typ_kz),
     sortable: true
   },
-  {name: 'kz', label: 'Kennz.', align: 'center', field: (row: any) => extractString(row.kz), sortable: true},
-  {name: 'betreff', label: 'Betreff', align: 'left', field: (row: any) => extractString(row.betreff), sortable: true},
-  {name: 'inhalt', label: 'Inhalt', align: 'left', field: (row: any) => extractString(row.inhalt), sortable: true},
-  {name: 'system', label: 'System', align: 'center', field: (row: any) => extractInt(row.system), sortable: true}
-];
+  { name: 'kz', label: t('auto.kennz_funktion').replace(' (Funktion)', ''), align: 'center', field: (row: any) => extractString(row.kz), sortable: true },
+  { name: 'betreff', label: t('auto.betreff'), align: 'left', field: (row: any) => extractString(row.betreff), sortable: true },
+  { name: 'inhalt', label: t('auto.inhalt'), align: 'left', field: (row: any) => extractString(row.inhalt), sortable: true },
+  { name: 'system', label: t('auto.system'), align: 'center', field: (row: any) => extractInt(row.system), sortable: true }
+]);
 
 // Dialog State
 const showTypeDialog = ref(false);
@@ -379,7 +381,7 @@ const typeOptions = computed(() => {
 
 const allTypesOption = computed(() => {
   return [
-    { label: 'Alle Typen', kz: null },
+    { label: t('auto.alle_typen'), kz: null },
     ...typeOptions.value
   ];
 });
@@ -408,7 +410,7 @@ async function loadTypen() {
   loadingTypen.value = true;
   await fetchConfig();
   try {
-    const res = await api.get('/api/texttypen');
+    const res = await api.get('/api/texttypen', { params: { lang: locale.value } });
     typenRows.value = res.data || [];
 
     if (typenRows.value.length > 0 && selectedTypeKz.value === null) {
@@ -425,7 +427,7 @@ async function loadTexte() {
   loadingTexte.value = true;
   await fetchConfig();
   try {
-    const res = await api.get('/api/texte');
+    const res = await api.get('/api/texte', { params: { lang: locale.value } });
     texteRows.value = res.data || [];
   } catch (err) {
     console.error('Ladefehler Texte:', err);
@@ -433,6 +435,11 @@ async function loadTexte() {
     loadingTexte.value = false;
   }
 }
+
+watch(locale, () => {
+  loadTypen();
+  loadTexte();
+});
 
 function onTypeClick(row: any) {
   selectedTypeKz.value = extractString(row.kz);
@@ -458,7 +465,7 @@ async function saveType() {
   await fetchConfig();
   try {
     if (editTypeData.id && editTypeData.system === 1 && !canEditSystem.value) {
-      $q.notify({ type: 'negative', message: 'System-Einträge können nicht geändert werden (Einstellungen prüfen).' });
+      $q.notify({ type: 'negative', message: t('auto.system_entry_protected_error') });
       return;
     }
     if (!canEditSystem.value && !editTypeData.id) editTypeData.system = 0;
@@ -469,9 +476,9 @@ async function saveType() {
     }
     showTypeDialog.value = false;
     await loadTypen();
-    $q.notify({ type: 'positive', message: 'Texttyp gespeichert' });
+    $q.notify({ type: 'positive', message: t('auto.texttyp_saved') });
   } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Fehler: ' + (err.response?.data?.error || err.message) });
+    $q.notify({ type: 'negative', message: t('message.error') + ': ' + (err.response?.data?.error || err.message) });
   }
 }
 
@@ -481,24 +488,24 @@ async function deleteType(row: any) {
   const rowKz = extractString(row.kz);
   
   if (extractInt(row.system) === 1 && !canEditSystem.value) {
-    $q.notify({color: 'negative', message: 'System-Einträge können nicht gelöscht werden (Einstellungen prüfen).'});
+    $q.notify({color: 'negative', message: t('auto.system_entry_protected_error')});
     return;
   }
   
   $q.dialog({
-    title: 'Löschen',
-    message: `Soll der Texttyp "${rowKz}" wirklich gelöscht werden?`,
+    title: t('message.confirmDeleteTitle'),
+    message: t('auto.delete_texttyp_confirm').replace('{name}', rowKz),
     cancel: true,
     persistent: true
   }).onOk(async () => {
     try {
       await api.delete(`/api/texttypen/${rowId}`);
       await loadTypen();
-      $q.notify({type: 'positive', message: 'Texttyp gelöscht'});
+      $q.notify({type: 'positive', message: t('auto.texttyp_deleted')});
     } catch (err: any) {
       $q.notify({
         type: 'negative',
-        message: 'Fehler (evtl. hängen noch Texte daran): ' + (err.response?.data?.error || err.message)
+        message: t('auto.delete_type_error_dependency') + (err.response?.data?.error || err.message)
       });
     }
   });
@@ -528,7 +535,7 @@ async function saveText() {
   await fetchConfig();
   try {
     if (editTextData.id && editTextData.system === 1 && !canEditSystem.value) {
-      $q.notify({ type: 'negative', message: 'System-Einträge können nicht geändert werden (Einstellungen prüfen).' });
+      $q.notify({ type: 'negative', message: t('auto.system_entry_protected_error') });
       return;
     }
     if (!canEditSystem.value && !editTextData.id) editTextData.system = 0;
@@ -539,9 +546,9 @@ async function saveText() {
     }
     showTextDialog.value = false;
     await loadTexte();
-    $q.notify({ type: 'positive', message: 'Text gespeichert' });
+    $q.notify({ type: 'positive', message: t('auto.text_saved') });
   } catch (err: any) {
-    $q.notify({ type: 'negative', message: 'Fehler: ' + (err.response?.data?.error || err.message) });
+    $q.notify({ type: 'negative', message: t('message.error') + ': ' + (err.response?.data?.error || err.message) });
   }
 }
 
@@ -550,22 +557,22 @@ async function deleteText(row: any) {
   const rowId = extractInt(row.id);
 
   if (extractInt(row.system) === 1 && !canEditSystem.value) {
-    $q.notify({color: 'negative', message: 'System-Einträge können nicht gelöscht werden (Einstellungen prüfen).'});
+    $q.notify({color: 'negative', message: t('auto.system_entry_protected_error')});
     return;
   }
 
   $q.dialog({
-    title: 'Löschen',
-    message: 'Soll dieser Text wirklich gelöscht werden?',
+    title: t('message.confirmDeleteTitle'),
+    message: t('auto.delete_text_confirm'),
     cancel: true,
     persistent: true
   }).onOk(async () => {
     try {
       await api.delete(`/api/texte/${rowId}`);
       await loadTexte();
-      $q.notify({type: 'positive', message: 'Text gelöscht'});
+      $q.notify({type: 'positive', message: t('auto.text_deleted')});
     } catch (err: any) {
-      $q.notify({type: 'negative', message: 'Fehler: ' + (err.response?.data?.error || err.message)});
+      $q.notify({type: 'negative', message: t('message.error') + ': ' + (err.response?.data?.error || err.message)});
     }
   });
 }

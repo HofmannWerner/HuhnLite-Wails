@@ -104,7 +104,7 @@
     <q-dialog v-model="showDialog" persistent transition-show="scale" transition-hide="scale">
       <q-card style="min-width: 450px; border-radius: 16px;" :class="$q.dark.isActive ? 'bg-grey-10' : 'bg-white'">
         <q-card-section class="row items-center q-pb-none bg-primary text-white q-pa-md">
-          <div class="text-h6 text-weight-bold">{{ isEditing ? 'Lagerplatz bearbeiten' : 'Neuer Lagerplatz' }}</div>
+          <div class="text-h6 text-weight-bold">{{ isEditing ? t('auto.edit_lagerplatz') : t('auto.new_lagerplatz') }}</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup @click="closeDialog" />
         </q-card-section>
@@ -151,8 +151,8 @@
             />
 
             <div class="row justify-end q-mt-xl q-gutter-sm">
-              <q-btn label="Abbrechen" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
-              <q-btn :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
+              <q-btn :label="t('form.cancel')" color="negative" outline rounded @click="closeDialog" padding="xs lg" />
+              <q-btn :label="isEditing ? t('form.update') : t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl" />
             </div>
           </q-form>
         </q-card-section>

@@ -1,7 +1,7 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-lg">
-      <div class="text-h4 text-weight-bolder text-primary">Firmenverwaltung</div>
+      <div class="text-h4 text-weight-bolder text-primary">{{ t('grid.companyAdmin') }}</div>
     </div>
 
     <!-- BEREICH 0: SYSTEM-SICHERHEIT (Parametermodus) -->
@@ -10,15 +10,14 @@
       <q-card-section class="row items-center q-pa-md">
         <q-icon name="security" size="md" color="amber-9" class="q-mr-md"/>
         <div>
-          <div class="text-h6 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : ''">System-Sicherheit</div>
-          <div class="text-caption text-grey-8" :class="$q.dark.isActive ? 'text-grey-4' : ''">Zentrale Steuerung der
-            Login-Pflicht beim App-Start
+          <div class="text-h6 text-weight-bold" :class="$q.dark.isActive ? 'text-white' : ''">{{ t('grid.systemSecurity') }}</div>
+          <div class="text-caption text-grey-8" :class="$q.dark.isActive ? 'text-grey-4' : ''">{{ t('auto.zentrale_steuerung_der_login_pflicht_bei') }}
           </div>
         </div>
         <q-space/>
         <q-checkbox
           v-model="authRequired"
-          label="Anmeldung beim Start erforderlich"
+          :label="t('auto.anmeldung_beim_start_erforderlich')"
           color="amber-9"
           size="lg"
           left-label
@@ -26,7 +25,7 @@
           :disable="session.profile_kz !== 'A'"
           @update:model-value="saveAuthSetting"
         >
-          <q-tooltip v-if="session.profile_kz !== 'A'">Nur Administratoren können diese Einstellung ändern</q-tooltip>
+          <q-tooltip v-if="session.profile_kz !== 'A'">{{ t('auto.nur_administratoren_koennen_diese_einste') }}</q-tooltip>
         </q-checkbox>
       </q-card-section>
     </q-card>
@@ -35,10 +34,10 @@
     <q-card flat bordered class="q-mb-xl rounded-borders shadow-2" style="border-radius: 16px;">
       <q-card-section class="bg-primary text-white row items-center q-pa-md">
         <q-icon name="business" size="md" class="q-mr-md" />
-        <div class="text-h6 text-weight-bold">Firmenstammdaten</div>
+        <div class="text-h6 text-weight-bold">{{ t('grid.companyMasterData') }}</div>
         <q-space />
-        <q-btn ref="companyCancelBtn" icon="undo" label="Abbrechen" color="white" flat rounded @click="resetCompany" autofocus />
-        <q-btn ref="companySaveBtn" :disable="!isCompanyDirty" icon="save" label="Speichern" color="white" outline rounded @click="saveCompany" />
+        <q-btn ref="companyCancelBtn" icon="undo" :label="t('form.cancel')" color="white" flat rounded @click="resetCompany" autofocus />
+        <q-btn ref="companySaveBtn" :disable="!isCompanyDirty" icon="save" :label="t('form.save')" color="white" outline rounded @click="saveCompany" />
       </q-card-section>
 
       <q-card-section class="q-pa-lg">
@@ -59,25 +58,25 @@
                  :style="($q.dark.isActive ? 'border-left: 1px solid #444; ' : 'border-left: 1px solid #ddd; ') + 'padding-left: 32px;'">
               <div class="row q-col-gutter-x-sm q-col-gutter-y-md">
                 <div class="col-12 col-sm-6">
-                  <q-input v-model="companyForm.NAME" label="Name *" filled stack-label dense/>
+                  <q-input v-model="companyForm.NAME" :label="t('auto.name')" filled stack-label dense/>
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-input v-model="companyForm.FIRMA" label="Zusatz" filled stack-label dense/>
+                  <q-input v-model="companyForm.FIRMA" :label="t('auto.zusatz')" filled stack-label dense/>
                 </div>
                 <div class="col-12">
-                  <q-input v-model="companyForm.STRASSE" label="Straße" filled stack-label dense/>
+                  <q-input v-model="companyForm.STRASSE" :label="t('auto.strasse')" filled stack-label dense/>
                 </div>
                 <div class="col-4">
-                  <q-input v-model="companyForm.PLZ" label="PLZ" filled stack-label dense/>
+                  <q-input v-model="companyForm.PLZ" :label="t('auto.plz')" filled stack-label dense/>
                 </div>
                 <div class="col-8">
-                  <q-input v-model="companyForm.ORT" label="Ort" filled stack-label dense/>
+                  <q-input v-model="companyForm.ORT" :label="t('auto.ort')" filled stack-label dense/>
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-input v-model="companyForm.MOBILTELEPHON" label="Mobil" filled stack-label dense prefix="📱"/>
+                  <q-input v-model="companyForm.MOBILTELEPHON" :label="t('auto.mobil')" filled stack-label dense prefix="📱"/>
                 </div>
                 <div class="col-12 col-sm-6">
-                  <q-input v-model="companyForm.EMAIL" label="Email" filled stack-label dense prefix="✉️"/>
+                  <q-input v-model="companyForm.EMAIL" :label="t('auto.email')" filled stack-label dense prefix="✉️"/>
                 </div>
               </div>
             </div>
@@ -90,49 +89,49 @@
     <q-card flat bordered class="rounded-borders shadow-2" style="border-radius: 16px;">
       <q-card-section class="bg-secondary text-white row items-center q-pa-md">
         <q-icon name="settings_suggest" size="md" class="q-mr-md" />
-        <div class="text-h6 text-weight-bold">Globale Parameter (Defaults)</div>
+        <div class="text-h6 text-weight-bold">{{ t('grid.globalParameters') }}</div>
         <q-space />
-        <q-btn ref="paramsCancelBtn" icon="undo" label="Abbrechen" color="white" flat rounded @click="resetParams" />
-        <q-btn ref="paramsSaveBtn" :disable="!isParamsDirty" icon="save" label="Speichern" color="white" outline rounded @click="saveParams" />
+        <q-btn ref="paramsCancelBtn" icon="undo" :label="t('form.cancel')" color="white" flat rounded @click="resetParams" />
+        <q-btn ref="paramsSaveBtn" :disable="!isParamsDirty" icon="save" :label="t('form.save')" color="white" outline rounded @click="saveParams" />
       </q-card-section>
 
       <q-card-section class="q-pa-lg">
         <q-form class="q-gutter-md">
           <!-- Textfelder oben -->
-          <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">Numerische Basis-Werte</div>
+          <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">{{ t('grid.numericalBaseValues') }}</div>
           <div class="row q-col-gutter-md">
             <div class="col-12 col-sm-4 col-md-2">
-              <q-input v-model="paramForm.MASSVOLLEI" label="Mass Vollei" filled stack-label dense/>
+              <q-input v-model="paramForm.MASSVOLLEI" :label="t('auto.mass_vollei')" filled stack-label dense/>
             </div>
             <div class="col-12 col-sm-4 col-md-2">
-              <q-input v-model.number="paramForm.ANZAHLKONTROLLW" type="number" label="Anzahl Kontrolle" filled
+              <q-input v-model.number="paramForm.ANZAHLKONTROLLW" type="number" :label="t('auto.anzahl_kontrolle')" filled
                        stack-label dense/>
             </div>
             <div class="col-12 col-sm-4 col-md-2">
-              <q-input v-model.number="paramForm.LAUFZEITWOCHEN" type="number" label="Laufzeit (W)" filled stack-label
+              <q-input v-model.number="paramForm.LAUFZEITWOCHEN" type="number" :label="t('auto.laufzeit_w')" filled stack-label
                        dense/>
             </div>
             <div class="col-12 col-sm-4 col-md-2">
-              <q-input v-model.number="paramForm.PRODUKTIONSDAUER" type="number" label="Prod. Dauer" filled stack-label
+              <q-input v-model.number="paramForm.PRODUKTIONSDAUER" type="number" :label="t('auto.prod_dauer')" filled stack-label
                        dense/>
             </div>
             <div class="col-12 col-sm-4 col-md-1">
-              <q-input v-model.number="paramForm.LEGEBEGINN_LW" type="number" label="Legebeg. (LW)" filled stack-label
+              <q-input v-model.number="paramForm.LEGEBEGINN_LW" type="number" :label="t('auto.legebeg_lw')" filled stack-label
                        dense/>
             </div>
             <div class="col-12 col-sm-3 col-md-1">
-              <q-checkbox v-model="paramForm.BIO" label="BIO" dense color="primary"
+              <q-checkbox v-model="paramForm.BIO" :label="t('auto.bio')" dense color="primary"
                         class="full-height items-center q-pt-sm"/>
             </div>
             <div class="col-12 col-sm-4 col-md-2">
-              <q-input v-model.number="paramForm.BIOAUFSCHLAG" type="number" step="any" label="Bio-Aufschlag (€)"
+              <q-input v-model.number="paramForm.BIOAUFSCHLAG" type="number" step="any" :label="t('auto.bio_aufschlag')"
                        filled stack-label dense prefix="€"/>
             </div>
             <div class="col-12 col-sm-4 col-md-2">
               <q-select
                 v-model="paramForm.HALTUNGSTYP"
                 :options="haltungstypOptions"
-                label="Haltungstyp"
+                :label="t('auto.haltungstyp').replace(' *', '')"
                 filled
                 stack-label
                 dense
@@ -146,7 +145,7 @@
                        stack-label dense/>
             </div>
             <div class="col-12 col-sm-4 col-md-2">
-              <q-input v-model.number="paramForm.MAXTAGEVERMITTELN" type="number" label="Max. Tage Vermittlung" filled
+              <q-input v-model.number="paramForm.MAXTAGEVERMITTELN" type="number" :label="t('auto.max_tage_vermittlung')" filled
                        stack-label dense/>
             </div>
             <div class="col-12 col-sm-6 col-md-3">
@@ -157,7 +156,7 @@
                 option-label="BEZEICHNUNG"
                 emit-value
                 map-options
-                label="Referenz Alterstabelle"
+                :label="t('auto.referenz_alterstabelle')"
                 filled
                 stack-label
                 dense
@@ -171,7 +170,7 @@
                 option-label="BEZEICHNUNG"
                 emit-value
                 map-options
-                label="Referenz Gewichtstabelle"
+                :label="t('auto.referenz_gewichtstabelle')"
                 filled
                 stack-label
                 dense
@@ -182,15 +181,15 @@
           <q-separator class="q-my-lg" />
 
           <!-- Neue Rubrik: Chargen-Einstellungen -->
-          <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">Chargen-Einstellungen</div>
+          <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">{{ t('grid.batchSettings') }}</div>
           <div class="row q-col-gutter-md q-mb-sm items-start">
             <div class="col-12 col-sm-4">
-              <q-input v-model="paramForm.CHARGEPREFIXFIRMA" label="Präfix (Firma)" filled stack-label dense/>
+              <q-input v-model="paramForm.CHARGEPREFIXFIRMA" :label="t('auto.praefix_firma')" filled stack-label dense/>
             </div>
             <div class="col-12 col-sm-1" style="min-width: 80px;">
               <q-input
                 v-model="paramForm.CHARGETRENNUNG"
-                label="Trenn."
+                :label="t('auto.trenn')"
                 filled stack-label dense
                 maxlength="1"
                 input-class="text-center"
@@ -205,33 +204,33 @@
 
           <div class="row q-col-gutter-md q-mb-md items-center">
             <div class="col-12 col-sm-4">
-              <q-checkbox v-model="paramForm.CHARGELAGERNUMMER" label="Lagernummer einbeziehen" dense
+              <q-checkbox v-model="paramForm.CHARGELAGERNUMMER" :label="t('auto.lagernummer_einbeziehen')" dense
                           color="secondary"/>
             </div>
             <div class="col-12 col-sm-4">
-              <q-checkbox v-model="paramForm.CHARGEPREFIXHERDENNUMMER" label="Herdennummer einbeziehen" dense
+              <q-checkbox v-model="paramForm.CHARGEPREFIXHERDENNUMMER" :label="t('auto.herdennummer_einbeziehen')" dense
                         color="secondary"/>
             </div>
             <div class="col-12 col-sm-4">
-              <q-checkbox v-model="paramForm.CHARGEDATUM" label="Datum einbeziehen" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.CHARGEDATUM" :label="t('auto.datum_einbeziehen')" dense color="secondary"/>
             </div>
           </div>
 
           <div class="row q-col-gutter-md items-center q-mb-md">
             <div class="col-auto">
-              <q-checkbox v-model="paramForm.CHARGEJUMBOS" label="Jumbos" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.CHARGEJUMBOS" :label="t('auto.jumbos')" dense color="secondary"/>
             </div>
             <div class="col-auto">
               <q-checkbox v-model="paramForm.CHARGEXL" label="XL" dense color="secondary"/>
             </div>
             <div class="col-auto">
-              <q-checkbox v-model="paramForm.CHARGELARGE" label="Large" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.CHARGELARGE" :label="t('auto.large')" dense color="secondary"/>
             </div>
             <div class="col-auto">
-              <q-checkbox v-model="paramForm.CHARGEMEDIUM" label="Medium" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.CHARGEMEDIUM" :label="t('auto.medium')" dense color="secondary"/>
             </div>
             <div class="col-auto">
-              <q-checkbox v-model="paramForm.CHARGESMALL" label="Small" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.CHARGESMALL" :label="t('auto.small')" dense color="secondary"/>
             </div>
             <div class="col-auto">
               <q-checkbox v-model="paramForm.CHARGEVOLLEI" label="Vollei" dense color="secondary"/>
@@ -241,15 +240,15 @@
           <q-separator class="q-my-lg" />
 
           <!-- Optionen unten im 2/3-Spalten Raster -->
-          <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">Optionen</div>
+          <div class="text-subtitle2 q-mb-sm text-secondary text-weight-bold">{{ t('auto.optionen') }}</div>
           <div class="row q-col-gutter-sm">
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.JUMBOS" label="Jumbos erfassen" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.JUMBOS" :label="t('auto.jumbos_erfassen')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
               <q-checkbox
                 v-model="paramForm.KLASSENERFASSEN"
-                label="Gewichtsklassen"
+                :label="t('auto.gewichtsklassen')"
                 dense
                 color="secondary"
                 @update:model-value="val => val && (paramForm.KLASSEAERFASSEN = false)"
@@ -258,7 +257,7 @@
             <div class="col-6 col-md-4">
               <q-checkbox
                 v-model="paramForm.KLASSEAERFASSEN"
-                label="KlasseA erfassen"
+                :label="t('auto.klassea_erfassen')"
                 dense
                 color="secondary"
                 @update:model-value="val => val && (paramForm.KLASSENERFASSEN = false, paramForm.KLASSEAERRECHNEN = false)"
@@ -267,7 +266,7 @@
             <div class="col-6 col-md-4">
               <q-checkbox
                 v-model="paramForm.KLASSEAERRECHNEN"
-                label="KlasseA errechnen"
+                :label="t('auto.klassea_errechnen')"
                 dense
                 color="secondary"
                 @update:model-value="val => val && (paramForm.KLASSEAERFASSEN = false)"
@@ -276,23 +275,23 @@
             <div class="col-6 col-md-4">
               <q-checkbox
                 v-model="paramForm.KLASSEAVERMITTELN"
-                label="KlasseA vermitteln"
+                :label="t('auto.klassea_vermitteln')"
                 dense
                 color="secondary"
                 @update:model-value="onKlasseAVermittelnChanged"
               />
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.ERFASSESCHMUTZEI" label="Schmutzeier" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.ERFASSESCHMUTZEI" :label="t('auto.schmutzeier')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.ERFASSEKNICKEI" label="Knickeier" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.ERFASSEKNICKEI" :label="t('auto.knickeier')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.ERFASSEBRUCHEI" label="Brucheier" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.ERFASSEBRUCHEI" :label="t('auto.brucheier')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.ERFASSEVOLLEI" label="Vollei (Stück)" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.ERFASSEVOLLEI" :label="t('auto.vollei_stueck')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
               <q-checkbox v-model="paramForm.ERFASSEVOLLEIKG" label="Vollei (kg)" dense color="secondary"/>
@@ -300,7 +299,7 @@
             <div class="col-6 col-md-4">
               <q-checkbox
                 v-model="paramForm.AUFTEILUNGGEWICHT"
-                label="Aufteilung Gewicht"
+                :label="t('auto.aufteilung_gewicht')"
                 dense
                 color="secondary"
                 @update:model-value="val => val && (paramForm.AUFTEILUNGALTER = false)"
@@ -309,34 +308,34 @@
             <div class="col-6 col-md-4">
               <q-checkbox
                 v-model="paramForm.AUFTEILUNGALTER"
-                label="Aufteilung Alter"
+                :label="t('auto.aufteilung_alter')"
                 dense
                 color="secondary"
                 @update:model-value="val => val && (paramForm.AUFTEILUNGGEWICHT = false)"
               />
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.KONTROLLWIEGUNG" label="Kontrollwiegung" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.KONTROLLWIEGUNG" :label="t('auto.kontrollwiegung')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.VERLUSTEBEIBUCHUNG" label="Verluste direkt bei Leistungsbuchung erfassen"
+              <q-checkbox v-model="paramForm.VERLUSTEBEIBUCHUNG" :label="t('auto.verluste_direkt_bei_leistungsbuchung_erf')"
                         dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
               <q-checkbox v-model="paramForm.LAGERBUCHUNGBEIBUCHUNG"
-                        label="Lagerbuchungen automatisch bei Leistung ausführen" dense color="secondary"/>
+                        :label="t('auto.lagerbuchungen_automatisch_bei_leistung_')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.BEIVERMITTELNDATUMAKTUELL" label="Aktuelles Datum vorschlagen" dense
+              <q-checkbox v-model="paramForm.BEIVERMITTELNDATUMAKTUELL" :label="t('auto.aktuelles_datum_vorschlagen')" dense
                         color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
-              <q-checkbox v-model="paramForm.PSEUDOLAGER" label="PseudoLager erlauben" dense color="secondary"/>
+              <q-checkbox v-model="paramForm.PSEUDOLAGER" :label="t('auto.pseudolager_erlauben')" dense color="secondary"/>
             </div>
             <div class="col-6 col-md-4">
               <q-checkbox
                 v-model="paramForm.FUTTERINVENTUR"
-                label="Futterinventur"
+                :label="t('auto.futterinventur')"
                 dense
                 color="secondary"
                 @update:model-value="onFutterinventurChanged"
@@ -350,6 +349,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 import { ref, reactive, computed, watch, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from 'src/boot/api';
