@@ -17,41 +17,11 @@ type Config struct {
 	Port               int    `json:"port"`          // HTTP Port for server mode or standalone Gin server
 	System             int    `json:"system"`        // 1 = Erlaube Bearbeiten von System-Einträgen
 }
-
 func LoadConfig() Config {
-	appDataDir := ""
-	configDir, err := os.UserConfigDir()
-	if err == nil {
-		// Unter macOS ist das: ~/Library/Application Support/HuhnLite-Wails
-		appDataDir = filepath.Join(configDir, "HuhnLite-Wails")
-		if err := os.MkdirAll(appDataDir, 0755); err != nil {
-			fmt.Printf("ERROR creating AppDataDir: %v\n", err)
-		}
-		fmt.Printf("AppDataDir: %s\n", appDataDir)
-
-		// Logging in Datei umleiten
-		logPath := filepath.Join(appDataDir, "app.log")
-		logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			fmt.Printf("ERROR opening log file: %v\n", err)
-		} else {
-			// Sowohl in Konsole als auch in Datei schreiben
-			multiWriter := io.MultiWriter(os.Stdout, logFile)
-			log.SetOutput(multiWriter)
-			log.Printf("--- App gestartet ---")
-			log.Printf("Log-Datei: %s", logPath)
-		}
-	} else {
-		fmt.Printf("ERROR getting UserConfigDir: %v\n", err)
-	}
-
 	cwd, _ := os.Getwd()
-	parent := filepath.Dir(cwd)
-
-	// Verzeichnis der Executable (bzw. bei macOS das Verzeichnis, in dem die .app liegt)
-	execPath, err := os.Executable()
+	execPath, errExec := os.Executable()
 	var bundleDir string
-	if err == nil {
+	if errExec == nil {
 		bundleDir = filepath.Dir(execPath)
 		// Falls wir in einem macOS .app Bundle sind (Contents/MacOS/...)
 		if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
@@ -60,6 +30,58 @@ func LoadConfig() Config {
 		}
 		fmt.Printf("BundleDir: %s\n", bundleDir)
 	}
+
+	appDataDir := ""
+	var logFile *os.File
+	var logPath string
+	configDir, err := os.UserConfigDir()
+	if err == nil {
+		appDataDir = filepath.Join(configDir, "HuhnLite-Wails")
+		if err := os.MkdirAll(appDataDir, 0755); err == nil {
+			logPath = filepath.Join(appDataDir, "app.log")
+			var errFile error
+			logFile, errFile = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+			if errFile != nil {
+				logPath = filepath.Join(appDataDir, fmt.Sprintf("app_%d.log", os.Getpid()))
+				logFile, _ = os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+			}
+		} else {
+			fmt.Printf("ERROR creating AppDataDir: %v\n", err)
+		}
+	} else {
+		fmt.Printf("ERROR getting UserConfigDir: %v\n", err)
+	}
+
+	// Lokal im Verzeichnis der Executable (bzw. CWD als Fallback) loggen
+	localLogDir := bundleDir
+	if localLogDir == "" {
+		localLogDir = cwd
+	}
+	localLogPath := filepath.Join(localLogDir, "app.log")
+	logFileLocal, errLocal := os.OpenFile(localLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if errLocal != nil {
+		localLogPath = filepath.Join(localLogDir, fmt.Sprintf("app_%d.log", os.Getpid()))
+		logFileLocal, _ = os.OpenFile(localLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	}
+
+	var multiWriter io.Writer
+	if logFile != nil && logFileLocal != nil {
+		multiWriter = io.MultiWriter(os.Stdout, logFile, logFileLocal)
+	} else if logFile != nil {
+		multiWriter = io.MultiWriter(os.Stdout, logFile)
+	} else if logFileLocal != nil {
+		multiWriter = io.MultiWriter(os.Stdout, logFileLocal)
+	} else {
+		multiWriter = os.Stdout
+	}
+	log.SetOutput(multiWriter)
+	log.Printf("--- App gestartet (PID: %d) ---", os.Getpid())
+	if logPath != "" {
+		log.Printf("Log-Datei AppData: %s", logPath)
+	}
+	log.Printf("Log-Datei Lokal: %s", localLogPath)
+
+	parent := filepath.Dir(cwd)
 
 	// 1. Fallback: Application Support Verzeichnis
 	defaultDB := "HuhnLite.db"

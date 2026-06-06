@@ -1,20 +1,20 @@
 <template>
   <q-page padding>
     <div class="row items-center q-mb-md">
-      <div class="text-h4 text-weight-bolder text-primary">Kostenmanagement</div>
+      <div class="text-h4 text-weight-bolder text-primary">{{ t('auto.kostenmanagement') }}</div>
     </div>
 
     <!-- Header Section: Kostentabkopf -->
     <q-card flat bordered class="q-mb-lg rounded-borders shadow-2" :class="$q.dark.isActive ? 'bg-dark-page' : 'bg-grey-2'" style="border-radius: 16px;">
       <q-card-section class="bg-primary text-white row items-center q-pa-md">
         <q-icon name="analytics" size="md" class="q-mr-md" />
-        <div class="text-h6 text-weight-bold">Stammdaten & Faktoren</div>
+        <div class="text-h6 text-weight-bold">{{ t('auto.stammdaten_faktoren') }}</div>
         <q-space />
         <q-btn
           color="white"
           :text-color="isEditingHead ? 'positive' : 'primary'"
           :icon="isEditingHead ? 'save' : 'edit'"
-          :label="isEditingHead ? 'Speichern' : 'Bearbeiten'"
+          :label="isEditingHead ? t('form.save') : t('form.edit')"
           @click="toggleHeadEdit"
           unelevated
           rounded
@@ -26,7 +26,7 @@
           <div class="col-12 col-sm-4">
             <q-input
               v-model="displaySchlachterloes"
-              label="Schlachterlös am Ende (€)"
+              :label="t('auto.schlachterloes_am_ende')"
               filled
               :readonly="!isEditingHead"
               dense
@@ -38,7 +38,7 @@
           <div class="col-12 col-sm-4">
             <q-input
               v-model.number="headForm.PRODDAUERGEPLANT"
-              label="Produktionsdauer geplant (Tage)"
+              :label="t('auto.produktionsdauer_geplant_tage')"
               type="number"
               filled
               :readonly="!isEditingHead"
@@ -49,7 +49,7 @@
           <div class="col-12 col-sm-4">
             <q-input
                v-model="displayGebaeudewert"
-              label="Gebäudewert (€)"
+              :label="t('auto.gebaeudewert')"
               filled
               :readonly="!isEditingHead"
               dense
@@ -63,7 +63,7 @@
           <div class="col-12 col-sm-4">
             <q-input
               v-model.number="headForm.ABSCHREIBUNG_G"
-              label="Abschreibung G (%)"
+              :label="t('auto.abschreibung_g')"
               type="number"
               step="0.1"
               filled
@@ -75,7 +75,7 @@
           <div class="col-12 col-sm-4">
             <q-input
                v-model="displayGeraetewert"
-              label="Gerätewert (€)"
+              :label="t('auto.geraetewert')"
               filled
               :readonly="!isEditingHead"
               dense
@@ -86,7 +86,7 @@
           <div class="col-12 col-sm-4">
             <q-input
               v-model.number="headForm.ABSCHREIBUNG_R"
-              label="Abschreibung R (%)"
+              :label="t('auto.abschreibung_r')"
               type="number"
               step="0.1"
               filled
@@ -108,12 +108,12 @@
           </template>
           <div class="row items-center justify-between no-wrap">
             <div>
-              <div class="text-subtitle1 opacity-80">Berechnete Gesamtkosten pro Tag</div>
+              <div class="text-subtitle1 opacity-80">{{ t('auto.berechnete_gesamtkosten_pro_tag') }}</div>
               <div class="text-h3 text-weight-bolder">{{ formatCurrency(totalKostenProTag) }} €</div>
             </div>
             <div class="text-right q-ml-xl gt-xs">
-              <div class="text-caption opacity-90 text-weight-bold">Fixkosten (Gebäude/Geräte): {{ formatCurrency(fixKostenProTag) }} €/Tag</div>
-              <div class="text-caption opacity-90 text-weight-bold">Variable Kosten: {{ formatCurrency(varKostenProTag) }} €/Tag</div>
+              <div class="text-caption opacity-90 text-weight-bold">{{ t('auto.fixkosten_gebaeude_geraete', { val: formatCurrency(fixKostenProTag) }) }}</div>
+              <div class="text-caption opacity-90 text-weight-bold">{{ t('auto.variable_kosten', { val: formatCurrency(varKostenProTag) }) }}</div>
             </div>
           </div>
         </q-banner>
@@ -122,7 +122,7 @@
 
     <!-- Detail Section: Kosten-Grid -->
     <q-table
-      title="Kosten-Positionen"
+      :title="t('auto.kosten_positionen')"
       :rows="rows"
       :columns="columns"
       row-key="id"
@@ -135,7 +135,7 @@
       separator="cell"
     >
       <template v-slot:top-right>
-        <q-btn color="primary" icon="add" label="Neu" @click="openCreate" rounded unelevated />
+        <q-btn color="primary" icon="add" :label="t('auto.neu')" @click="openCreate" rounded unelevated />
       </template>
 
       <template v-slot:body-cell-actions="props">
@@ -173,12 +173,12 @@
           <q-form @submit="onSubmit" class="q-gutter-md">
             <div class="row q-col-gutter-sm">
               <div class="col-12">
-                <q-input v-model="form.BUCHUNGSDATUM" type="date" label="Buchungsdatum" filled stack-label/>
+                <q-input v-model="form.BUCHUNGSDATUM" type="date" :label="t('auto.buchungsdatum')" filled stack-label/>
               </div>
               <div class="col-12">
                 <q-select
                   v-model="form.KOSTENTYP"
-                  label="Kostentyp"
+                  :label="t('auto.kostentyp')"
                   filled
                   :options="kostentypOptions"
                   emit-value
@@ -186,13 +186,13 @@
                 />
               </div>
               <div class="col-12">
-                <q-input v-model="form.BEZEICHNUNG" label="Bezeichnung" filled/>
+                <q-input v-model="form.BEZEICHNUNG" :label="t('grid.designation')" filled/>
               </div>
               <div class="col-6">
-                <q-input v-model="displayFormKosten" label="Kosten (€)" filled />
+                <q-input v-model="displayFormKosten" :label="t('auto.kosten')" filled />
               </div>
               <div class="col-6">
-                <q-input v-model.number="form.TAGE" type="number" label="Anzahl Tage" filled/>
+                <q-input v-model.number="form.TAGE" type="number" :label="t('auto.anzahl_tage')" filled/>
               </div>
             </div>
 
@@ -210,10 +210,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import { api } from '../boot/api';
 import type { QTableProps } from 'quasar';
 
 const $q = useQuasar();
+const { t } = useI18n({ useScope: 'global' });
 const loading = ref(false);
 
 const extractString = (val: any) => {
@@ -272,52 +274,52 @@ watch(isDirty, (dirty: boolean) => {
   }
 });
 
-const kostentypOptions = [
-  { label: 'Variabel (VA)', value: 'VA' },
-  { label: 'Fix (FI)', value: 'FI' }
-];
+const kostentypOptions = computed(() => [
+  { label: `${t('auto.variabel') || 'Variabel'} (VA)`, value: 'VA' },
+  { label: `${t('auto.fix') || 'Fix'} (FI)`, value: 'FI' }
+]);
 
-const columns: QTableProps['columns'] = [
-  { name: 'actions', align: 'center', label: 'Aktion', field: 'actions' },
+const columns = computed<QTableProps['columns']>(() => [
+  { name: 'actions', align: 'center', label: t('grid.action'), field: 'actions' },
   {
     name: 'buchungsdatum',
     align: 'left',
-    label: 'Vermittelt am',
+    label: t('auto.buchungsdatum').replace(' *', ''),
     field: (row: any) => extractString(row.BUCHUNGSDATUM) || '-',
     sortable: true
   },
   {
     name: 'kostentyp',
     align: 'left',
-    label: 'Typ',
+    label: t('auto.kostentyp'),
     field: (row: any) => extractString(row.KOSTENTYP) || '-',
     sortable: true
   },
   {
     name: 'bezeichnung',
     align: 'left',
-    label: 'Bezeichnung',
+    label: t('grid.designation'),
     field: (row: any) => extractString(row.BEZEICHNUNG) || '-',
     sortable: true
   },
   {
     name: 'kosten',
     align: 'right',
-    label: 'Betrag',
+    label: t('auto.kosten').replace(' (€)', ''),
     field: (row: any) => extractFloat(row.KOSTEN) || 0,
     sortable: true
   },
   {
     name: 'tage',
     align: 'right',
-    label: 'Tage',
+    label: t('auto.anzahl_tage').replace(' *', ''),
     field: (row: any) => extractInt(row.TAGE) || 0,
     sortable: true
   },
   {
     name: 'kosten_pro_tag',
     align: 'right',
-    label: 'Kosten/Tag',
+    label: t('auto.kosten_pro_tag') || 'Kosten/Tag',
     field: (row: any) => {
       const k = extractFloat(row.KOSTEN);
       const t = extractInt(row.TAGE);
@@ -325,7 +327,7 @@ const columns: QTableProps['columns'] = [
     },
     sortable: true
   }
-];
+]);
 
 const pagination = ref({ rowsPerPage: 20 });
 const showDialog = ref(false);
@@ -409,9 +411,9 @@ async function toggleHeadEdit() {
   if (isEditingHead.value) {
     try {
       await api.put('/api/kostentabkopf', headForm);
-      $q.notify({ type: 'positive', message: 'Stammdaten gespeichert' });
+      $q.notify({ type: 'positive', message: t('message.successSave') });
       isEditingHead.value = false;
-    } catch { $q.notify({ type: 'negative', message: 'Fehler beim Speichern' }); }
+    } catch { $q.notify({ type: 'negative', message: t('message.errorSave') }); }
   } else { isEditingHead.value = true; }
 }
 
@@ -437,12 +439,19 @@ function onEdit(row: any) {
   showDialog.value = true;
 }
 
-function onDelete(row: Kosten) {
-  $q.dialog({ title: 'Löschen', message: 'Eintrag wirklich löschen?', cancel: true }).onOk(() => {
+function onDelete(row: any) {
+  $q.dialog({
+    title: t('message.confirmDeleteTitle'),
+    message: t('message.confirmDeleteMsg'),
+    cancel: true
+  }).onOk(() => {
     loading.value = true;
     api.delete(`/api/kosten/${row.ID}`)
-      .then(() => void loadKosten())
-      .catch((_err: unknown) => $q.notify({type: 'negative', message: 'Fehler beim Löschen'}))
+      .then(() => {
+        void loadKosten();
+        $q.notify({ type: 'positive', message: t('message.deleteSuccessMsg') });
+      })
+      .catch((_err: unknown) => $q.notify({ type: 'negative', message: t('message.errorDelete') }))
       .finally(() => {
         loading.value = false;
       });
@@ -453,8 +462,9 @@ async function onSubmit() {
   try {
     if (isEditing.value && editId.value) { await api.put(`/api/kosten/${editId.value}`, form); }
     else { await api.post('/api/kosten', form); }
+    $q.notify({ type: 'positive', message: t('message.successSave') });
     showDialog.value = false; void loadKosten();
-  } catch { $q.notify({ type: 'negative', message: 'Fehler beim Speichern' }); }
+  } catch { $q.notify({ type: 'negative', message: t('message.errorSave') }); }
 }
 
 onMounted(() => { void loadHead(); void loadKosten(); });

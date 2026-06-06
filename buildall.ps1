@@ -34,6 +34,12 @@ if (Test-Path "settings.json") {
     Write-Host "settings.json kopiert." -ForegroundColor Gray
 }
 
+if (Test-Path "HuhnLite.db") {
+    if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
+    Copy-Item "HuhnLite.db" "build\bin\HuhnLite.db" -Force
+    Write-Host "HuhnLite.db kopiert." -ForegroundColor Gray
+}
+
 Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "Baue HuhnLite-MariaDB (Netzwerk)..."
 Set-WailsName "HuhnLite-MariaDB"

@@ -169,6 +169,502 @@ var (
 	dbMutex sync.Mutex
 )
 
+func splitColumns(columnsPart string) []string {
+	var cols []string
+	var current strings.Builder
+	inSingleQuote := false
+	inDoubleQuote := false
+	inBacktick := false
+	parensDepth := 0
+	
+	for i := 0; i < len(columnsPart); i++ {
+		ch := columnsPart[i]
+		
+		if ch == '\'' && !inDoubleQuote && !inBacktick {
+			inSingleQuote = !inSingleQuote
+		} else if ch == '"' && !inSingleQuote && !inBacktick {
+			inDoubleQuote = !inDoubleQuote
+		} else if ch == '`' && !inSingleQuote && !inDoubleQuote {
+			inBacktick = !inBacktick
+		}
+		
+		if !inSingleQuote && !inDoubleQuote && !inBacktick {
+			if ch == '(' {
+				parensDepth++
+			} else if ch == ')' {
+				parensDepth--
+			}
+		}
+		
+		if ch == ',' && parensDepth == 0 && !inSingleQuote && !inDoubleQuote && !inBacktick {
+			cols = append(cols, current.String())
+			current.Reset()
+		} else {
+			current.WriteByte(ch)
+		}
+	}
+	if current.Len() > 0 {
+		cols = append(cols, current.String())
+	}
+	return cols
+}
+
+func cleanQuotes(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) >= 2 {
+		if (s[0] == '"' && s[len(s)-1] == '"') || 
+		   (s[0] == '\'' && s[len(s)-1] == '\'') || 
+		   (s[0] == '`' && s[len(s)-1] == '`') {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}
+
+func isQuoted(s string) bool {
+	if len(s) < 2 {
+		return false
+	}
+	return (s[0] == '"' && s[len(s)-1] == '"') || 
+		   (s[0] == '\'' && s[len(s)-1] == '\'') || 
+		   (s[0] == '`' && s[len(s)-1] == '`')
+}
+
+func isValidSimpleIdentifier(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+func parseColumnExpression(colExpr string) (string, string, bool) {
+	trimmed := strings.TrimSpace(colExpr)
+	inSingleQuote := false
+	inDoubleQuote := false
+	inBacktick := false
+	parensDepth := 0
+	asIndex := -1
+	
+	for i := len(trimmed) - 1; i >= 0; i-- {
+		ch := trimmed[i]
+		if ch == '\'' && !inDoubleQuote && !inBacktick {
+			inSingleQuote = !inSingleQuote
+		} else if ch == '"' && !inSingleQuote && !inBacktick {
+			inDoubleQuote = !inDoubleQuote
+		} else if ch == '`' && !inSingleQuote && !inDoubleQuote {
+			inBacktick = !inBacktick
+		}
+		
+		if !inSingleQuote && !inDoubleQuote && !inBacktick {
+			if ch == ')' {
+				parensDepth++
+			} else if ch == '(' {
+				parensDepth--
+			}
+			
+			if parensDepth == 0 && i >= 2 {
+				if (trimmed[i-1] == 'A' || trimmed[i-1] == 'a') && 
+				   (trimmed[i] == 'S' || trimmed[i] == 's') {
+					isWordBefore := i-2 >= 0 && (trimmed[i-2] == ' ' || trimmed[i-2] == '\t' || trimmed[i-2] == '\n' || trimmed[i-2] == '\r')
+					isWordAfter := i+1 < len(trimmed) && (trimmed[i+1] == ' ' || trimmed[i+1] == '\t' || trimmed[i+1] == '\n' || trimmed[i+1] == '\r')
+					if isWordBefore && isWordAfter {
+						asIndex = i - 1
+						break
+					}
+				}
+			}
+		}
+	}
+	
+	if asIndex != -1 {
+		baseExpr := strings.TrimSpace(trimmed[:asIndex])
+		alias := strings.TrimSpace(trimmed[asIndex+2:])
+		return baseExpr, cleanQuotes(alias), true
+	}
+	
+	inSingleQuote = false
+	inDoubleQuote = false
+	inBacktick = false
+	parensDepth = 0
+	lastSpaceIndex := -1
+	for i := len(trimmed) - 1; i >= 0; i-- {
+		ch := trimmed[i]
+		if ch == '\'' && !inDoubleQuote && !inBacktick {
+			inSingleQuote = !inSingleQuote
+		} else if ch == '"' && !inSingleQuote && !inBacktick {
+			inDoubleQuote = !inDoubleQuote
+		} else if ch == '`' && !inSingleQuote && !inDoubleQuote {
+			inBacktick = !inBacktick
+		}
+		
+		if !inSingleQuote && !inDoubleQuote && !inBacktick {
+			if ch == ')' {
+				parensDepth++
+			} else if ch == '(' {
+				parensDepth--
+			}
+			
+			if parensDepth == 0 && (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r') {
+				lastSpaceIndex = i
+				break
+			}
+		}
+	}
+	
+	if lastSpaceIndex != -1 {
+		baseExpr := strings.TrimSpace(trimmed[:lastSpaceIndex])
+		alias := strings.TrimSpace(trimmed[lastSpaceIndex+1:])
+		if isQuoted(alias) {
+			return baseExpr, cleanQuotes(alias), true
+		}
+		if isValidSimpleIdentifier(alias) {
+			return baseExpr, alias, true
+		}
+	}
+	
+	return trimmed, "", false
+}
+
+func translateSqlAliases(ctx context.Context, dbConn *sql.DB, sqlStr string, lang string) string {
+	log.Printf("[REPORTS] translateSqlAliases called - Lang: %q, SQL: %q", lang, sqlStr)
+	if sqlStr == "" || lang == "" {
+		return sqlStr
+	}
+
+	rows, err := dbConn.QueryContext(ctx, `
+		SELECT 
+			fk.ID,
+			fk.FELDNAME,
+			t_de.BETREFF AS de_betreff,
+			t_de.INHALT AS de_inhalt,
+			t_curr.BETREFF AS curr_betreff
+		FROM FELD_KATALOG fk
+		JOIN TRANSLATEFELDNAMEN t_de ON fk.ID = t_de.ID_FELD_KATALOG AND t_de.SPRACHE_KZ = 'de'
+		LEFT JOIN TRANSLATEFELDNAMEN t_curr ON fk.ID = t_curr.ID_FELD_KATALOG AND t_curr.SPRACHE_KZ = ?
+	`, lang)
+	if err != nil {
+		log.Printf("[REPORTS] translateSqlAliases DB error: %v", err)
+		return sqlStr
+	}
+	defer rows.Close()
+
+	// germanLookup maps a German term (uppercased) to the ID_FELD_KATALOG (fk.ID)
+	germanLookup := make(map[string]int64)
+	// translationLookup maps ID_FELD_KATALOG to the translation in the target language (t_curr.BETREFF)
+	translationLookup := make(map[int64]string)
+
+	for rows.Next() {
+		var id int64
+		var fkFeldname, deBetreff, deInhalt, currBetreff sql.NullString
+		if err := rows.Scan(&id, &fkFeldname, &deBetreff, &deInhalt, &currBetreff); err == nil {
+			fName := strings.TrimSpace(fkFeldname.String)
+			dBetreff := strings.TrimSpace(deBetreff.String)
+			dInhalt := strings.TrimSpace(deInhalt.String)
+			cBetreff := strings.TrimSpace(currBetreff.String)
+
+			if fName != "" {
+				germanLookup[strings.ToUpper(fName)] = id
+			}
+			if dBetreff != "" {
+				germanLookup[strings.ToUpper(dBetreff)] = id
+			}
+			if dInhalt != "" {
+				germanLookup[strings.ToUpper(dInhalt)] = id
+			}
+
+			if cBetreff != "" {
+				translationLookup[id] = cBetreff
+			}
+		}
+	}
+
+	type SelectBlock struct {
+		Start int
+		End   int
+	}
+
+	var blocks []SelectBlock
+	inSingleQuote := false
+	inDoubleQuote := false
+	inBacktick := false
+	parensDepth := 0
+
+	for i := 0; i < len(sqlStr); i++ {
+		ch := sqlStr[i]
+		if ch == '\'' && !inDoubleQuote && !inBacktick {
+			inSingleQuote = !inSingleQuote
+		} else if ch == '"' && !inSingleQuote && !inBacktick {
+			inDoubleQuote = !inDoubleQuote
+		} else if ch == '`' && !inSingleQuote && !inDoubleQuote {
+			inBacktick = !inBacktick
+		}
+
+		if !inSingleQuote && !inDoubleQuote && !inBacktick {
+			if ch == '(' {
+				parensDepth++
+			} else if ch == ')' {
+				parensDepth--
+			}
+
+			if i >= 5 {
+				if strings.EqualFold(sqlStr[i-5:i+1], "SELECT") {
+					isBoundary := true
+					if i-6 >= 0 {
+						r := sqlStr[i-6]
+						if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+							isBoundary = false
+						}
+					}
+					if i+1 < len(sqlStr) {
+						r := sqlStr[i+1]
+						if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+							isBoundary = false
+						}
+					}
+					if isBoundary {
+						pDepth := 0
+						inS := false
+						inD := false
+						inB := false
+						fromIdx := -1
+
+						for j := i + 1; j < len(sqlStr); j++ {
+							ch2 := sqlStr[j]
+							if ch2 == '\'' && !inD && !inB {
+								inS = !inS
+							} else if ch2 == '"' && !inS && !inD {
+								inD = !inD
+							} else if ch2 == '`' && !inS && !inD {
+								inB = !inB
+							}
+
+							if !inS && !inD && !inB {
+								if ch2 == '(' {
+									pDepth++
+								} else if ch2 == ')' {
+									pDepth--
+								}
+
+								if pDepth == 0 && j >= i+4 {
+									if strings.EqualFold(sqlStr[j-3:j+1], "FROM") {
+										isBoundary2 := true
+										if j-4 >= 0 {
+											r := sqlStr[j-4]
+											if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+												isBoundary2 = false
+											}
+										}
+										if j+1 < len(sqlStr) {
+											r := sqlStr[j+1]
+											if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+												isBoundary2 = false
+											}
+										}
+										if isBoundary2 {
+											fromIdx = j - 3
+											break
+										}
+									}
+								}
+							}
+						}
+
+						if fromIdx != -1 {
+							blocks = append(blocks, SelectBlock{
+								Start: i + 1,
+								End:   fromIdx,
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	sort.Slice(blocks, func(i, j int) bool {
+		return blocks[i].Start > blocks[j].Start
+	})
+
+	extractWords := func(expr string) []string {
+		cleaned := regexp.MustCompile(`[^a-zA-Z0-9_-]`).ReplaceAllString(expr, " ")
+		return strings.Fields(cleaned)
+	}
+
+	modifiedSQL := sqlStr
+	for _, b := range blocks {
+		columnsPart := modifiedSQL[b.Start:b.End]
+		cols := splitColumns(columnsPart)
+		translatedCols := make([]string, len(cols))
+
+		for idx, col := range cols {
+			baseExpr, alias, hasAlias := parseColumnExpression(col)
+			var matchedID int64 = 0
+
+			// 1. Mit den Feldnamen im SQL Statement und dem SPRACHE_KZ = 'de' die ID_FELDKATALOG ermitteln.
+			
+			// Try alias if present
+			if hasAlias && alias != "" {
+				aliasUpper := strings.ToUpper(strings.TrimSpace(alias))
+				if id, found := germanLookup[aliasUpper]; found {
+					matchedID = id
+				}
+			}
+
+			// Try the whole baseExpr as a single string (e.g. if it matches a field name directly or a translated name)
+			if matchedID == 0 {
+				baseUpper := strings.ToUpper(strings.TrimSpace(baseExpr))
+				if id, found := germanLookup[baseUpper]; found {
+					matchedID = id
+				}
+			}
+
+			// Try parts of baseExpr (words)
+			if matchedID == 0 {
+				words := extractWords(baseExpr)
+				for _, w := range words {
+					wUpper := strings.ToUpper(w)
+					if id, found := germanLookup[wUpper]; found {
+						matchedID = id
+						break
+					}
+				}
+			}
+
+			// Wenn nicht erfolgreich - keine weiter aktion
+			if matchedID == 0 {
+				translatedCols[idx] = col
+				continue
+			}
+
+			// 2. Wenn erfolgreich mit ID_FELDKATALOG und SPRACHE_KZ die Übersetzung suchen.
+			// Wenn nicht erfolgreich - Keine Aktion
+			translation, found := translationLookup[matchedID]
+			if !found || translation == "" {
+				translatedCols[idx] = col
+				continue
+			}
+
+			// 3. Wenn erfolgreich dann
+			// wenn im SQL statement ein Alias vorhanden ist, diesen mit dem Betreff austauchen.
+			// Ist kein Alias vorhanden, dannden BETREFF als Alias für das Feld im Sqlstatement anhängen
+			translatedCols[idx] = fmt.Sprintf(" %s AS %q ", strings.TrimSpace(baseExpr), translation)
+		}
+
+		newColumnsPart := strings.Join(translatedCols, ",")
+		modifiedSQL = modifiedSQL[:b.Start] + newColumnsPart + modifiedSQL[b.End:]
+	}
+
+	log.Printf("[REPORTS] translateSqlAliases - Original SQL: %s", sqlStr)
+	log.Printf("[REPORTS] translateSqlAliases - Result SQL: %s", modifiedSQL)
+	return modifiedSQL
+}
+
+func populateOriginalKeys(rows []map[string]interface{}, lang string, dbConn *sql.DB) {
+	if len(rows) == 0 {
+		return
+	}
+
+	dbRows, err := dbConn.Query(`
+		SELECT 
+			UPPER(TRIM(fk.FELDNAME)) AS original_key,
+			t_curr.BETREFF AS translated_key
+		FROM FELD_KATALOG fk
+		JOIN TRANSLATEFELDNAMEN t_curr ON fk.ID = t_curr.ID_FELD_KATALOG
+		WHERE t_curr.SPRACHE_KZ = ?
+	`, lang)
+	if err != nil {
+		log.Printf("[REPORTS] populateOriginalKeys DB error: %v", err)
+		return
+	}
+	defer dbRows.Close()
+
+	reverseMap := make(map[string]string)
+	for dbRows.Next() {
+		var orig, trans string
+		if err := dbRows.Scan(&orig, &trans); err == nil && trans != "" {
+			reverseMap[strings.ToUpper(strings.TrimSpace(trans))] = orig
+		}
+	}
+
+	for _, row := range rows {
+		updates := make(map[string]interface{})
+		for k, v := range row {
+			kUpper := strings.ToUpper(strings.TrimSpace(k))
+			if origKey, found := reverseMap[kUpper]; found {
+				updates[origKey] = v
+				updates[strings.ToLower(origKey)] = v
+			}
+		}
+		for k, v := range updates {
+			row[k] = v
+		}
+	}
+}
+
+func translateResponseKeys(columns []string, rows []map[string]interface{}, lang string, dbConn *sql.DB) ([]string, []map[string]interface{}) {
+	if len(rows) == 0 || lang == "" || strings.EqualFold(lang, "de") {
+		return columns, rows
+	}
+
+	dbRows, err := dbConn.Query(`
+		SELECT 
+			UPPER(TRIM(fk.FELDNAME)) AS original_key,
+			t_curr.BETREFF AS translated_key
+		FROM FELD_KATALOG fk
+		JOIN TRANSLATEFELDNAMEN t_curr ON fk.ID = t_curr.ID_FELD_KATALOG
+		WHERE t_curr.SPRACHE_KZ = ?
+	`, lang)
+	if err != nil {
+		log.Printf("[REPORTS] translateResponseKeys DB error: %v", err)
+		return columns, rows
+	}
+	defer dbRows.Close()
+
+	translationMap := make(map[string]string)
+	for dbRows.Next() {
+		var orig, trans string
+		if err := dbRows.Scan(&orig, &trans); err == nil && trans != "" {
+			translationMap[orig] = trans
+		}
+	}
+
+	// Translate columns array
+	translatedCols := make([]string, len(columns))
+	for i, col := range columns {
+		colUpper := strings.ToUpper(strings.TrimSpace(col))
+		if trans, found := translationMap[colUpper]; found && trans != "" {
+			translatedCols[i] = trans
+		} else {
+			translatedCols[i] = col
+		}
+	}
+
+	// Translate row keys
+	translatedRows := make([]map[string]interface{}, len(rows))
+	for i, row := range rows {
+		newRow := make(map[string]interface{})
+		for k, v := range row {
+			kUpper := strings.ToUpper(strings.TrimSpace(k))
+			if trans, found := translationMap[kUpper]; found && trans != "" {
+				newRow[trans] = v
+			} else {
+				newRow[k] = v
+			}
+			// Keep original key as uppercase for templating/fallbacks
+			newRow[kUpper] = v
+		}
+		translatedRows[i] = newRow
+	}
+
+	return translatedCols, translatedRows
+}
+
+
 func generateCharge(conn *sql.DB, herdeID int64, datum string, params db.Firmenparameter, eilagerID int64) string {
 	sep := "-"
 	if s := toString(params.Chargetrennung); s != "" {
@@ -339,44 +835,49 @@ func doAutomaticEilagerBuchung(ctx context.Context, conn *sql.DB, queries db.Que
 }
 
 func getHelpDir(database *wailsdb.DB) string {
+	langs := []string{"de", "en", "it"}
 	var pathsToCheck []string
 
-	// 1. If SQLite, check its directory
-	if database != nil && database.Engine == "sqlite" && database.Config.DBConnectionString != "" {
-		dbDir := filepath.Dir(database.Config.DBConnectionString)
-		pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, "HuhnLite-de.html"))
-	}
+	for _, lang := range langs {
+		fileName := fmt.Sprintf("HuhnLite-%s.html", lang)
 
-	// 2. Check executable directory
-	if execPath, err := os.Executable(); err == nil {
-		bundleDir := filepath.Dir(execPath)
-		if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
-			bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
+		// 1. If SQLite, check its directory
+		if database != nil && database.Engine == "sqlite" && database.Config.DBConnectionString != "" {
+			dbDir := filepath.Dir(database.Config.DBConnectionString)
+			pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, fileName))
 		}
-		pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, "HuhnLite-de.html"))
-	}
 
-	// 3. Check CWD
-	if cwd, err := os.Getwd(); err == nil {
-		pathsToCheck = append(pathsToCheck, filepath.Join(cwd, "HuhnLite-de.html"))
-	}
+		// 2. Check executable directory
+		if execPath, err := os.Executable(); err == nil {
+			bundleDir := filepath.Dir(execPath)
+			if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
+				bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
+			}
+			pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, fileName))
+		}
 
-	// 4. Check AppDataDir
-	if configDir, err := os.UserConfigDir(); err == nil {
-		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", "HuhnLite-de.html"))
-		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-de.html"))
-	}
+		// 3. Check CWD
+		if cwd, err := os.Getwd(); err == nil {
+			pathsToCheck = append(pathsToCheck, filepath.Join(cwd, fileName))
+		}
 
-	// 5. Check LOCALAPPDATA
-	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
-		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", "HuhnLite-de.html"))
-		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-de.html"))
-	}
+		// 4. Check AppDataDir
+		if configDir, err := os.UserConfigDir(); err == nil {
+			pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", fileName))
+			pathsToCheck = append(pathsToCheck, filepath.Join(configDir, fileName))
+		}
 
-	// 6. Check APPDATA
-	if appData := os.Getenv("APPDATA"); appData != "" {
-		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", "HuhnLite-de.html"))
-		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-de.html"))
+		// 5. Check LOCALAPPDATA
+		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+			pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", fileName))
+			pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, fileName))
+		}
+
+		// 6. Check APPDATA
+		if appData := os.Getenv("APPDATA"); appData != "" {
+			pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", fileName))
+			pathsToCheck = append(pathsToCheck, filepath.Join(appData, fileName))
+		}
 	}
 
 	for _, p := range pathsToCheck {
@@ -6017,6 +6518,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		translations, _ := queries.ListTranslateFeldnamen(c, lang)
 
 		runAdHocSql := func(isql string) (string, []interface{}, error) {
+			isql = translateSqlAliases(c, conn, isql, lang)
 			// Parameter-Map normalisieren (Upper)
 			paramsUpper := make(map[string]interface{})
 			for k, v := range req.Params {
@@ -6228,6 +6730,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				return
 			}
 		}
+
+		_, masterRows = translateResponseKeys(nil, masterRows, lang, conn)
+		_, detailRows = translateResponseKeys(nil, detailRows, lang, conn)
 
 		c.JSON(http.StatusOK, gin.H{
 			"master":     masterRows,
@@ -6460,7 +6965,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 
 			// 3. Query ausführen
-			log.Printf("[REPORTS] Executing SQL: %s", finalSQL)
+			log.Printf("[REPORTS] Executing SQL (Lang=%s): %s with params: %v", lang, finalSQL, localArgs)
 			rows, err := conn.QueryContext(c, finalSQL, localArgs...)
 			if err != nil {
 				return nil, nil, err
@@ -6524,11 +7029,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			if mSql == "" {
 				mSql = strings.TrimSpace(toString(report.Sqlstatement))
 			}
+			mSql = translateSqlAliases(c, conn, mSql, lang)
 			masterRows, mCols, err := runSqlWithParams(mSql, req.Params)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Master-SQL Fehler: " + err.Error()})
 				return
 			}
+			populateOriginalKeys(masterRows, lang, conn)
 
 			// C: Template laden
 			var tmplContent []byte
@@ -6562,11 +7069,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			masterSumsMap := make(map[interface{}][]map[string]interface{})
 
 			if report.IstSummenzeile == 1 && toString(report.Summenzeile) != "" && !strings.Contains(strings.ToUpper(toString(report.Summenzeile)), "§MASTER.") {
-				sRows, sc, err := runSqlWithParams(toString(report.Summenzeile), req.Params)
+				sRows, sc, err := runSqlWithParams(translateSqlAliases(c, conn, toString(report.Summenzeile), lang), req.Params)
 				if err != nil {
 					log.Printf("[REPORTS] Global Summenzeile Fehler: %v", err)
 				} else {
 					globalSumRows = sRows
+					populateOriginalKeys(globalSumRows, lang, conn)
 					globalSCols = sc
 					log.Printf("[REPORTS] Globale Summenzeile geladen: %d Zeilen", len(globalSumRows))
 				}
@@ -6580,6 +7088,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			if baseDSql == "" {
 				baseDSql = strings.TrimSpace(toString(report.DetailSql))
 			}
+			baseDSql = translateSqlAliases(c, conn, baseDSql, lang)
 
 			// Automatische Verknüpfung ermitteln (Konvention: ID_TABELLENNAME)
 			var dCols []string
@@ -6696,6 +7205,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					rows, cols, err := runSqlWithParams(dSql, req.Params)
 					if err == nil {
 						dRows = rows
+						populateOriginalKeys(dRows, lang, conn)
 						if len(dCols) == 0 {
 							dCols = cols
 						}
@@ -6717,7 +7227,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				// --- Summenzeile pro Master (Subtotals) ---
 				var currentSumRows []map[string]interface{}
 				if report.IstSummenzeile == 1 && toString(report.Summenzeile) != "" {
-					sumSql := toString(report.Summenzeile)
+					sumSql := translateSqlAliases(c, conn, toString(report.Summenzeile), lang)
 					if strings.Contains(strings.ToUpper(sumSql), "§MASTER.") {
 						// Platzhalter ersetzen
 						reM := regexp.MustCompile(`(?i)§MASTER\.([^§]+)§`)
@@ -6737,6 +7247,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 						sRows, _, err := runSqlWithParams(sumSql, req.Params)
 						if err == nil {
 							currentSumRows = sRows
+							populateOriginalKeys(currentSumRows, lang, conn)
 							if mID != nil {
 								masterSumsMap[mID] = sRows
 							}
@@ -6797,6 +7308,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				}
 			}
 
+			mCols, filteredMasterRows = translateResponseKeys(mCols, filteredMasterRows, lang, conn)
+			dCols, allDetailRows = translateResponseKeys(dCols, allDetailRows, lang, conn)
+			_, globalSumRows = translateResponseKeys(nil, globalSumRows, lang, conn)
+
 			c.JSON(http.StatusOK, gin.H{
 				"typ":              typ,
 				"html":             finalHTML,
@@ -6811,25 +7326,30 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		// FALL S: Dynamisches SQL (Einfach)
 		if typ == "S" || typ == "L" {
-			res, cols, err := runSqlWithParams(report.Sqlstatement, req.Params)
+			translatedSQL := translateSqlAliases(c, conn, report.Sqlstatement, lang)
+			res, cols, err := runSqlWithParams(translatedSQL, req.Params)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Lesen der Daten: " + err.Error()})
 				return
 			}
+			populateOriginalKeys(res, lang, conn)
 
 			var sumRows []map[string]interface{}
 			var sCols []string
 			if report.IstSummenzeile == 1 && toString(report.Summenzeile) != "" {
-				sRows, sc, err := runSqlWithParams(toString(report.Summenzeile), req.Params)
+				sumSql := translateSqlAliases(c, conn, toString(report.Summenzeile), lang)
+				sRows, sc, err := runSqlWithParams(sumSql, req.Params)
 				if err != nil {
 					log.Printf("[REPORTS] Summenzeile Fehler: %v", err)
 				} else {
 					sumRows = sRows
+					populateOriginalKeys(sumRows, lang, conn)
 					sCols = sc
 				}
 			}
+			cols, res = translateResponseKeys(cols, res, lang, conn)
+			_, sumRows = translateResponseKeys(nil, sumRows, lang, conn)
 
 			// Falls HTML angefordert wurde (für Druck)
 			if isTrue(req.Params["_PRINT_"]) {
@@ -6911,7 +7431,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		req.Params["SPR_KZ"] = lang
 
 		translations, _ := queries.ListTranslateFeldnamen(c, lang)
-		sqlStr := report.Sqlstatement
+		sqlStr := translateSqlAliases(c, conn, report.Sqlstatement, lang)
 		for _, t := range translations {
 			placeholder := "§" + strings.ToUpper(t.Betreff) + "§"
 			replacement := t.Inhalt
@@ -7075,10 +7595,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		finalSQL := req.SQL
+		lang := c.DefaultQuery("lang", "de")
+		finalSQL := translateSqlAliases(c, conn, req.SQL, lang)
 
 		// 1. Übersetzungen (§...§)
-		translations, _ := queries.ListTranslateFeldnamen(c, "de")
+		translations, _ := queries.ListTranslateFeldnamen(c, lang)
 		for _, t := range translations {
 			placeholder := "§" + strings.ToUpper(t.Betreff) + "§"
 			replacement := t.Inhalt

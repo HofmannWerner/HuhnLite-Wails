@@ -36,26 +36,26 @@
         <q-btn round dense :icon="sessionStore.darkMode ? 'dark_mode' : 'light_mode'" @click="sessionStore.setDarkMode(!sessionStore.darkMode)" aria-label="Toggle Dark Mode" unelevated />
 
         <q-btn flat round dense class="q-ml-sm" aria-label="Language">
-          <span class="text-h6" style="font-size: 1.5rem; line-height: 1;">
-            {{ sessionStore.selectedLanguage === 'de' ? '🇩🇪' : sessionStore.selectedLanguage === 'en' ? '🇬🇧' : '🇮🇹' }}
-          </span>
+          <q-avatar size="24px" square>
+            <img :src="flags[sessionStore.selectedLanguage as 'de' | 'en' | 'it']" style="border: 1px solid rgba(255,255,255,0.2); object-fit: cover;" />
+          </q-avatar>
           <q-menu auto-close>
             <q-list style="min-width: 120px">
               <q-item clickable :active="sessionStore.selectedLanguage === 'de'" @click="sessionStore.setLanguage('de')">
                 <q-item-section avatar class="q-pr-none" style="min-width: auto">
-                  <span style="font-size: 1.5rem;">🇩🇪</span>
+                  <img :src="flags.de" style="width: 24px; height: 16px; border: 1px solid rgba(0,0,0,0.1); object-fit: cover;" />
                 </q-item-section>
                 <q-item-section class="q-pl-sm">Deutsch</q-item-section>
               </q-item>
               <q-item clickable :active="sessionStore.selectedLanguage === 'en'" @click="sessionStore.setLanguage('en')">
                 <q-item-section avatar class="q-pr-none" style="min-width: auto">
-                  <span style="font-size: 1.5rem;">🇬🇧</span>
+                  <img :src="flags.en" style="width: 24px; height: 16px; border: 1px solid rgba(0,0,0,0.1); object-fit: cover;" />
                 </q-item-section>
                 <q-item-section class="q-pl-sm">English</q-item-section>
               </q-item>
               <q-item clickable :active="sessionStore.selectedLanguage === 'it'" @click="sessionStore.setLanguage('it')">
                 <q-item-section avatar class="q-pr-none" style="min-width: auto">
-                  <span style="font-size: 1.5rem;">🇮🇹</span>
+                  <img :src="flags.it" style="width: 24px; height: 16px; border: 1px solid rgba(0,0,0,0.1); object-fit: cover;" />
                 </q-item-section>
                 <q-item-section class="q-pl-sm">Italiano</q-item-section>
               </q-item>
@@ -278,17 +278,17 @@
       <q-card class="column no-wrap" style="height: 100vh;">
         <q-bar class="bg-primary text-white q-py-md">
           <q-icon name="help_outline" />
-          <div class="text-weight-bold">Handbuch / Hilfe</div>
+          <div class="text-weight-bold">{{ t('layout.helpTitle') }}</div>
           <q-space />
           <q-btn dense flat icon="close" v-close-popup>
-            <q-tooltip>Schließen</q-tooltip>
+            <q-tooltip>{{ t('layout.close') }}</q-tooltip>
           </q-btn>
         </q-bar>
 
         <q-card-section class="col q-pa-none relative-position bg-white">
           <div v-if="helpLoading" class="absolute-center text-center">
             <q-spinner-gears size="50px" color="primary" />
-            <div class="q-mt-md text-grey-7">Lade Hilfedatei...</div>
+            <div class="q-mt-md text-grey-7">{{ t('layout.loadingHelp') }}</div>
           </div>
           <iframe
             v-else-if="helpUrl"
@@ -311,6 +311,12 @@ import { useI18n } from 'vue-i18n';
 
 import { useSessionStore } from '../stores/session';
 import LoginModal from '../components/LoginModal.vue';
+
+const flags = {
+  de: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5 3"><rect width="5" height="3" fill="%23ffce00"/><rect width="5" height="2" fill="%23dd0000"/><rect width="5" height="1" fill="%23000"/></svg>',
+  en: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30"><rect width="60" height="30" fill="%2300247d"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="%23fff" stroke-width="6"/><path d="M0,0 L60,30 L60,0 L0,30" stroke="%23c8102e" stroke-width="4"/><path d="M30,0 v30 M0,15 h60" stroke="%23fff" stroke-width="10"/><path d="M30,0 v30 M0,15 h60" stroke="%23c8102e" stroke-width="6"/></svg>',
+  it: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 3 2"><rect width="1" height="2" fill="%23009246"/><rect x="1" width="1" height="2" fill="%23fff"/><rect x="2" width="1" height="2" fill="%23ce2b37"/></svg>'
+};
 
 
 const $q = useQuasar();
@@ -452,6 +458,9 @@ async function openHelp() {
       } else {
         modifiedHtml = `${baseTag}${htmlContent}`;
       }
+
+      // Replace anchor links to prevent them from navigating the iframe via the base URL
+      modifiedHtml = modifiedHtml.replace(/href="#([^"]+)"/g, 'href="javascript:void(0);" onclick="const el = document.getElementById(\'$1\'); if (el) el.scrollIntoView({behavior: \'smooth\'});"');
 
       helpUrl.value = 'data:text/html;charset=utf-8,' + encodeURIComponent(modifiedHtml);
     } catch (err) {

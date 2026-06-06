@@ -1478,7 +1478,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-const { t } = useI18n();
+const { t, te } = useI18n();
 console.log('DynamicReportPage.vue: Script setup running...');
 import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
@@ -1805,7 +1805,7 @@ async function printSimpleReport() {
   $q.loading.show({ message: 'Druck-Dokument wird erstellt...' });
   try {
     const rId = getP(currentReport.value, 'ID');
-    const res = await api.post(`/api/reports/execute/${rId}`, { 
+    const res = await api.post(`/api/reports/execute/${rId}?lang=${sessionStore.selectedLanguage || 'de'}`, { 
       PARAMS: { ...filterValues, _PRINT_: true } 
     });
     if (res.data && res.data.html) {
@@ -2609,7 +2609,7 @@ async function magicWandNative(field: 'SQLSTATEMENT' | 'DETAIL_SQL' | 'SUMMENZEI
         return `NULL AS "${ci.alias}"`;
       });
       // Wir nutzen das Original-SQL als Subquery, damit Aliase bereits aufgelöst sind
-      return `SELECT ${colSelects.join(', ')} FROM (${baseSql})`;
+      return `SELECT ${colSelects.join(', ')} FROM (${baseSql}) AS sub_tbl`;
     };
 
     const sumQuery = buildQuery('SUMME', 'SUM');
@@ -2756,7 +2756,7 @@ async function runSqlPreview(sql: string, skipParamCheck = false) {
 
   try {
     $q.loading.show({ message: 'SQL wird ausgeführt...' });
-    const res = await api.post('/api/reports/preview', { 
+    const res = await api.post(`/api/reports/preview?lang=${sessionStore.selectedLanguage || 'de'}`, { 
       sql,
       params: testParamsValues 
     });
@@ -3032,15 +3032,24 @@ async function saveDefinitions() {
   if (!report) return;
   
   try {
-    const payload = {
-      BESCHREIBUNG: getVal(getP(report, 'BESCHREIBUNG')),
-      SQLSTATEMENT: getVal(getP(report, 'SQLSTATEMENT')),
-      KATEGORIE_KZ: getVal(getP(report, 'KATEGORIE_KZ')),
-      GRUPPEN_KZ: getVal(getP(report, 'GRUPPEN_KZ')),
-      TYP_KZ: getVal(getP(report, 'TYP_KZ')),
-      TEMPLATE_NAME: getVal(getP(report, 'TEMPLATE_NAME')),
-      PARAM_DEF: JSON.stringify(defMap)
-    };
+    const payload: any = {};
+    const keys = [
+      'BESCHREIBUNG', 'SQLSTATEMENT', 'KATEGORIE_KZ', 'GRUPPEN_KZ', 'TYP_KZ',
+      'TEMPLATE_NAME', 'PARAM_DEF', 'DETAIL_SQL', 'LINK_LOGIC', 'GROUP_FIELD',
+      'ROWS_PER_PAGE', 'PAGE_ORIENTATION', 'SHOW_MASTER_GRID', 'SHOW_DETAIL_GRID',
+      'SYSTEM_KZ', 'SQLSTATEMENT_NATIVE', 'DETAIL_SQL_NATIVE', 'ROOT_KZ',
+      'SUMMENZEILE', 'IST_SUMMENZEILE'
+    ];
+    
+    keys.forEach(k => {
+      const val = getP(report, k);
+      if (typeof val === 'boolean') {
+        payload[k] = val ? 1 : 0;
+      } else {
+        payload[k] = getVal(val);
+      }
+    });
+    payload.PARAM_DEF = JSON.stringify(defMap);
     
     await api.put(`/api/reports/${currentReportId.value}`, payload);
     $q.notify({ type: 'positive', message: 'Parameter-Definitionen gespeichert.' });
@@ -3306,41 +3315,52 @@ const treeNodes = computed(() => {
   
   const rootDefinitions = [
     { 
-      label: 'Einfache Listen', 
+      label: t('auto.einfache_listen'), 
       kz: 'L', 
       icon: 'list_alt', 
       color: 'blue', 
-      tooltip: 'Standard Listenansichten' 
+      tooltip: t('auto.standard_listenansichten') 
     },
     { 
-      label: 'Master Detail(Template)', 
+      label: t('auto.master_detail_template'), 
       kz: 'T', 
       icon: 'description', 
       color: 'orange', 
-      tooltip: 'Berichte mit HTML-Template (Master-Detail)' 
+      tooltip: t('auto.berichte_mit_html_template_master_detail') 
     },
     { 
-      label: 'Master Detail (Gitter)', 
+      label: t('auto.master_detail_gitter'), 
       kz: 'M', 
       icon: 'grid_view', 
       color: 'green', 
-      tooltip: 'Berichte mit Unter-Gitter (Master-Detail)' 
+      tooltip: t('auto.berichte_mit_unter_gitter_master_detail') 
     },
     { 
-      label: 'Gruppierte Reports', 
-      kz: 'G', 
-      icon: 'reorder', 
-      color: 'purple', 
-      tooltip: 'Reports mit Gruppierungs-Logik' 
-    },
-    { 
-      label: 'Sonstige / System', 
+      label: t('auto.sonstige_system'), 
       kz: 'x', 
       icon: 'settings_suggest', 
       color: 'grey-7', 
-      tooltip: 'System- oder Testberichte' 
+      tooltip: t('auto.system_oder_testberichte') 
     }
   ];
+
+  const translateReportLabel = (rawLabel: string) => {
+    if (!rawLabel) return '';
+    let translatedLabel = rawLabel;
+    const cleanKey = rawLabel.toLowerCase()
+      .replace(/ä/g, 'ae')
+      .replace(/ö/g, 'oe')
+      .replace(/ü/g, 'ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9_]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    const i18nKey = `reports.${cleanKey}`;
+    if (te(i18nKey)) {
+      translatedLabel = t(i18nKey);
+    }
+    return translatedLabel;
+  };
 
   const createReportNode = (r: Report) => {
     const type = getVal(getP(r, 'TYP_KZ'));
@@ -3350,7 +3370,7 @@ const treeNodes = computed(() => {
     else if (type === 'M') typeDesc = 'Master-Detail (Gitter)';
 
     return {
-      label: getVal(getP(r, 'BESCHREIBUNG')),
+      label: translateReportLabel(getVal(getP(r, 'BESCHREIBUNG'))),
       key: String(getP(r, 'ID') || (r as any).id),
       icon: 'description',
       iconColor: 'primary',
@@ -3375,7 +3395,7 @@ const treeNodes = computed(() => {
         .map(createReportNode);
 
       return {
-        label: getVal(getP(f, 'BESCHREIBUNG')),
+        label: translateReportLabel(getVal(getP(f, 'BESCHREIBUNG'))),
         key: `f-${getP(f, 'ID') || (f as any).id}`,
         icon: 'folder',
         iconColor: 'amber-8',
@@ -3422,7 +3442,7 @@ const treeNodes = computed(() => {
         .map(createReportNode);
 
       return {
-        label: getVal(getP(f, 'BESCHREIBUNG')),
+        label: translateReportLabel(getVal(getP(f, 'BESCHREIBUNG'))),
         key: `f-${getP(f, 'ID') || (f as any).id}`,
         icon: 'folder',
         iconColor: 'grey-5',
@@ -3437,7 +3457,7 @@ const treeNodes = computed(() => {
     });
 
     finalNodes.push({
-      label: 'Nicht zugeordnete Reports',
+      label: t('auto.nicht_zugeordnete_reports'),
       key: 'fallout',
       icon: 'category',
       iconColor: 'grey-4',
@@ -3640,14 +3660,19 @@ function getAutoCols(data: any[], forcedCols?: string[]) {
   
   // Wenn forcedCols (vom Server in SQL-Reihenfolge) da sind, nehmen wir diese als Basis
   if (forcedCols && forcedCols.length > 0) {
+    // Falls forcedCols (aus der Datenbankspaltenliste) angegeben sind, verwenden wir NUR diese,
+    // um das Anzeigen von Backend-Hilfsfeldern (wie z. B. originalen/kleingeschriebenen Schlüsseln für Vorlagen) zu verhindern.
     keys = [...forcedCols];
-    // Falls im Datensatz noch Felder sind, die NICHT in forcedCols stehen, hängen wir sie an
-    Object.keys(first).forEach(k => {
-      if (!keys.includes(k)) keys.push(k);
-    });
   } else {
-    // Fallback: Einfach alle Keys
-    keys = Object.keys(first);
+    // Fallback: Einfach alle Keys, filtriere aber Dubletten
+    const seen = new Set<string>();
+    Object.keys(first).forEach(k => {
+      const kUpper = k.toUpperCase();
+      if (!seen.has(kUpper)) {
+        keys.push(k);
+        seen.add(kUpper);
+      }
+    });
   }
   
   return keys
@@ -3739,7 +3764,14 @@ async function saveQuickParams() {
 
   // Wir nutzen die existierende Save-Logik, füllen aber nur den Teil der uns interessiert
   // configForm muss dafür kurz "geliehen" werden
-  Object.keys(configForm).forEach(key => (configForm as any)[key] = (report as any)[key]);
+  Object.keys(configForm).forEach(key => {
+    const val = getP(report, key);
+    if (typeof val === 'boolean') {
+      (configForm as any)[key] = val;
+    } else {
+      (configForm as any)[key] = getVal(val);
+    }
+  });
   configForm.PARAM_DEF = JSON.stringify(defMap);
 
   try {
@@ -3864,7 +3896,7 @@ async function onReportSelected(selection: readonly Report[], forceParams: Recor
       });
     }
     
-    const res = await api.post(`/api/reports/execute/${rId}`, { PARAMS: sanitizedParams });
+    const res = await api.post(`/api/reports/execute/${rId}?lang=${sessionStore.selectedLanguage || 'de'}`, { PARAMS: sanitizedParams });
     
     if (res.data.needs_params) {
       filterParams.value = res.data.params || [];
