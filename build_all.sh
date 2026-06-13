@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Platform Parameter (z.B. linux/amd64 oder windows/amd64)
 PLATFORM=$1
@@ -41,4 +42,4 @@ set_wails_name "$ORIG_NAME"
 
 echo "------------------------------------------"
 echo "✅ Fertig! Die Dateien wurden in build/bin/ bereitgestellt."
-ls -lh build/bin/*.json
+ls -lh build/bin/*.json || true
