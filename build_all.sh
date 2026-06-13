@@ -7,7 +7,7 @@ PLATFORM=$1
 WAILS=~/go/bin/wails
 
 # Build Argumente aufbauen
-BUILD_ARGS=("build")
+BUILD_ARGS=("build" "-tags" "webkit2_41")
 if [ -n "$PLATFORM" ]; then
     BUILD_ARGS+=("-platform" "$PLATFORM")
 fi
