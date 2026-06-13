@@ -1,9 +1,18 @@
 # buildall.ps1
+Param(
+    [string]$Platform = ""
+)
 
 # Pfad zu Wails (prüft ob es im PATH ist, sonst Standard-Go-Pfad)
 $WAILS = "wails"
 if (!(Get-Command $WAILS -ErrorAction SilentlyContinue)) {
     $WAILS = "$env:USERPROFILE\go\bin\wails.exe"
+}
+
+$buildArgs = @("build")
+if ($Platform) {
+    $buildArgs += "-platform"
+    $buildArgs += $Platform
 }
 
 # Funktion zum Ändern des Namens in der wails.json
@@ -26,7 +35,7 @@ if (Test-Path "wails.json") {
 Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "Baue HuhnLite-Local (SQLite)..."
 Set-WailsName "HuhnLite-Local"
-& $WAILS build
+& $WAILS $buildArgs
 
 if (Test-Path "settings.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
@@ -43,7 +52,7 @@ if (Test-Path "HuhnLite.db") {
 Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "Baue HuhnLite-MariaDB (Netzwerk)..."
 Set-WailsName "HuhnLite-MariaDB"
-& $WAILS build
+& $WAILS $buildArgs
 
 if (Test-Path "settings_mariadb.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }

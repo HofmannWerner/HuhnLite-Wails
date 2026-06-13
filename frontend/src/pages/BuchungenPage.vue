@@ -1,18 +1,18 @@
 <template>
-  <q-page padding class="bg-grey-1">
+  <q-page padding :class="$q.dark.isActive ? 'bg-dark-page' : 'bg-grey-1'">
     <div class="row items-center justify-between q-mb-lg">
       <div class="text-h4 text-weight-bold text-primary">{{ t('auto.buchungen') }}</div>
     </div>
 
-    <q-card class="shadow-2 rounded-borders overflow-hidden">
+    <q-card flat bordered class="rounded-borders shadow-2 overflow-hidden" :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white'">
       <q-tabs
         v-model="tab"
         dense
-        class="bg-white text-grey-7"
         active-color="primary"
         indicator-color="primary"
         align="left"
         narrow-indicator
+        :class="$q.dark.isActive ? 'bg-grey-10 text-grey-4' : 'bg-white text-grey-7'"
       >
         <q-tab name="leistung" :label="t('auto.leistung')" icon="receipt_long" />
         <q-tab name="verluste" :label="t('auto.verluste')" icon="remove_circle" />
@@ -25,7 +25,7 @@
 
       <q-separator />
 
-      <q-tab-panels v-model="tab" animated class="bg-grey-1">
+      <q-tab-panels v-model="tab" animated class="bg-transparent">
         <q-tab-panel name="leistung" class="q-pa-none">
           <LeistungGrid />
         </q-tab-panel>
@@ -63,6 +63,7 @@ import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 import { ref, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useQuasar } from 'quasar';
 import LeistungGrid from 'components/LeistungGrid.vue';
 import VerlusteGrid from 'components/VerlusteGrid.vue';
 import TierbewegungenGrid from 'components/TierbewegungenGrid.vue';
@@ -71,6 +72,7 @@ import FutterGrid from 'components/FutterGrid.vue';
 import VerkaufGrid from 'components/VerkaufGrid.vue';
 import AktionenGrid from 'components/AktionenGrid.vue';
 
+const $q = useQuasar();
 const route = useRoute();
 const tab = ref((route.query.tab as string) || 'leistung');
 

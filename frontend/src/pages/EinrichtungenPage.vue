@@ -1,18 +1,18 @@
 <template>
-  <q-page padding class="bg-grey-1">
+  <q-page padding :class="$q.dark.isActive ? 'bg-dark-page' : 'bg-grey-1'">
     <div class="row items-center justify-between q-mb-lg">
       <div class="text-h4 text-weight-bold text-primary">{{ t('auto.einrichtungen') }}</div>
     </div>
 
-    <q-card class="shadow-2 rounded-borders overflow-hidden">
+    <q-card flat bordered class="rounded-borders shadow-2 overflow-hidden" :class="$q.dark.isActive ? 'bg-grey-10 text-white' : 'bg-white'">
       <q-tabs
         v-model="mainTab"
         dense
-        class="bg-white text-grey-7"
         active-color="primary"
         indicator-color="primary"
         align="left"
         narrow-indicator
+        :class="$q.dark.isActive ? 'bg-grey-10 text-grey-4' : 'bg-white text-grey-7'"
       >
         <q-tab name="silos" :label="t('auto.silos')" icon="warehouse" />
         <q-tab name="stalle" :label="t('auto.staelle')" icon="home" />
@@ -21,7 +21,7 @@
 
       <q-separator />
 
-      <q-tab-panels v-model="mainTab" animated class="bg-grey-1">
+      <q-tab-panels v-model="mainTab" animated class="bg-transparent">
         <!-- Tab 1: Silos -->
         <q-tab-panel name="silos" class="q-pa-none">
           <SiloGrid />
@@ -38,18 +38,19 @@
             <q-tabs
               v-model="eilagerTab"
               dense
-              class="text-grey-7 q-mb-md"
               active-color="secondary"
               indicator-color="secondary"
               align="left"
               narrow-indicator
+              class="q-mb-md"
+              :class="$q.dark.isActive ? 'text-grey-4' : 'text-grey-7'"
             >
               <q-tab name="eilager" :label="t('grid.eggStorage')" icon="inventory_2" />
               <q-tab name="lagerplatz" :label="t('auto.lagerplatzverwaltung')" icon="place" />
               <q-tab name="bestandsuebersicht" :label="t('auto.bestandsuebersicht')" icon="analytics" />
             </q-tabs>
 
-            <q-tab-panels v-model="eilagerTab" animated class="bg-white rounded-borders shadow-1">
+            <q-tab-panels v-model="eilagerTab" animated class="rounded-borders shadow-1" :class="$q.dark.isActive ? 'bg-grey-9' : 'bg-white'">
               <q-tab-panel name="eilager" class="q-pa-none">
                 <EilagerGrid />
               </q-tab-panel>
@@ -71,12 +72,14 @@
 import { useI18n } from 'vue-i18n';
 const { t } = useI18n();
 import { ref } from 'vue';
+import { useQuasar } from 'quasar';
 import SiloGrid from 'components/SiloGrid.vue';
 import StallGrid from 'components/StallGrid.vue';
 import EilagerGrid from 'components/EilagerGrid.vue';
 import LagerplatzVerwaltung from 'components/LagerplatzVerwaltung.vue';
 import BestandsUebersicht from 'components/BestandsUebersicht.vue';
 
+const $q = useQuasar();
 const mainTab = ref('silos');
 const eilagerTab = ref('eilager');
 </script>

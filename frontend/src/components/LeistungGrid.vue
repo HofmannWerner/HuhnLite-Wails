@@ -21,7 +21,7 @@
           :label="t('auto.herde_filtern')"
           filled
           stack-label
-          :bg-color="$q.dark.isActive ? 'grey-9' : 'bg-white'"
+          :bg-color="$q.dark.isActive ? 'grey-9' : undefined"
           :dark="$q.dark.isActive"
         >
           <template v-slot:prepend>
@@ -34,11 +34,11 @@
       </div>
 
       <div class="col-12 col-sm-4 col-md-3">
-        <q-input filled v-model="filterDateRangeText" :label="t('auto.zeitraum')" stack-label readonly dense>
+        <q-input filled v-model="filterDateRangeText" :label="t('auto.zeitraum')" stack-label readonly dense :dark="$q.dark.isActive" :bg-color="$q.dark.isActive ? 'grey-9' : undefined">
           <template v-slot:prepend>
             <q-icon name="event" class="cursor-pointer">
               <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                <q-date v-model="filterDateRange" range>
+                <q-date v-model="filterDateRange" range :dark="$q.dark.isActive">
                   <div class="row items-center justify-end">
                     <q-btn v-close-popup :label="t('form.close')" color="primary" flat />
                   </div>

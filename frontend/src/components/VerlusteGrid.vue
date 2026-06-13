@@ -16,6 +16,8 @@
           filled
           stack-label
           min="1"
+          :dark="$q.dark.isActive"
+          :bg-color="$q.dark.isActive ? 'grey-9' : undefined"
         >
           <template v-slot:prepend>
             <q-icon name="history" />
@@ -34,6 +36,8 @@
           :label="t('auto.herde_auswaehlen')"
           filled
           stack-label
+          :dark="$q.dark.isActive"
+          :bg-color="$q.dark.isActive ? 'grey-9' : undefined"
         >
           <template v-slot:prepend>
             <q-icon name="pets" />
@@ -53,6 +57,8 @@
           :label="t('auto.grund_verlust')"
           filled
           stack-label
+          :dark="$q.dark.isActive"
+          :bg-color="$q.dark.isActive ? 'grey-9' : undefined"
         >
           <template v-slot:prepend>
             <q-icon name="comment" />
