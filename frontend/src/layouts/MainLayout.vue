@@ -481,23 +481,36 @@ async function openHelp() {
       helpLoading.value = false;
     }
   } else {
-    // Local / development mockup when Wails is not running
-    const mockHtml = `
-      <html>
-        <head>
-          <style>
-            body { font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6; }
-            h1 { color: #027be3; }
-          </style>
-        </head>
-        <body>
-          <h1>Hilfe-Dokument (Entwicklungsmodus - ${activeLang})</h1>
-          <p>Die Wails-Laufzeitumgebung ist nicht verfügbar. Im Live-System wird hier das Handbuch geladen.</p>
-        </body>
-      </html>
-    `;
-    helpUrl.value = 'data:text/html;charset=utf-8,' + encodeURIComponent(mockHtml);
-    helpLoading.value = false;
+    // Im Webbrowser: Versuche, das echte Hilfe-Dokument vom Server zu laden
+    const baseApiUrl = api.defaults.baseURL || window.location.origin;
+    const fileUrl = `${baseApiUrl}/help/HuhnLite-${activeLang}.html`;
+
+    try {
+      // Prüfen, ob die Hilfedatei auf dem Server existiert
+      await api.get(`/help/HuhnLite-${activeLang}.html`);
+      // Falls sie existiert, im Iframe laden
+      helpUrl.value = fileUrl;
+    } catch (err) {
+      console.warn('Help file not found on server, showing mockup:', err);
+      // Fallback: Lokaler Entwicklungs-Mockup
+      const mockHtml = `
+        <html>
+          <head>
+            <style>
+              body { font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6; }
+              h1 { color: #027be3; }
+            </style>
+          </head>
+          <body>
+            <h1>Hilfe-Dokument (Entwicklungsmodus - ${activeLang})</h1>
+            <p>Die Wails-Laufzeitumgebung ist nicht verfügbar. Im Live-System wird hier das Handbuch geladen.</p>
+          </body>
+        </html>
+      `;
+      helpUrl.value = 'data:text/html;charset=utf-8,' + encodeURIComponent(mockHtml);
+    } finally {
+      helpLoading.value = false;
+    }
   }
 }
 
