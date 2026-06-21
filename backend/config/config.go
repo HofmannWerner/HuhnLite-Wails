@@ -128,7 +128,11 @@ func LoadConfig() Config {
 	if execPath != "" {
 		fullPath := strings.ToLower(execPath)
 		log.Printf("ExecPath: %s", execPath)
-		if strings.Contains(fullPath, "mariadb") {
+		if strings.Contains(fullPath, "server") && strings.Contains(fullPath, "mariadb") {
+			// Prioritize Server-MariaDB settings if the binary name suggests it
+			configFiles = []string{"settings_server_mariadb.json", "settings.json"}
+			log.Printf("Server-MariaDB-Modus erkannt, priorisiere settings_server_mariadb.json")
+		} else if strings.Contains(fullPath, "mariadb") {
 			// Prioritize MariaDB settings if the binary name suggests it
 			configFiles = []string{"settings_mariadb.json", "settings.json"}
 			log.Printf("MariaDB-Modus erkannt, priorisiere settings_mariadb.json")

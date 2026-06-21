@@ -1,0 +1,7 @@
+{
+  "mode": "server",
+  "db_engine": "mysql",
+  "db_connection": "root:studio@tcp(127.0.0.1:3307)/huhnlite?parseTime=true&allowNativePasswords=true",
+  "port": 8080,
+  "system": 1
+}

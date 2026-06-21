@@ -61,7 +61,7 @@ if (Test-Path "settings_mariadb.json") {
 }
 
 Write-Host "------------------------------------------" -ForegroundColor Cyan
-Write-Host "Baue HuhnLite-Server (Client-Server)..."
+Write-Host "Baue HuhnLite-Server (Client-Server SQLite)..."
 $targetOS = "windows"
 if ($Platform) {
     $parts = $Platform -split "/"
@@ -89,6 +89,31 @@ if (Test-Path "settings_server.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
     Copy-Item "settings_server.json" "build\bin\settings_server.json" -Force
     Write-Host "settings_server.json kopiert." -ForegroundColor Gray
+}
+
+Write-Host "------------------------------------------" -ForegroundColor Cyan
+Write-Host "Baue HuhnLite-Server-MariaDB (Client-Server MariaDB)..."
+if ($Platform) {
+    $env:GOOS = $targetOS
+    $env:GOARCH = $targetArch
+}
+
+$serverMariaDBName = "HuhnLite-Server-MariaDB"
+if ($targetOS -eq "windows") {
+    $serverMariaDBName = "HuhnLite-Server-MariaDB.exe"
+}
+
+go build -ldflags="-w -s" -o "build/bin/$serverMariaDBName" .
+
+if ($Platform) {
+    $env:GOOS = $oldGOOS
+    $env:GOARCH = $oldGOARCH
+}
+
+if (Test-Path "settings_server_mariadb.json") {
+    if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
+    Copy-Item "settings_server_mariadb.json" "build\bin\settings_server_mariadb.json" -Force
+    Write-Host "settings_server_mariadb.json kopiert." -ForegroundColor Gray
 }
 
 # Original-Zustand wiederherstellen

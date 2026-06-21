@@ -38,7 +38,7 @@ $WAILS "${BUILD_ARGS[@]}"
 cp settings_mariadb.json build/bin/settings_mariadb.json
 
 echo "------------------------------------------"
-echo "🔨 Baue HuhnLite-Server (Client-Server)..."
+echo "🔨 Baue HuhnLite-Server (Client-Server SQLite)..."
 TARGET_OS="linux"
 if [ -n "$PLATFORM" ]; then
     IFS='/' read -r -a platform_parts <<< "$PLATFORM"
@@ -61,6 +61,27 @@ if [ -n "$PLATFORM" ]; then
 fi
 
 cp settings_server.json build/bin/settings_server.json
+
+echo "------------------------------------------"
+echo "🔨 Baue HuhnLite-Server-MariaDB (Client-Server MariaDB)..."
+if [ -n "$PLATFORM" ]; then
+    export GOOS="$TARGET_OS"
+    export GOARCH="$TARGET_ARCH"
+fi
+
+SERVER_MARIADB_NAME="HuhnLite-Server-MariaDB"
+if [ "$TARGET_OS" = "windows" ]; then
+    SERVER_MARIADB_NAME="HuhnLite-Server-MariaDB.exe"
+fi
+
+go build -ldflags="-w -s" -o "build/bin/$SERVER_MARIADB_NAME" .
+
+if [ -n "$PLATFORM" ]; then
+    unset GOOS
+    unset GOARCH
+fi
+
+cp settings_server_mariadb.json build/bin/settings_server_mariadb.json
 
 # Original-Zustand wiederherstellen
 set_wails_name "$ORIG_NAME"
