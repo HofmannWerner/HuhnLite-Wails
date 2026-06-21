@@ -32,7 +32,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/AdminDirect.vue'),
         meta: {permission: 'sql_struktur_verwalten'}
       },
-      {path: 'admin', component: () => import('pages/AdminDirect.vue'), meta: {permission: 'sql_struktur_verwalten'}},
+      {path: 'admin', component: () => import('pages/AdminPage.vue'), meta: {permission: 'sql_struktur_verwalten'}},
       {path: 'showtv', component: () => import('pages/ShowTVPage.vue'), meta: {permission: 'parameter_editieren'}},
       {path: 'benutzer', component: () => import('pages/BenutzerPage.vue'), meta: {permission: 'benutzer_profile'}},
       {path: 'profile', component: () => import('pages/ProfilePage.vue'), meta: {permission: 'benutzer_profile'}},

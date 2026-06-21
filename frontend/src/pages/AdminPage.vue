@@ -84,13 +84,15 @@ import { api } from '../boot/api';
 const $q = useQuasar();
 
 const latestDate = ref('');
-const daysInput = ref('999'); // Offensichtlicher Testwert für Cache-Check
+const daysInput = ref('0');
 const suggestedDiff = ref(0);
 const processing = ref(false);
 
-const extractString = (val: any) => {
+const extractString = (val: unknown): string => {
   if (val === null || val === undefined) return '';
-  if (typeof val === 'object' && 'String' in val) return String(val.String);
+  if (typeof val === 'object' && val !== null && 'String' in val) {
+    return String((val as { String: unknown }).String);
+  }
   return String(val);
 };
 
@@ -98,18 +100,30 @@ async function loadInitData() {
   console.log('AdminPage: Lade-Vorgang gestartet');
   try {
     const res = await api.get('/api/admin/latest-date');
-    if (res.data && res.data.max_date) {
-      latestDate.value = extractString(res.data.max_date).split(' ')[0] || '';
+    const maxDateVal = res.data && res.data.max_date ? extractString(res.data.max_date).split(' ')[0] : '';
+    
+    if (maxDateVal) {
+      latestDate.value = maxDateVal;
 
-      const last = new Date(latestDate.value);
+      const last = new Date(maxDateVal);
       const today = new Date();
       last.setHours(0,0,0,0);
       today.setHours(0,0,0,0);
 
-      const diff = qDate.getDateDiff(today, last, 'days');
-      suggestedDiff.value = diff;
-      daysInput.value = String(diff); // Wert als String setzen
-      console.log('Berechnete Differenz:', diff);
+      if (!isNaN(last.getTime())) {
+        const diff = qDate.getDateDiff(today, last, 'days');
+        suggestedDiff.value = diff;
+        daysInput.value = String(diff); // Wert als String setzen
+        console.log('Berechnete Differenz:', diff);
+      } else {
+        latestDate.value = 'Ungültiges Datum';
+        suggestedDiff.value = 0;
+        daysInput.value = '0';
+      }
+    } else {
+      latestDate.value = 'Keine Buchungsdaten vorhanden';
+      suggestedDiff.value = 0;
+      daysInput.value = '0';
     }
   } catch (err) {
     console.error('Ladefehler Init:', err);
@@ -130,8 +144,8 @@ function confirmAndRun() {
     ok: { label: 'Ja, jetzt ausführen', color: 'negative', rounded: true },
     cancel: { label: 'Abbrechen', flat: true },
     persistent: true
-  }).onOk(() => {
-    runUpdate(val);
+  }).onOk(async () => {
+    await runUpdate(val);
   });
 }
 
@@ -143,16 +157,16 @@ async function runUpdate(days: number) {
     });
     $q.notify({ type: 'positive', message: 'Verschiebung erfolgreich!' });
     setTimeout(() => location.reload(), 2000);
-  } catch (err: any) {
-    const msg = err.response?.data?.error || err.message;
-    $q.notify({ type: 'negative', message: 'Fehler: ' + msg });
+  } catch (err: unknown) {
+    const msg = (err as any).response?.data?.error || (err as Error).message;
+    $q.notify({ type: 'negative', message: 'Fehler: ' + String(msg) });
   } finally {
     processing.value = false;
   }
 }
 
-onMounted(() => {
-  loadInitData();
+onMounted(async () => {
+  await loadInitData();
 });
 </script>
 

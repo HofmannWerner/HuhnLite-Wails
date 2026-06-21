@@ -132,6 +132,10 @@ func LoadConfig() Config {
 			// Prioritize MariaDB settings if the binary name suggests it
 			configFiles = []string{"settings_mariadb.json", "settings.json"}
 			log.Printf("MariaDB-Modus erkannt, priorisiere settings_mariadb.json")
+		} else if strings.Contains(fullPath, "server") {
+			// Prioritize Server settings if the binary name suggests it
+			configFiles = []string{"settings_server.json", "settings.json"}
+			log.Printf("Server-Modus erkannt, priorisiere settings_server.json")
 		}
 	}
 

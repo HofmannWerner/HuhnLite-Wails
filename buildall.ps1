@@ -60,6 +60,37 @@ if (Test-Path "settings_mariadb.json") {
     Write-Host "settings_mariadb.json kopiert." -ForegroundColor Gray
 }
 
+Write-Host "------------------------------------------" -ForegroundColor Cyan
+Write-Host "Baue HuhnLite-Server (Client-Server)..."
+$targetOS = "windows"
+if ($Platform) {
+    $parts = $Platform -split "/"
+    $targetOS = $parts[0]
+    $targetArch = $parts[1]
+    $oldGOOS = $env:GOOS
+    $oldGOARCH = $env:GOARCH
+    $env:GOOS = $targetOS
+    $env:GOARCH = $targetArch
+}
+
+$serverName = "HuhnLite-Server"
+if ($targetOS -eq "windows") {
+    $serverName = "HuhnLite-Server.exe"
+}
+
+go build -ldflags="-w -s" -o "build/bin/$serverName" .
+
+if ($Platform) {
+    $env:GOOS = $oldGOOS
+    $env:GOARCH = $oldGOARCH
+}
+
+if (Test-Path "settings_server.json") {
+    if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
+    Copy-Item "settings_server.json" "build\bin\settings_server.json" -Force
+    Write-Host "settings_server.json kopiert." -ForegroundColor Gray
+}
+
 # Original-Zustand wiederherstellen
 Set-WailsName $origName
 

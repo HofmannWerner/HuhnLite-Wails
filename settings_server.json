@@ -1,0 +1,7 @@
+{
+  "mode": "server",
+  "db_engine": "sqlite",
+  "db_connection": "HuhnLite.db",
+  "port": 8080,
+  "system": 1
+}

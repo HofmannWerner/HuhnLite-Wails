@@ -37,6 +37,31 @@ $WAILS "${BUILD_ARGS[@]}"
 # Kopiere die passende settings_mariadb.json daneben
 cp settings_mariadb.json build/bin/settings_mariadb.json
 
+echo "------------------------------------------"
+echo "🔨 Baue HuhnLite-Server (Client-Server)..."
+TARGET_OS="linux"
+if [ -n "$PLATFORM" ]; then
+    IFS='/' read -r -a platform_parts <<< "$PLATFORM"
+    TARGET_OS="${platform_parts[0]}"
+    TARGET_ARCH="${platform_parts[1]}"
+    export GOOS="$TARGET_OS"
+    export GOARCH="$TARGET_ARCH"
+fi
+
+SERVER_NAME="HuhnLite-Server"
+if [ "$TARGET_OS" = "windows" ]; then
+    SERVER_NAME="HuhnLite-Server.exe"
+fi
+
+go build -ldflags="-w -s" -o "build/bin/$SERVER_NAME" .
+
+if [ -n "$PLATFORM" ]; then
+    unset GOOS
+    unset GOARCH
+fi
+
+cp settings_server.json build/bin/settings_server.json
+
 # Original-Zustand wiederherstellen
 set_wails_name "$ORIG_NAME"
 
