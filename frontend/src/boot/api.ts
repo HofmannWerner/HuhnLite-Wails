@@ -8,8 +8,21 @@ declare module '@vue/runtime-core' {
   }
 }
 
-// Create an axios instance with a base URL
-const api = axios.create({baseURL: 'http://localhost:8080'});
+// Dynamically determine the base URL for the API
+let baseURL = 'http://localhost:8080';
+if (typeof window !== 'undefined' && window.location) {
+  const host = window.location.host;
+  const protocol = window.location.protocol;
+  // If we are running inside the Wails desktop environment, use localhost:8080 (or proxy)
+  if (protocol === 'wails:' || host === 'wails.localhost') {
+    baseURL = 'http://localhost:8080';
+  } else {
+    // If accessed via web browser, use the serving server's origin (IP and port)
+    baseURL = window.location.origin;
+  }
+}
+
+const api = axios.create({ baseURL });
 
 export default boot(async ({app}) => {
   // Lazy import to avoid circular dependency with store
