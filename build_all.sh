@@ -40,6 +40,9 @@ cp settings_mariadb.json build/bin/settings_mariadb.json
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-Server (Client-Server SQLite)..."
 TARGET_OS="linux"
+if [ "$(uname)" = "Darwin" ]; then
+    TARGET_OS="darwin"
+fi
 if [ -n "$PLATFORM" ]; then
     IFS='/' read -r -a platform_parts <<< "$PLATFORM"
     TARGET_OS="${platform_parts[0]}"

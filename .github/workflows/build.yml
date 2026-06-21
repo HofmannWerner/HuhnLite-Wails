@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ ubuntu-22.04, windows-latest ]
+        os: [ ubuntu-22.04, windows-latest, macos-latest ]
 
     steps:
       - name: Checkout code
@@ -36,8 +36,8 @@ jobs:
       - name: Install Wails CLI
         run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
 
-      - name: Add Go bin to PATH (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Add Go bin to PATH (Linux & macOS)
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
         run: echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Add Go bin to PATH (Windows)
@@ -53,8 +53,8 @@ jobs:
         run: |
           ./buildall.ps1
 
-      - name: Build Application (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Build Application (Linux & macOS)
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
         shell: bash
         run: |
           chmod +x build_all.sh
@@ -66,11 +66,11 @@ jobs:
         run: |
           Compress-Archive -Path build/bin/* -DestinationPath HuhnLite-Wails-Windows.zip -Force
 
-      - name: Package Release (Linux)
-        if: matrix.os == 'ubuntu-22.04'
+      - name: Package Release (Linux & macOS)
+        if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
         shell: bash
         run: |
-          zip -r HuhnLite-Wails-Linux.zip build/bin/
+          zip -r HuhnLite-Wails-${{ matrix.os }}.zip build/bin/
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
