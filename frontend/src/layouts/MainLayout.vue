@@ -363,14 +363,14 @@ async function runBackup() {
 
 async function shutdownServer() {
   $q.dialog({
-    title: 'Programm beenden',
-    message: 'Möchten Sie die Anwendung wirklich schließen? Der Hintergrund-Dienst wird beendet.',
+    title: t('layout.shutdownTitle'),
+    message: t('layout.shutdownMessage'),
     cancel: {
-      label: 'Abbrechen',
+      label: t('layout.shutdownCancel'),
       flat: true
     },
     ok: {
-      label: 'Beenden',
+      label: t('layout.shutdownConfirm'),
       color: 'negative',
       unelevated: true
     },
@@ -387,7 +387,7 @@ async function shutdownServer() {
       
       $q.notify({
         type: 'warning',
-        message: 'Anwendung wird geschlossen...',
+        message: t('layout.closing'),
         position: 'center',
         timeout: 1000
       });

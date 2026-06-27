@@ -32,7 +32,12 @@
     "close": "Chiudi",
     "helpTitle": "Manuale / Aiuto",
     "loadingHelp": "Caricamento file di aiuto...",
-    "wailsUnavailable": "Ambiente runtime Wails non disponibile."
+    "wailsUnavailable": "Ambiente runtime Wails non disponibile.",
+    "shutdownTitle": "Esci dal Programma",
+    "shutdownMessage": "Sei sicuro di voler chiudere l'applicazione? Il servizio in background verrà interrotto.",
+    "shutdownCancel": "Annulla",
+    "shutdownConfirm": "Esci",
+    "closing": "Chiusura dell'applicazione in corso..."
   },
   "grid": {
     "action": "Azione",

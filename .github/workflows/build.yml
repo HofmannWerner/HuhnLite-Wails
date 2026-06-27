@@ -58,7 +58,20 @@ jobs:
         shell: bash
         run: |
           chmod +x build_all.sh
-          ./build_all.sh
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            # Build for macOS Intel (amd64)
+            ./build_all.sh darwin/amd64
+            mkdir -p build/intel
+            mv build/bin/* build/intel/
+            
+            # Build for macOS Apple Silicon (arm64)
+            ./build_all.sh darwin/arm64
+            mkdir -p build/silicon
+            mv build/bin/* build/silicon/
+          else
+            # Linux Build
+            ./build_all.sh
+          fi
 
       - name: Package Release (Windows)
         if: matrix.os == 'windows-latest'
@@ -70,7 +83,16 @@ jobs:
         if: matrix.os == 'ubuntu-22.04' || matrix.os == 'macos-latest'
         shell: bash
         run: |
-          zip -r HuhnLite-Wails-${{ matrix.os }}.zip build/bin/
+          if [ "${{ matrix.os }}" = "macos-latest" ]; then
+            cd build/intel
+            zip -r ../../HuhnLite-Wails-macOS-Intel.zip .
+            cd ../../
+            cd build/silicon
+            zip -r ../../HuhnLite-Wails-macOS-Silicon.zip .
+            cd ../../
+          else
+            zip -r HuhnLite-Wails-${{ matrix.os }}.zip build/bin/
+          fi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

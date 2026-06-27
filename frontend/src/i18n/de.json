@@ -32,7 +32,12 @@
     "close": "Schließen",
     "helpTitle": "Handbuch / Hilfe",
     "loadingHelp": "Lade Hilfedatei...",
-    "wailsUnavailable": "Wails-Laufzeitumgebung nicht verfügbar."
+    "wailsUnavailable": "Wails-Laufzeitumgebung nicht verfügbar.",
+    "shutdownTitle": "Programm beenden",
+    "shutdownMessage": "Möchten Sie die Anwendung wirklich schließen? Der Hintergrund-Dienst wird beendet.",
+    "shutdownCancel": "Abbrechen",
+    "shutdownConfirm": "Beenden",
+    "closing": "Anwendung wird geschlossen..."
   },
   "grid": {
     "action": "Aktion",

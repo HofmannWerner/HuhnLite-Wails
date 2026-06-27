@@ -32,7 +32,12 @@
     "close": "Close",
     "helpTitle": "Manual / Help",
     "loadingHelp": "Loading help file...",
-    "wailsUnavailable": "Wails runtime environment unavailable."
+    "wailsUnavailable": "Wails runtime environment unavailable.",
+    "shutdownTitle": "Exit Program",
+    "shutdownMessage": "Are you sure you want to close the application? The background service will be stopped.",
+    "shutdownCancel": "Cancel",
+    "shutdownConfirm": "Exit",
+    "closing": "Closing application..."
   },
   "grid": {
     "action": "Action",
