@@ -34,7 +34,11 @@ fi
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-Local (SQLite)..."
 set_wails_name "HuhnLite-Local"
+echo "DEBUG: wails.json content for Local:"
+cat wails.json
 $WAILS "${BUILD_ARGS[@]}"
+echo "DEBUG: build/bin content after Local build:"
+ls -la build/bin || true
 # Kopiere die passende settings.json daneben
 cp settings.json build/bin/settings.json
 
@@ -47,7 +51,11 @@ mkdir -p build/local_temp
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-MariaDB (Netzwerk)..."
 set_wails_name "HuhnLite-MariaDB"
+echo "DEBUG: wails.json content for MariaDB:"
+cat wails.json
 $WAILS "${BUILD_ARGS[@]}"
+echo "DEBUG: build/bin content after MariaDB build:"
+ls -la build/bin || true
 # Kopiere die passende settings_mariadb.json daneben
 cp settings_mariadb.json build/bin/settings_mariadb.json
 
