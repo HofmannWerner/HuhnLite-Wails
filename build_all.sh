@@ -30,12 +30,24 @@ $WAILS "${BUILD_ARGS[@]}"
 # Kopiere die passende settings.json daneben
 cp settings.json build/bin/settings.json
 
+# Sichern der HuhnLite-Local Build-Ergebnisse, da der nächste Wails-Build build/bin/ löscht
+mkdir -p build/local_temp
+[ -d build/bin/HuhnLite-Local.app ] && mv build/bin/HuhnLite-Local.app build/local_temp/
+[ -f build/bin/settings.json ] && mv build/bin/settings.json build/local_temp/
+[ -f build/bin/HuhnLite.db ] && mv build/bin/HuhnLite.db build/local_temp/
+
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-MariaDB (Netzwerk)..."
 set_wails_name "HuhnLite-MariaDB"
 $WAILS "${BUILD_ARGS[@]}"
 # Kopiere die passende settings_mariadb.json daneben
 cp settings_mariadb.json build/bin/settings_mariadb.json
+
+# Zurückbewegen der HuhnLite-Local Build-Ergebnisse nach build/bin/
+[ -d build/local_temp/HuhnLite-Local.app ] && mv build/local_temp/HuhnLite-Local.app build/bin/
+[ -f build/local_temp/settings.json ] && mv build/local_temp/settings.json build/bin/
+[ -f build/local_temp/HuhnLite.db ] && mv build/local_temp/HuhnLite.db build/bin/
+rm -rf build/local_temp
 
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-Server (Client-Server SQLite)..."
