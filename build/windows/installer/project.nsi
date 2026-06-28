@@ -88,6 +88,31 @@ Section
 
     !insertmacro wails.files
 
+    # Create user folders
+    CreateDirectory "$INSTDIR\images"
+    CreateDirectory "$INSTDIR\backups"
+
+    # Safely copy settings and database files if they do not exist
+    IfFileExists "$INSTDIR\HuhnLite.db" db_exists
+        File "..\..\..\HuhnLite.db"
+    db_exists:
+
+    IfFileExists "$INSTDIR\settings.json" settings_exists
+        File "..\..\..\settings.json"
+    settings_exists:
+
+    IfFileExists "$INSTDIR\settings_mariadb.json" settings_mariadb_exists
+        File "..\..\..\settings_mariadb.json"
+    settings_mariadb_exists:
+
+    IfFileExists "$INSTDIR\settings_server.json" settings_server_exists
+        File "..\..\..\settings_server.json"
+    settings_server_exists:
+
+    IfFileExists "$INSTDIR\settings_server_mariadb.json" settings_server_mariadb_exists
+        File "..\..\..\settings_server_mariadb.json"
+    settings_server_mariadb_exists:
+
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
 
@@ -102,10 +127,23 @@ Section "uninstall"
 
     RMDir /r "$AppData\${PRODUCT_EXECUTABLE}" # Remove the WebView2 DataPath
 
-    RMDir /r $INSTDIR
-
+    # Delete shortcuts
     Delete "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk"
     Delete "$DESKTOP\${INFO_PRODUCTNAME}.lnk"
+
+    # Delete installed files
+    Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
+    Delete "$INSTDIR\settings.json"
+    Delete "$INSTDIR\settings_mariadb.json"
+    Delete "$INSTDIR\settings_server.json"
+    Delete "$INSTDIR\settings_server_mariadb.json"
+
+    # We do NOT delete HuhnLite.db or backups/images by default here
+    # to protect user data from accidental uninstalls.
+    # We only remove directories if they are completely empty.
+    RMDir "$INSTDIR\images"
+    RMDir "$INSTDIR\backups"
+    RMDir "$INSTDIR"
 
     !insertmacro wails.unassociateFiles
     !insertmacro wails.unassociateCustomProtocols

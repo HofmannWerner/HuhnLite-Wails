@@ -92,3 +92,28 @@ set_wails_name "$ORIG_NAME"
 echo "------------------------------------------"
 echo "✅ Fertig! Die Dateien wurden in build/bin/ bereitgestellt."
 ls -lh build/bin/*.json || true
+
+if [ "$(uname)" = "Darwin" ]; then
+    echo "------------------------------------------"
+    echo "📦 Erstelle macOS DMG-Dateien..."
+    if [ -d "build/bin/HuhnLite-Local.app" ]; then
+        hdiutil create -volname "HuhnLite Local" -srcfolder "build/bin/HuhnLite-Local.app" -ov -format UDZO "build/bin/HuhnLite-Local.dmg"
+    fi
+    if [ -d "build/bin/HuhnLite-MariaDB.app" ]; then
+        hdiutil create -volname "HuhnLite MariaDB" -srcfolder "build/bin/HuhnLite-MariaDB.app" -ov -format UDZO "build/bin/HuhnLite-MariaDB.dmg"
+    fi
+    if [ -f "build/bin/HuhnLite-Server" ]; then
+        mkdir -p build/bin/server-temp
+        cp build/bin/HuhnLite-Server build/bin/server-temp/
+        cp build/bin/settings_server.json build/bin/server-temp/settings_server.json
+        hdiutil create -volname "HuhnLite Server" -srcfolder build/bin/server-temp -ov -format UDZO "build/bin/HuhnLite-Server.dmg"
+        rm -rf build/bin/server-temp
+    fi
+    if [ -f "build/bin/HuhnLite-Server-MariaDB" ]; then
+        mkdir -p build/bin/server-mariadb-temp
+        cp build/bin/HuhnLite-Server-MariaDB build/bin/server-mariadb-temp/
+        cp build/bin/settings_server_mariadb.json build/bin/server-mariadb-temp/settings_server_mariadb.json
+        hdiutil create -volname "HuhnLite Server MariaDB" -srcfolder build/bin/server-mariadb-temp -ov -format UDZO "build/bin/HuhnLite-Server-MariaDB.dmg"
+        rm -rf build/bin/server-mariadb-temp
+    fi
+fi

@@ -9,6 +9,16 @@ if (!(Get-Command $WAILS -ErrorAction SilentlyContinue)) {
     $WAILS = "$env:USERPROFILE\go\bin\wails.exe"
 }
 
+# Pfad zu makensis ermitteln (für den Windows-Installer)
+$MAKENSIS = "makensis"
+if (!(Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {
+    if (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe") {
+        $MAKENSIS = "C:\Program Files (x86)\NSIS\makensis.exe"
+    } elseif (Test-Path "C:\Program Files\NSIS\makensis.exe") {
+        $MAKENSIS = "C:\Program Files\NSIS\makensis.exe"
+    }
+}
+
 $buildArgs = @("build")
 if ($Platform) {
     $buildArgs += "-platform"
@@ -49,6 +59,15 @@ if (Test-Path "HuhnLite.db") {
     Write-Host "HuhnLite.db kopiert." -ForegroundColor Gray
 }
 
+if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
+    Write-Host "Erstelle NSIS Installer für HuhnLite-Local..." -ForegroundColor Cyan
+    Push-Location "build\windows\installer"
+    & $MAKENSIS /DARG_WAILS_AMD64_BINARY=..\..\bin\HuhnLite-Local.exe /DINFO_PROJECTNAME=HuhnLite-Local /DINFO_PRODUCTNAME="HuhnLite Local" /DPRODUCT_EXECUTABLE=HuhnLite-Local.exe project.nsi
+    Pop-Location
+} else {
+    Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Local." -ForegroundColor Yellow
+}
+
 Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "Baue HuhnLite-MariaDB (Netzwerk)..."
 Set-WailsName "HuhnLite-MariaDB"
@@ -58,6 +77,15 @@ if (Test-Path "settings_mariadb.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
     Copy-Item "settings_mariadb.json" "build\bin\settings_mariadb.json" -Force
     Write-Host "settings_mariadb.json kopiert." -ForegroundColor Gray
+}
+
+if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
+    Write-Host "Erstelle NSIS Installer für HuhnLite-MariaDB..." -ForegroundColor Cyan
+    Push-Location "build\windows\installer"
+    & $MAKENSIS /DARG_WAILS_AMD64_BINARY=..\..\bin\HuhnLite-MariaDB.exe /DINFO_PROJECTNAME=HuhnLite-MariaDB /DINFO_PRODUCTNAME="HuhnLite MariaDB" /DPRODUCT_EXECUTABLE=HuhnLite-MariaDB.exe project.nsi
+    Pop-Location
+} else {
+    Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-MariaDB." -ForegroundColor Yellow
 }
 
 Write-Host "------------------------------------------" -ForegroundColor Cyan
@@ -91,6 +119,15 @@ if (Test-Path "settings_server.json") {
     Write-Host "settings_server.json kopiert." -ForegroundColor Gray
 }
 
+if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {
+    Write-Host "Erstelle NSIS Installer für HuhnLite-Server..." -ForegroundColor Cyan
+    Push-Location "build\windows\installer"
+    & $MAKENSIS /DARG_WAILS_AMD64_BINARY=..\..\bin\HuhnLite-Server.exe /DINFO_PROJECTNAME=HuhnLite-Server /DINFO_PRODUCTNAME="HuhnLite Server" /DPRODUCT_EXECUTABLE=HuhnLite-Server.exe /DINSTALL_SQLITE_DB=1 /DSETTINGS_FILE=settings_server.json server.nsi
+    Pop-Location
+} elseif ($targetOS -eq "windows") {
+    Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Server." -ForegroundColor Yellow
+}
+
 Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "Baue HuhnLite-Server-MariaDB (Client-Server MariaDB)..."
 if ($Platform) {
@@ -114,6 +151,15 @@ if (Test-Path "settings_server_mariadb.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
     Copy-Item "settings_server_mariadb.json" "build\bin\settings_server_mariadb.json" -Force
     Write-Host "settings_server_mariadb.json kopiert." -ForegroundColor Gray
+}
+
+if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {
+    Write-Host "Erstelle NSIS Installer für HuhnLite-Server-MariaDB..." -ForegroundColor Cyan
+    Push-Location "build\windows\installer"
+    & $MAKENSIS /DARG_WAILS_AMD64_BINARY=..\..\bin\HuhnLite-Server-MariaDB.exe /DINFO_PROJECTNAME=HuhnLite-Server-MariaDB /DINFO_PRODUCTNAME="HuhnLite Server MariaDB" /DPRODUCT_EXECUTABLE=HuhnLite-Server-MariaDB.exe /DSETTINGS_FILE=settings_server_mariadb.json server.nsi
+    Pop-Location
+} elseif ($targetOS -eq "windows") {
+    Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Server-MariaDB." -ForegroundColor Yellow
 }
 
 # Original-Zustand wiederherstellen
