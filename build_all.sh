@@ -16,12 +16,20 @@ fi
 # Funktion zum Ändern des Namens in der wails.json
 set_wails_name() {
     local new_name=$1
-    sed "s/\"name\": \".*\"/\"name\": \"$new_name\"/" wails.json > wails.json.tmp && mv wails.json.tmp wails.json
-    sed "s/\"outputfilename\": \".*\"/\"outputfilename\": \"$new_name\"/" wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+    if command -v jq >/dev/null 2>&1; then
+        jq --arg name "$new_name" '.name = $name | .outputfilename = $name' wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+    else
+        sed "s/\"name\": \".*\"/\"name\": \"$new_name\"/" wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+        sed "s/\"outputfilename\": \".*\"/\"outputfilename\": \"$new_name\"/" wails.json > wails.json.tmp && mv wails.json.tmp wails.json
+    fi
 }
 
 # Original-Namen sichern
-ORIG_NAME=$(grep '"name":' wails.json | head -n 1 | cut -d'"' -f4 | tr -d '\n\r ')
+if command -v jq >/dev/null 2>&1; then
+    ORIG_NAME=$(jq -r '.name' wails.json)
+else
+    ORIG_NAME=$(grep '"name":' wails.json | head -n 1 | cut -d'"' -f4 | tr -d '\n\r ')
+fi
 
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-Local (SQLite)..."
