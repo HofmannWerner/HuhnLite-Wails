@@ -91,39 +91,23 @@ jobs:
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            # Build Intel ZIP and DMGs
+            # Build Intel ZIP and move DMGs
             cd build/intel
             zip -r ../../HuhnLite-Wails-macOS-Intel.zip .
             cd ../../
-            hdiutil create -volname "HuhnLite Local Intel" -srcfolder build/intel/HuhnLite-Local.app -ov -format UDZO HuhnLite-Local-macOS-Intel.dmg
-            hdiutil create -volname "HuhnLite MariaDB Intel" -srcfolder build/intel/HuhnLite-MariaDB.app -ov -format UDZO HuhnLite-MariaDB-macOS-Intel.dmg
+            mv build/intel/HuhnLite-Local.dmg HuhnLite-Local-macOS-Intel.dmg
+            mv build/intel/HuhnLite-MariaDB.dmg HuhnLite-MariaDB-macOS-Intel.dmg
+            mv build/intel/HuhnLite-Server.dmg HuhnLite-Server-macOS-Intel.dmg
+            mv build/intel/HuhnLite-Server-MariaDB.dmg HuhnLite-Server-MariaDB-macOS-Intel.dmg
 
-            # Intel Server DMGs
-            mkdir -p build/intel-server build/intel-server-mariadb
-            cp build/intel/HuhnLite-Server build/intel-server/
-            cp build/intel/settings_server.json build/intel-server/settings_server.json
-            hdiutil create -volname "HuhnLite Server Intel" -srcfolder build/intel-server -ov -format UDZO HuhnLite-Server-macOS-Intel.dmg
-
-            cp build/intel/HuhnLite-Server-MariaDB build/intel-server-mariadb/
-            cp build/intel/settings_server_mariadb.json build/intel-server-mariadb/settings_server_mariadb.json
-            hdiutil create -volname "HuhnLite Server MariaDB Intel" -srcfolder build/intel-server-mariadb -ov -format UDZO HuhnLite-Server-MariaDB-macOS-Intel.dmg
-
-            # Build Silicon ZIP and DMGs
+            # Build Silicon ZIP and move DMGs
             cd build/silicon
             zip -r ../../HuhnLite-Wails-macOS-Silicon.zip .
             cd ../../
-            hdiutil create -volname "HuhnLite Local Silicon" -srcfolder build/silicon/HuhnLite-Local.app -ov -format UDZO HuhnLite-Local-macOS-Silicon.dmg
-            hdiutil create -volname "HuhnLite MariaDB Silicon" -srcfolder build/silicon/HuhnLite-MariaDB.app -ov -format UDZO HuhnLite-MariaDB-macOS-Silicon.dmg
-
-            # Silicon Server DMGs
-            mkdir -p build/silicon-server build/silicon-server-mariadb
-            cp build/silicon/HuhnLite-Server build/silicon-server/
-            cp build/silicon/settings_server.json build/silicon-server/settings_server.json
-            hdiutil create -volname "HuhnLite Server Silicon" -srcfolder build/silicon-server -ov -format UDZO HuhnLite-Server-macOS-Silicon.dmg
-
-            cp build/silicon/HuhnLite-Server-MariaDB build/silicon-server-mariadb/
-            cp build/silicon/settings_server_mariadb.json build/silicon-server-mariadb/settings_server_mariadb.json
-            hdiutil create -volname "HuhnLite Server MariaDB Silicon" -srcfolder build/silicon-server-mariadb -ov -format UDZO HuhnLite-Server-MariaDB-macOS-Silicon.dmg
+            mv build/silicon/HuhnLite-Local.dmg HuhnLite-Local-macOS-Silicon.dmg
+            mv build/silicon/HuhnLite-MariaDB.dmg HuhnLite-MariaDB-macOS-Silicon.dmg
+            mv build/silicon/HuhnLite-Server.dmg HuhnLite-Server-macOS-Silicon.dmg
+            mv build/silicon/HuhnLite-Server-MariaDB.dmg HuhnLite-Server-MariaDB-macOS-Silicon.dmg
           else
             zip -r HuhnLite-Wails-${{ matrix.os }}.zip build/bin/
           fi
