@@ -83,6 +83,38 @@ func LoadConfig() Config {
 
 	parent := filepath.Dir(cwd)
 
+	// Check if running from Program Files (read-only for standard users)
+	isProgramFiles := false
+	if bundleDir != "" {
+		lowerBundleDir := strings.ToLower(bundleDir)
+		if strings.Contains(lowerBundleDir, "program files") || strings.Contains(lowerBundleDir, "programmdateien") {
+			isProgramFiles = true
+		}
+	}
+
+	if isProgramFiles && appDataDir != "" {
+		// Files to copy from bundleDir to appDataDir if they don't exist in appDataDir
+		filesToCopy := []string{
+			"HuhnLite.db",
+			"settings.json",
+			"settings_mariadb.json",
+			"settings_server.json",
+			"settings_server_mariadb.json",
+		}
+		for _, f := range filesToCopy {
+			src := filepath.Join(bundleDir, f)
+			dst := filepath.Join(appDataDir, f)
+			if _, err := os.Stat(src); err == nil {
+				if _, errDst := os.Stat(dst); os.IsNotExist(errDst) {
+					log.Printf("Copying %s from Program Files bundle to AppData: %s", f, dst)
+					if errCopy := copyFile(src, dst); errCopy != nil {
+						log.Printf("ERROR copying %s: %v", f, errCopy)
+					}
+				}
+			}
+		}
+	}
+
 	// 1. Fallback: Application Support Verzeichnis
 	defaultDB := "HuhnLite.db"
 	if appDataDir != "" {
@@ -90,7 +122,7 @@ func LoadConfig() Config {
 	}
 
 	// 2. Bevorzuge eine bestehende HuhnLite.db neben der App (Portable Mode)
-	if bundleDir != "" {
+	if bundleDir != "" && !isProgramFiles {
 		fullPath := filepath.Join(bundleDir, "HuhnLite.db")
 		if _, err := os.Stat(fullPath); err == nil {
 			fmt.Printf("Found DB at BundleDir: %s\n", fullPath)
@@ -148,11 +180,11 @@ func LoadConfig() Config {
 			filepath.Join(cwd, configName),
 			filepath.Join(parent, configName),
 		}
-		if bundleDir != "" {
-			paths = append(paths, filepath.Join(bundleDir, configName))
-		}
 		if appDataDir != "" {
 			paths = append(paths, filepath.Join(appDataDir, configName))
+		}
+		if bundleDir != "" && !isProgramFiles {
+			paths = append(paths, filepath.Join(bundleDir, configName))
 		}
 
 		for _, p := range paths {
@@ -213,3 +245,24 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 	}
 	return nil
 }
+
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return err
+	}
+	return destFile.Sync()
+}
+
