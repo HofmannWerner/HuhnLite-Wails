@@ -50,7 +50,18 @@ Section
     !insertmacro wails.files
 
     # Create user folders
+    CreateDirectory "$INSTDIR\images"
     CreateDirectory "$INSTDIR\backups"
+
+    # Copy help HTML files (overwrite to ensure latest version)
+    File "..\..\..\HuhnLite-de.html"
+    File "..\..\..\HuhnLite-en.html"
+    File "..\..\..\HuhnLite-it.html"
+
+    # Copy help images recursively
+    SetOutPath "$INSTDIR\images"
+    File /r "..\..\..\images\*"
+    SetOutPath $INSTDIR
 
     # Safely copy database if SQLite version and it doesn't exist
     !ifdef INSTALL_SQLITE_DB
@@ -84,6 +95,10 @@ Section "uninstall"
     !ifdef SETTINGS_FILE
         Delete "$INSTDIR\${SETTINGS_FILE}"
     !endif
+    Delete "$INSTDIR\HuhnLite-de.html"
+    Delete "$INSTDIR\HuhnLite-en.html"
+    Delete "$INSTDIR\HuhnLite-it.html"
+    Delete "$INSTDIR\images\*"
 
     # We do NOT delete HuhnLite.db or backups by default here
     # to protect user data from accidental uninstalls.
@@ -92,6 +107,7 @@ Section "uninstall"
         # Delete "$INSTDIR\HuhnLite.db" # Commented out to prevent database loss
     !endif
 
+    RMDir "$INSTDIR\images"
     RMDir "$INSTDIR\backups"
     RMDir "$INSTDIR"
 

@@ -92,6 +92,16 @@ Section
     CreateDirectory "$INSTDIR\images"
     CreateDirectory "$INSTDIR\backups"
 
+    # Copy help HTML files (overwrite to ensure latest version)
+    File "..\..\..\HuhnLite-de.html"
+    File "..\..\..\HuhnLite-en.html"
+    File "..\..\..\HuhnLite-it.html"
+
+    # Copy help images recursively
+    SetOutPath "$INSTDIR\images"
+    File /r "..\..\..\images\*"
+    SetOutPath $INSTDIR
+
     # Safely copy settings and database files if they do not exist
     IfFileExists "$INSTDIR\HuhnLite.db" db_exists
         File "..\..\..\HuhnLite.db"
@@ -137,6 +147,10 @@ Section "uninstall"
     Delete "$INSTDIR\settings_mariadb.json"
     Delete "$INSTDIR\settings_server.json"
     Delete "$INSTDIR\settings_server_mariadb.json"
+    Delete "$INSTDIR\HuhnLite-de.html"
+    Delete "$INSTDIR\HuhnLite-en.html"
+    Delete "$INSTDIR\HuhnLite-it.html"
+    Delete "$INSTDIR\images\*"
 
     # We do NOT delete HuhnLite.db or backups/images by default here
     # to protect user data from accidental uninstalls.
