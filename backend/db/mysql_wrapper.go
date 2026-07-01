@@ -2191,7 +2191,7 @@ func (w *MySQLWrapper) ListAktionen(ctx context.Context, arg repo.ListAktionenPa
 		StartDate: arg.StartDate,
 		EndDate:   arg.EndDate,
 		Kz:        arg.Kz,
-		Status:    int32(arg.Status),
+		Status:    toInt32(arg.Status),
 	})
 	if err != nil {
 		return nil, err
@@ -2212,7 +2212,7 @@ func (w *MySQLWrapper) GetAktion(ctx context.Context, id int64) (repo.Aktionen, 
 }
 
 func (w *MySQLWrapper) CreateAktion(ctx context.Context, arg repo.CreateAktionParams) (repo.Aktionen, error) {
-	log.Printf("[DB] CreateAktion called for: %s", arg.Bezeichnung)
+	log.Printf("[DB] CreateAktion called for: %v", arg.Bezeichnung)
 	res, err := w.mysql.CreateAktion(ctx, repo_mysql.CreateAktionParams{
 		AktionenKz:       toNullString(arg.AktionenKz),
 		IDUser:           toNullInt32(arg.IDUser),

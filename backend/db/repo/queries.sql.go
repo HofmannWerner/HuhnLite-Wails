@@ -3145,7 +3145,7 @@ WHERE (?1 = 0 OR a.ID_USER = ?1 OR a.ID_USER = 0)
   AND (?2 = '' OR a.AKTIONSDATUM >= ?2)
   AND (?3 = '' OR a.AKTIONSDATUM <= ?3)
   AND (?4 = '' OR a.AKTIONEN_KZ = ?4)
-  AND (CAST(?5 AS INTEGER) = 2 OR COALESCE(a.ERLEDIGT, 0) = CAST(?5 AS INTEGER))
+  AND (?5 = 2 OR COALESCE(a.ERLEDIGT, 0) = ?5)
 ORDER BY a.AKTIONSDATUM DESC
 `
 
@@ -3154,7 +3154,7 @@ type ListAktionenParams struct {
 	StartDate interface{} `json:"start_date"`
 	EndDate   interface{} `json:"end_date"`
 	Kz        interface{} `json:"kz"`
-	Status    int64       `json:"status"`
+	Status    interface{} `json:"status"`
 }
 
 type ListAktionenRow struct {

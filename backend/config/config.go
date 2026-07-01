@@ -83,17 +83,23 @@ func LoadConfig() Config {
 
 	parent := filepath.Dir(cwd)
 
-	// Check if running from Program Files (read-only for standard users)
+	// Check if running from Program Files or macOS Applications (read-only for standard users)
 	isProgramFiles := false
 	if bundleDir != "" {
 		lowerBundleDir := strings.ToLower(bundleDir)
-		if strings.Contains(lowerBundleDir, "program files") || strings.Contains(lowerBundleDir, "programmdateien") {
+		if strings.Contains(lowerBundleDir, "program files") || strings.Contains(lowerBundleDir, "programmdateien") || strings.Contains(lowerBundleDir, "/applications") {
 			isProgramFiles = true
 		}
 	}
 
 	if isProgramFiles && appDataDir != "" {
-		// Files to copy from bundleDir to appDataDir if they don't exist in appDataDir
+		sourceDirForCopy := bundleDir
+		// If running in macOS bundle, copy from Contents/Resources
+		if errExec == nil && filepath.Base(filepath.Dir(execPath)) == "MacOS" && filepath.Base(filepath.Dir(filepath.Dir(execPath))) == "Contents" {
+			sourceDirForCopy = filepath.Join(filepath.Dir(filepath.Dir(execPath)), "Resources")
+		}
+
+		// Files to copy from sourceDirForCopy to appDataDir if they don't exist in appDataDir
 		filesToCopy := []string{
 			"HuhnLite.db",
 			"settings.json",
@@ -102,11 +108,11 @@ func LoadConfig() Config {
 			"settings_server_mariadb.json",
 		}
 		for _, f := range filesToCopy {
-			src := filepath.Join(bundleDir, f)
+			src := filepath.Join(sourceDirForCopy, f)
 			dst := filepath.Join(appDataDir, f)
 			if _, err := os.Stat(src); err == nil {
 				if _, errDst := os.Stat(dst); os.IsNotExist(errDst) {
-					log.Printf("Copying %s from Program Files bundle to AppData: %s", f, dst)
+					log.Printf("Copying %s from bundle to AppData: %s", f, dst)
 					if errCopy := copyFile(src, dst); errCopy != nil {
 						log.Printf("ERROR copying %s: %v", f, errCopy)
 					}
@@ -185,6 +191,11 @@ func LoadConfig() Config {
 		}
 		if bundleDir != "" && !isProgramFiles {
 			paths = append(paths, filepath.Join(bundleDir, configName))
+		}
+		// If running in macOS bundle, check Contents/Resources
+		if errExec == nil && filepath.Base(filepath.Dir(execPath)) == "MacOS" && filepath.Base(filepath.Dir(filepath.Dir(execPath))) == "Contents" {
+			resourcesDir := filepath.Join(filepath.Dir(filepath.Dir(execPath)), "Resources")
+			paths = append(paths, filepath.Join(resourcesDir, configName))
 		}
 
 		for _, p := range paths {

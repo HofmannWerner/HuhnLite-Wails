@@ -1389,7 +1389,7 @@ WHERE (sqlc.arg(id_user) = 0 OR a.ID_USER = sqlc.arg(id_user) OR a.ID_USER = 0)
   AND (sqlc.arg(start_date) = '' OR a.AKTIONSDATUM >= sqlc.arg(start_date))
   AND (sqlc.arg(end_date) = '' OR a.AKTIONSDATUM <= sqlc.arg(end_date))
   AND (sqlc.arg(kz) = '' OR a.AKTIONEN_KZ = sqlc.arg(kz))
-  AND (CAST(sqlc.arg(status) AS INTEGER) = 2 OR COALESCE(a.ERLEDIGT, 0) = CAST(sqlc.arg(status) AS INTEGER))
+  AND (sqlc.arg(status) = 2 OR COALESCE(a.ERLEDIGT, 0) = sqlc.arg(status))
 ORDER BY a.AKTIONSDATUM DESC;
 
 -- name: CreateAktion :one
