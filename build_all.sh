@@ -42,6 +42,14 @@ ls -la build/bin || true
 # Kopiere die passende settings.json daneben
 cp settings.json build/bin/settings.json
 
+# Copy help files and images into the macOS .app bundle if it exists
+if [ -d "build/bin/HuhnLite-Local.app" ]; then
+    echo "📋 Copying help files and images into HuhnLite-Local.app..."
+    cp HuhnLite-de.html HuhnLite-en.html HuhnLite-it.html build/bin/HuhnLite-Local.app/Contents/Resources/
+    mkdir -p build/bin/HuhnLite-Local.app/Contents/Resources/images
+    cp -R images/* build/bin/HuhnLite-Local.app/Contents/Resources/images/
+fi
+
 # Sichern der HuhnLite-Local Build-Ergebnisse, da der nächste Wails-Build build/bin/ löscht
 mkdir -p build/local_temp
 [ -d build/bin/HuhnLite-Local.app ] && mv build/bin/HuhnLite-Local.app build/local_temp/
@@ -58,6 +66,14 @@ echo "DEBUG: build/bin content after MariaDB build:"
 ls -la build/bin || true
 # Kopiere die passende settings_mariadb.json daneben
 cp settings_mariadb.json build/bin/settings_mariadb.json
+
+# Copy help files and images into the macOS .app bundle if it exists
+if [ -d "build/bin/HuhnLite-MariaDB.app" ]; then
+    echo "📋 Copying help files and images into HuhnLite-MariaDB.app..."
+    cp HuhnLite-de.html HuhnLite-en.html HuhnLite-it.html build/bin/HuhnLite-MariaDB.app/Contents/Resources/
+    mkdir -p build/bin/HuhnLite-MariaDB.app/Contents/Resources/images
+    cp -R images/* build/bin/HuhnLite-MariaDB.app/Contents/Resources/images/
+fi
 
 # Zurückbewegen der HuhnLite-Local Build-Ergebnisse nach build/bin/
 [ -d build/local_temp/HuhnLite-Local.app ] && mv build/local_temp/HuhnLite-Local.app build/bin/

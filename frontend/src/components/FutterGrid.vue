@@ -2,10 +2,10 @@
   <div class="q-pa-md">
     <div class="row items-center justify-between q-mb-md">
       <div class="row q-gutter-md">
-        <q-btn color="primary" icon="add" label="Neue Futterbuchung" @click="openCreate" rounded unelevated />
-        <q-btn v-if="futterinventurActive" color="secondary" icon="assignment" label="Futterinventur" @click="openInventur" rounded unelevated />
+        <q-btn color="primary" icon="add" :label="t('auto.neue_futterbuchung')" @click="openCreate" rounded unelevated />
+        <q-btn v-if="futterinventurActive" color="secondary" icon="assignment" :label="t('auto.futterinventur')" @click="openInventur" rounded unelevated />
       </div>
-      <div class="text-h6 text-primary">Futter-Buchung</div>
+      <div class="text-h6 text-primary">{{ t('auto.futter_buchung') }}</div>
     </div>
 
     <div class="row q-col-gutter-md q-mb-md items-center">
@@ -18,7 +18,7 @@
           emit-value
           map-options
           clearable
-          label="Silo filtern"
+          :label="t('auto.silo_filtern')"
           filled
           stack-label
           dense
@@ -38,7 +38,7 @@
           emit-value
           map-options
           clearable
-          label="Grund / Sorte"
+          :label="t('auto.grund_sorte')"
           filled
           stack-label
           dense
@@ -121,7 +121,7 @@
                 <q-input 
                   :model-value="form.fullTimestamp ? form.fullTimestamp.split(' ')[0] : ''" 
                   type="date" 
-                  label="Lieferdatum" 
+                  :label="t('auto.lieferdatum')" 
                   :bg-color="$q.dark.isActive ? 'grey-9' : undefined"
                   :dark="$q.dark.isActive"
                   readonly 
@@ -136,7 +136,7 @@
                    option-label="label"
                   emit-value
                   map-options
-                  label="Silo *"
+                  :label="t('auto.silo')"
                   filled
                   stack-label
                   hide-bottom-space
@@ -158,7 +158,7 @@
                    option-label="LABEL"
                   emit-value
                   map-options
-                  label="Lieferant"
+                  :label="t('auto.lieferant')"
                   filled
                   stack-label
                 />
@@ -171,7 +171,7 @@
                   option-label="bezeichnung"
                   emit-value
                   map-options
-                  label="Grund / Sorte"
+                  :label="t('auto.grund_sorte')"
                   filled
                   stack-label
                   :rules="[val => !!val || 'Erforderlich']"
@@ -180,7 +180,7 @@
               <div class="col-12 col-sm-6 col-md-2">
                 <q-input 
                   v-model="displayForm.LIEFERMENGE" 
-                  label="Menge (kg)" 
+                  :label="t('auto.menge_kg')" 
                   filled 
                   stack-label 
                   @update:model-value="val => form.LIEFERMENGE = parseNumberLocalized(String(val))"
@@ -190,7 +190,7 @@
               <div class="col-12 col-sm-6 col-md-2">
                 <q-input 
                   v-model="displayForm.PREISDT" 
-                  label="Preis / dt" 
+                  :label="t('auto.preis_dt')" 
                   filled 
                   stack-label 
                   @update:model-value="val => form.PREISDT = parseNumberLocalized(String(val))"
@@ -206,7 +206,7 @@
               <div class="col-12 col-sm-6 col-md-3">
                 <q-input 
                   v-model="displayForm.NETTO" 
-                  label="Netto (€)" 
+                  :label="t('auto.netto')" 
                   filled 
                   stack-label 
                   @update:model-value="val => form.NETTO = parseNumberLocalized(String(val))"
@@ -221,7 +221,7 @@
                    option-label="LABEL"
                   emit-value
                   map-options
-                  label="MwSt"
+                  :label="t('auto.mwst')"
                   filled
                   stack-label
                   @update:model-value="onMwstChange"
@@ -230,7 +230,7 @@
               <div class="col-12 col-sm-6 col-md-3">
                 <q-input 
                   v-model="displayForm.BRUTTO" 
-                  label="Brutto (€)" 
+                  :label="t('auto.brutto')" 
                   filled 
                   stack-label 
                   @update:model-value="val => form.BRUTTO = parseNumberLocalized(String(val))"
@@ -240,7 +240,7 @@
                <div class="col-12 col-sm-6 col-md-3">
                 <q-input 
                   v-model="displayForm.RABATTPROZ" 
-                  label="Rabatt (%)" 
+                  :label="t('auto.rabatt')" 
                   filled 
                   stack-label 
                   @update:model-value="val => form.RABATTPROZ = parseNumberLocalized(String(val))"
@@ -262,7 +262,7 @@
     <q-dialog v-model="showInventurDialog" persistent>
       <q-card style="min-width: 400px; max-width: 500px; border-radius: 16px;">
         <q-card-section class="row items-center q-pb-none bg-secondary text-white q-pa-md">
-          <div class="text-h6 text-weight-bold">Futterinventur</div>
+          <div class="text-h6 text-weight-bold">{{ t('auto.futterinventur') }}</div>
           <q-space />
           <q-btn icon="close" round dense v-close-popup unelevated color="white" flat />
         </q-card-section>
@@ -276,7 +276,7 @@
               option-label="label"
               emit-value
               map-options
-              label="Silo *"
+              :label="t('auto.silo')"
               filled
               stack-label
               :rules="[val => !!val || 'Erforderlich']"
@@ -285,7 +285,7 @@
             <q-input
               v-model="inventurForm.INVENTURDATUMNEU"
               type="date"
-              label="Inventurdatum *"
+              :label="t('auto.inventurdatum')"
               filled
               stack-label
               :rules="[val => !!val || 'Erforderlich']"
@@ -294,15 +294,15 @@
             <q-input
               v-model.number="inventurForm.INVENTURFUELLMENGE"
               type="number"
-              label="Inventurmenge (kg) *"
+              :label="t('auto.inventurmenge_kg')"
               filled
               stack-label
               :rules="[val => val !== null && val !== '' || 'Erforderlich']"
             />
 
             <div class="row justify-end q-mt-xl q-gutter-x-sm">
-              <q-btn label="Abbrechen" color="negative" outline rounded v-close-popup />
-              <q-btn label="Speichern" type="submit" color="primary" rounded unelevated padding="xs xl" />
+              <q-btn :label="t('form.cancel')" color="negative" outline rounded v-close-popup />
+              <q-btn :label="t('form.save')" type="submit" color="primary" rounded unelevated padding="xs xl" />
             </div>
           </q-form>
         </q-card-section>
@@ -312,6 +312,9 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
+
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
   if (typeof val === 'object' && 'String' in val) return String(val.String);
@@ -414,15 +417,15 @@ const filteredRows = computed(() => {
   return list;
 });
 
-const columns: QTableProps['columns'] = [
-  { name: 'actions', align: 'center', label: 'Aktion', field: 'actions' },
-  { name: 'LIEFERDATUM', align: 'left', label: 'Datum', field: (row: any) => extractString(row.lieferdatum || row.LIEFERDATUM) || '-', sortable: true },
-  { name: 'SILONUMMER', align: 'right', label: 'Silo-Nr', field: (row: any) => extractInt(row.silonummer || row.SILONUMMER) || '-', sortable: true },
-  { name: 'FUTTERSORTE_TEXT', align: 'left', label: 'Grund / Sorte', field: (row: any) => extractString(row.futtersorte_text || row.FUTTERSORTE_TEXT) || '-', sortable: true },
-  { name: 'LIEFERMENGE', align: 'right', label: 'Menge (kg)', field: (row: any) => extractFloat(row.liefermenge || row.LIEFERMENGE), sortable: true },
-  { name: 'NETTO', align: 'right', label: 'Netto (€)', field: (row: any) => extractFloat(row.netto || row.NETTO), sortable: true },
-  { name: 'BRUTTO', align: 'right', label: 'Brutto (€)', field: (row: any) => extractFloat(row.brutto || row.BRUTTO), sortable: true }
-];
+const columns = computed<QTableProps['columns']>(() => [
+  { name: 'actions', align: 'center', label: t('grid.action'), field: 'actions' },
+  { name: 'LIEFERDATUM', align: 'left', label: t('auto.lieferdatum'), field: (row: any) => extractString(row.lieferdatum || row.LIEFERDATUM) || '-', sortable: true },
+  { name: 'SILONUMMER', align: 'right', label: t('grid.siloNumber'), field: (row: any) => extractInt(row.silonummer || row.SILONUMMER) || '-', sortable: true },
+  { name: 'FUTTERSORTE_TEXT', align: 'left', label: t('auto.grund_sorte'), field: (row: any) => extractString(row.futtersorte_text || row.FUTTERSORTE_TEXT) || '-', sortable: true },
+  { name: 'LIEFERMENGE', align: 'right', label: t('auto.menge_kg'), field: (row: any) => extractFloat(row.liefermenge || row.LIEFERMENGE), sortable: true },
+  { name: 'NETTO', align: 'right', label: t('auto.netto'), field: (row: any) => extractFloat(row.netto || row.NETTO), sortable: true },
+  { name: 'BRUTTO', align: 'right', label: t('auto.brutto'), field: (row: any) => extractFloat(row.brutto || row.BRUTTO), sortable: true }
+]);
 
 interface Pagination {
   rowsPerPage: number;

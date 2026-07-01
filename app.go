@@ -162,6 +162,10 @@ func (a *App) getHelpFilePaths(lang string) []string {
 	if execPath, err := os.Executable(); err == nil {
 		bundleDir := filepath.Dir(execPath)
 		if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
+			// Check Contents/Resources inside the .app bundle
+			resourcesDir := filepath.Join(filepath.Dir(bundleDir), "Resources")
+			pathsToCheck = append(pathsToCheck, filepath.Join(resourcesDir, fileName))
+
 			bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
 		}
 		pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, fileName))
