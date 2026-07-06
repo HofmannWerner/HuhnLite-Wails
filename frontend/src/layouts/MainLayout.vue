@@ -8,6 +8,18 @@
           Huhn-Lite
         </q-toolbar-title>
 
+        <!-- Test Mode Toggle -->
+        <q-checkbox
+          v-model="isTestDb"
+          label="Test"
+          color="amber-9"
+          dark
+          class="q-ml-sm text-weight-bold text-amber-9"
+          @update:model-value="onToggleTestDb"
+        >
+          <q-tooltip>Datenbank umschalten (Haupt- vs. Test-Datenbank)</q-tooltip>
+        </q-checkbox>
+
         <!-- Global Date/Time Selector -->
         <div class="row items-center q-gutter-x-md q-px-md bg-white-opacity-10 rounded-borders q-ml-md">
            <q-icon name="schedule" size="xs" />
@@ -17,8 +29,9 @@
             dark
             dense
             borderless
+            readonly
             input-class="text-weight-bold"
-            style="width: 130px"
+            style="width: 130px; background: transparent;"
           />
           <q-input
             v-model="sessionTime"
@@ -26,8 +39,9 @@
             dark
             dense
             borderless
+            readonly
             input-class="text-weight-bold"
-            style="width: 80px"
+            style="width: 80px; background: transparent;"
           />
         </div>
 
@@ -337,6 +351,53 @@ const helpDialogOpen = ref(false);
 const helpLoading = ref(false);
 const helpUrl = ref('');
 
+const isTestDb = ref(false);
+
+async function checkTestDbStatus() {
+  if (window.go && window.go.main && window.go.main.App) {
+    try {
+      const active = await window.go.main.App.IsTestDB();
+      isTestDb.value = active;
+    } catch (err) {
+      console.error('Failed to get test DB status:', err);
+    }
+  }
+}
+
+async function onToggleTestDb(val: any) {
+  if (window.go && window.go.main && window.go.main.App) {
+    try {
+      const newDsn = await window.go.main.App.ToggleTestDB(val);
+      $q.notify({
+        type: val ? 'warning' : 'positive',
+        message: val ? 'Umgeschaltet auf Test-Datenbank' : 'Umgeschaltet auf Haupt-Datenbank',
+        caption: `Verbindung: ${newDsn}`,
+        icon: val ? 'warning' : 'check_circle',
+        timeout: 1000
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (err: any) {
+      $q.notify({
+        type: 'negative',
+        message: 'Fehler beim Umschalten der Datenbank',
+        caption: String(err?.message || err || 'Unbekannter Fehler'),
+        icon: 'error',
+        timeout: 5000
+      });
+      isTestDb.value = !val; // Rollback
+    }
+  } else {
+    $q.notify({
+      type: 'info',
+      message: 'Datenbank-Umschaltung ist im Webbrowser nicht verfügbar.',
+      icon: 'info'
+    });
+    isTestDb.value = !val; // Rollback
+  }
+}
+
 async function runBackup() {
   backupLoading.value = true;
   try {
@@ -516,6 +577,7 @@ async function openHelp() {
 
 onMounted(async () => {
   console.log('MainLayout: Starte Initialisierung...');
+  await checkTestDbStatus();
   
   let success = false;
   let retries = 10;
@@ -656,5 +718,18 @@ watch(() => sessionStore.isLoggedIn, (newVal) => {
 }
 .rounded-borders {
   border-radius: 8px;
+}
+:deep(input[type="date"]),
+:deep(input[type="time"]),
+:deep(input[readonly]),
+:deep(input:read-only),
+:deep(.q-field--readonly .q-field__control),
+:deep(.q-field--readonly .q-field__control::before),
+:deep(.q-field--readonly .q-field__control::after) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  -webkit-appearance: none;
+  opacity: 1 !important;
 }
 </style>

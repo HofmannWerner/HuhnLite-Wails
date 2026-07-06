@@ -5899,8 +5899,8 @@ func (q *Queries) UpsertUebersetzung(ctx context.Context, arg UpsertUebersetzung
 }
 
 const createAktion = `-- name: CreateAktion :execresult
-INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM, BEMERKUNG)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type CreateAktionParams struct {
@@ -5913,6 +5913,7 @@ type CreateAktionParams struct {
 	Erledigt         sql.NullInt32  `json:"erledigt"`
 	IDUserErledigt   sql.NullInt32  `json:"id_user_erledigt"`
 	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Bemerkung        sql.NullString `json:"bemerkung"`
 }
 
 func (q *Queries) CreateAktion(ctx context.Context, arg CreateAktionParams) (sql.Result, error) {
@@ -5926,6 +5927,7 @@ func (q *Queries) CreateAktion(ctx context.Context, arg CreateAktionParams) (sql
 		arg.Erledigt,
 		arg.IDUserErledigt,
 		arg.ErledigtAm,
+		arg.Bemerkung,
 	)
 }
 
@@ -5939,7 +5941,7 @@ func (q *Queries) DeleteAktion(ctx context.Context, id int32) error {
 }
 
 const getAktion = `-- name: GetAktion :one
-SELECT id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+SELECT id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am, bemerkung
 FROM AKTIONEN
 WHERE ID = ?
 `
@@ -5958,12 +5960,13 @@ func (q *Queries) GetAktion(ctx context.Context, id int32) (Aktionen, error) {
 		&i.Erledigt,
 		&i.IDUserErledigt,
 		&i.ErledigtAm,
+		&i.Bemerkung,
 	)
 	return i, err
 }
 
 const listAktionen = `-- name: ListAktionen :many
-SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, 
+SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, a.bemerkung,
        u1.USERNAME as username,
        u2.USERNAME as username_erledigt
 FROM AKTIONEN a
@@ -5996,6 +5999,7 @@ type ListAktionenRow struct {
 	Erledigt         sql.NullInt64  `json:"erledigt"`
 	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
 	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Bemerkung        sql.NullString `json:"bemerkung"`
 	Username         sql.NullString `json:"username"`
 	UsernameErledigt sql.NullString `json:"username_erledigt"`
 }
@@ -6031,6 +6035,7 @@ func (q *Queries) ListAktionen(ctx context.Context, arg ListAktionenParams) ([]L
 			&i.Erledigt,
 			&i.IDUserErledigt,
 			&i.ErledigtAm,
+			&i.Bemerkung,
 			&i.Username,
 			&i.UsernameErledigt,
 		); err != nil {
@@ -6057,7 +6062,8 @@ SET AKTIONEN_KZ       = ?,
     ANZAHL_INTERVALLE = ?,
     ERLEDIGT          = ?,
     ID_USER_ERLEDIGT  = ?,
-    ERLEDIGT_AM       = ?
+    ERLEDIGT_AM       = ?,
+    BEMERKUNG         = ?
 WHERE ID = ?
 `
 
@@ -6071,6 +6077,7 @@ type UpdateAktionParams struct {
 	Erledigt         sql.NullInt32  `json:"erledigt"`
 	IDUserErledigt   sql.NullInt32  `json:"id_user_erledigt"`
 	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Bemerkung        sql.NullString `json:"bemerkung"`
 	ID               int32          `json:"id"`
 }
 
@@ -6085,6 +6092,7 @@ func (q *Queries) UpdateAktion(ctx context.Context, arg UpdateAktionParams) erro
 		arg.Erledigt,
 		arg.IDUserErledigt,
 		arg.ErledigtAm,
+		arg.Bemerkung,
 		arg.ID,
 	)
 	return err

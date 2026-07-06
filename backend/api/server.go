@@ -8241,6 +8241,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Username         string `json:"username"`
 			UsernameErledigt string `json:"username_erledigt"`
 			ErledigtAm       string `json:"erledigt_am"`
+			Bemerkung        string `json:"bemerkung"`
 		}
 
 		formatted := make([]AktionenResponse, len(res))
@@ -8265,6 +8266,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				Username:         r.Username.String,
 				UsernameErledigt: r.UsernameErledigt.String,
 				ErledigtAm:       r.ErledigtAm.String,
+				Bemerkung:        r.Bemerkung.String,
 			}
 		}
 
@@ -8283,6 +8285,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Erledigt         int64  `json:"erledigt"`
 			IDUserErledigt   int64  `json:"id_user_erledigt"`
 			ErledigtAm       string `json:"erledigt_am"`
+			Bemerkung        string `json:"bemerkung"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -8303,6 +8306,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Erledigt:         toNullInt64(req.Erledigt),
 			IDUserErledigt:   toNullInt64(req.IDUserErledigt),
 			ErledigtAm:       toNullString(req.ErledigtAm),
+			Bemerkung:        toNullString(req.Bemerkung),
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -8327,6 +8331,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Erledigt         int64  `json:"erledigt"`
 			IDUserErledigt   int64  `json:"id_user_erledigt"`
 			ErledigtAm       string `json:"erledigt_am"`
+			Bemerkung        string `json:"bemerkung"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -8350,6 +8355,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Erledigt:         toNullInt64(req.Erledigt),
 			IDUserErledigt:   toNullInt64(req.IDUserErledigt),
 			ErledigtAm:       toNullString(req.ErledigtAm),
+			Bemerkung:        toNullString(req.Bemerkung),
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

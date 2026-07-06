@@ -167,6 +167,12 @@
           {{ extractString(props.row.erledigt_am) || '-' }}
         </q-td>
       </template>
+
+      <template v-slot:body-cell-bemerkung="props">
+        <q-td :props="props">
+          {{ extractString(props.row.bemerkung) || '-' }}
+        </q-td>
+      </template>
     </q-table>
 
     <!-- Create/Edit Dialog -->
@@ -287,6 +293,20 @@
               </div>
             </div>
 
+            <div class="row" v-if="form.ERLEDIGT_BOOL">
+              <div class="col-12">
+                <q-input
+                  v-model="form.BEMERKUNG"
+                  label="Bemerkung (Pflichtfeld)"
+                  filled
+                  stack-label
+                  type="textarea"
+                  rows="2"
+                  :rules="[val => !!val && val.trim().length > 0 || 'Bemerkung ist erforderlich']"
+                />
+              </div>
+            </div>
+
             <div class="row justify-end q-mt-md q-gutter-x-sm">
               <q-btn :label="t('form.cancel')" color="negative" outline rounded v-close-popup padding="xs lg" />
               <q-btn :label="isEditing ? 'Aktualisieren' : 'Speichern'" type="submit" color="primary" rounded unelevated padding="xs xl" />
@@ -337,7 +357,8 @@ const form = reactive({
   ERLEDIGT: 0,
   ERLEDIGT_BOOL: false,
   ID_USER_ERLEDIGT: 0,
-  ERLEDIGT_AM: ''
+  ERLEDIGT_AM: '',
+  BEMERKUNG: ''
 });
 
 const columns = [
@@ -350,6 +371,7 @@ const columns = [
   { name: 'anzahl_intervalle', label: 'Anzahl', field: 'anzahl_intervalle', align: 'right', sortable: true },
   { name: 'username_erledigt', label: 'Erledigt von', field: 'username_erledigt', align: 'left', sortable: true },
   { name: 'erledigt_am', label: 'Erledigt am', field: 'erledigt_am', align: 'left', sortable: true },
+  { name: 'bemerkung', label: 'Bemerkung', field: 'bemerkung', align: 'left', sortable: true },
   { name: 'actions', label: 'Aktionen', align: 'center' }
 ];
 
@@ -468,7 +490,8 @@ function openCreate() {
     ERLEDIGT: 0,
     ERLEDIGT_BOOL: false,
     ID_USER_ERLEDIGT: 0,
-    ERLEDIGT_AM: ''
+    ERLEDIGT_AM: '',
+    BEMERKUNG: ''
   });
   showDialog.value = true;
 }
@@ -486,7 +509,8 @@ function onEdit(row: any) {
     ERLEDIGT: extractInt(row.erledigt),
     ERLEDIGT_BOOL: extractInt(row.erledigt) === 1,
     ID_USER_ERLEDIGT: extractInt(row.id_user_erledigt),
-    ERLEDIGT_AM: extractString(row.erledigt_am)
+    ERLEDIGT_AM: extractString(row.erledigt_am),
+    BEMERKUNG: extractString(row.bemerkung)
   });
   showDialog.value = true;
 }
@@ -502,7 +526,8 @@ async function onSubmit(stayOpen = false) {
       anzahl_intervalle: form.ANZAHL_INTERVALLE,
       erledigt: form.ERLEDIGT_BOOL ? 1 : 0,
       id_user_erledigt: form.ERLEDIGT_BOOL ? (form.ID_USER_ERLEDIGT || sessionStore.userId || 0) : 0,
-      erledigt_am: form.ERLEDIGT_AM
+      erledigt_am: form.ERLEDIGT_AM,
+      bemerkung: form.ERLEDIGT_BOOL ? form.BEMERKUNG : ''
     };
 
     let result;
@@ -615,26 +640,65 @@ async function onDelete(row: any) {
 }
 
 async function toggleErledigt(row: any, val: boolean) {
-  try {
-    const id = extractInt(row.id);
-    const payload = {
-      aktionen_kz: extractString(row.aktionen_kz),
-      id_user: extractInt(row.id_user),
-      aktionsdatum: extractString(row.aktionsdatum),
-      bezeichnung: extractString(row.bezeichnung),
-      intervall_tage: extractInt(row.intervall_tage),
-      anzahl_intervalle: extractInt(row.anzahl_intervalle),
-      erledigt: val ? 1 : 0,
-      id_user_erledigt: val ? (sessionStore.userId || 0) : 0,
-      erledigt_am: extractString(row.erledigt_am)
-    };
-    await api.put(`/api/aktionen/${id}`, payload);
-    row.erledigt = val ? 1 : 0; // Optimistic update
-    $q.notify({ type: 'positive', message: val ? 'Aktion erledigt' : 'Aktion wieder offen', timeout: 1000 });
-    await fetchData(); // Refresh grid to apply filters
-  } catch (err) {
-    console.error('Error toggling erledigt:', err);
-    $q.notify({ type: 'negative', message: 'Fehler beim Aktualisieren' });
+  const id = extractInt(row.id);
+  if (val) {
+    $q.dialog({
+      title: 'Aktion abschließen',
+      message: 'Bitte geben Sie eine Bemerkung ein (Pflichtfeld):',
+      prompt: {
+        model: '',
+        type: 'text',
+        isValid: val => val && val.trim().length > 0
+      },
+      cancel: true,
+      persistent: true
+    }).onOk(async (bemerkung) => {
+      try {
+        const payload = {
+          aktionen_kz: extractString(row.aktionen_kz),
+          id_user: extractInt(row.id_user),
+          aktionsdatum: extractString(row.aktionsdatum),
+          bezeichnung: extractString(row.bezeichnung),
+          intervall_tage: extractInt(row.intervall_tage),
+          anzahl_intervalle: extractInt(row.anzahl_intervalle),
+          erledigt: 1,
+          id_user_erledigt: sessionStore.userId || 0,
+          erledigt_am: extractString(row.erledigt_am),
+          bemerkung: bemerkung
+        };
+        await api.put(`/api/aktionen/${id}`, payload);
+        row.erledigt = 1;
+        row.bemerkung = bemerkung;
+        $q.notify({ type: 'positive', message: 'Aktion erledigt', timeout: 1000 });
+        await fetchData();
+      } catch (err) {
+        console.error('Error completing action:', err);
+        $q.notify({ type: 'negative', message: 'Fehler beim Aktualisieren' });
+      }
+    });
+  } else {
+    try {
+      const payload = {
+        aktionen_kz: extractString(row.aktionen_kz),
+        id_user: extractInt(row.id_user),
+        aktionsdatum: extractString(row.aktionsdatum),
+        bezeichnung: extractString(row.bezeichnung),
+        intervall_tage: extractInt(row.intervall_tage),
+        anzahl_intervalle: extractInt(row.anzahl_intervalle),
+        erledigt: 0,
+        id_user_erledigt: 0,
+        erledigt_am: '',
+        bemerkung: ''
+      };
+      await api.put(`/api/aktionen/${id}`, payload);
+      row.erledigt = 0;
+      row.bemerkung = '';
+      $q.notify({ type: 'positive', message: 'Aktion wieder offen', timeout: 1000 });
+      await fetchData();
+    } catch (err) {
+      console.error('Error reopening action:', err);
+      $q.notify({ type: 'negative', message: 'Fehler beim Aktualisieren' });
+    }
   }
 }
 

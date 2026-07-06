@@ -14,6 +14,8 @@ type Config struct {
 	Mode               string `json:"mode"`          // "standalone" or "server"
 	DBEngine           string `json:"db_engine"`     // "sqlite" or "mysql"
 	DBConnectionString string `json:"db_connection"` // e.g. "HuhnLite.db" or "user:pass@tcp(127.0.0.1:3306)/dbname"
+	DBConnectTest      string `json:"db_connect_test"`
+	Test               int    `json:"test"`
 	Port               int    `json:"port"`          // HTTP Port for server mode or standalone Gin server
 	System             int    `json:"system"`        // 1 = Erlaube Bearbeiten von System-Einträgen
 }
@@ -154,6 +156,8 @@ func LoadConfig() Config {
 		Mode:               "standalone",
 		DBEngine:           "sqlite",
 		DBConnectionString: defaultDB,
+		DBConnectTest:      "",
+		Test:               0,
 		Port:               8080,
 		System:             0,
 	}
@@ -214,14 +218,85 @@ func LoadConfig() Config {
 						}
 						cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
 					}
+					if cfg.DBEngine == "sqlite" && cfg.DBConnectTest != "" && !filepath.IsAbs(cfg.DBConnectTest) {
+						if strings.HasPrefix(cfg.DBConnectTest, "/Users/") || strings.HasPrefix(cfg.DBConnectTest, "Users/") {
+							cfg.DBConnectTest = filepath.Base(cfg.DBConnectTest)
+						}
+						cfg.DBConnectTest = filepath.Join(filepath.Dir(p), cfg.DBConnectTest)
+					}
 					return cfg
 				}
 			}
 		}
 	}
-
 	log.Printf("Warnung: settings.json nicht gefunden, verwende Defaults (DB: %s)", cfg.DBConnectionString)
 	return cfg
+}
+
+func SaveTestSetting(testVal int, engine string) error {
+	configName := "settings.json"
+	if engine == "mysql" {
+		configName = "settings_mariadb.json"
+	}
+
+	cwd, _ := os.Getwd()
+	execPath, _ := os.Executable()
+	var bundleDir string
+	if execPath != "" {
+		bundleDir = filepath.Dir(execPath)
+		if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
+			bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
+		}
+	}
+	parent := filepath.Dir(cwd)
+	appDataDir := ""
+	configDir, err := os.UserConfigDir()
+	if err == nil {
+		appDataDir = filepath.Join(configDir, "HuhnLite-Wails")
+	}
+
+	paths := []string{
+		filepath.Join(cwd, configName),
+		filepath.Join(parent, configName),
+	}
+	if appDataDir != "" {
+		paths = append(paths, filepath.Join(appDataDir, configName))
+	}
+	if bundleDir != "" {
+		paths = append(paths, filepath.Join(bundleDir, configName))
+	}
+
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			// Read the file
+			data, err := os.ReadFile(p)
+			if err != nil {
+				continue
+			}
+
+			// Unmarshal into a generic map
+			var configMap map[string]interface{}
+			if err := json.Unmarshal(data, &configMap); err != nil {
+				continue
+			}
+
+			// Update test field
+			configMap["test"] = testVal
+
+			// Marshal back
+			newData, err := json.MarshalIndent(configMap, "", "  ")
+			if err != nil {
+				continue
+			}
+
+			// Write back
+			err = os.WriteFile(p, newData, 0644)
+			if err == nil {
+				log.Printf("Successfully saved test=%d to %s", testVal, p)
+			}
+		}
+	}
+	return nil
 }
 
 // UnmarshalJSON implements a custom JSON unmarshaler to handle multiple types for the "system" field.

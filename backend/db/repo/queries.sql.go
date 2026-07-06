@@ -101,8 +101,8 @@ func (q *Queries) AdjustHerdeStock(ctx context.Context, arg AdjustHerdeStockPara
 }
 
 const createAktion = `-- name: CreateAktion :one
-INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM, BEMERKUNG)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am, bemerkung
 `
 
 type CreateAktionParams struct {
@@ -115,6 +115,7 @@ type CreateAktionParams struct {
 	Erledigt         sql.NullInt64  `json:"erledigt"`
 	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
 	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Bemerkung        sql.NullString `json:"bemerkung"`
 }
 
 func (q *Queries) CreateAktion(ctx context.Context, arg CreateAktionParams) (Aktionen, error) {
@@ -128,6 +129,7 @@ func (q *Queries) CreateAktion(ctx context.Context, arg CreateAktionParams) (Akt
 		arg.Erledigt,
 		arg.IDUserErledigt,
 		arg.ErledigtAm,
+		arg.Bemerkung,
 	)
 	var i Aktionen
 	err := row.Scan(
@@ -141,6 +143,7 @@ func (q *Queries) CreateAktion(ctx context.Context, arg CreateAktionParams) (Akt
 		&i.Erledigt,
 		&i.IDUserErledigt,
 		&i.ErledigtAm,
+		&i.Bemerkung,
 	)
 	return i, err
 }
@@ -1787,7 +1790,7 @@ func (q *Queries) DeleteVerkaufByEilagerbuchung(ctx context.Context, idEilagerbu
 }
 
 const getAktion = `-- name: GetAktion :one
-SELECT id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+SELECT id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am, bemerkung
 FROM AKTIONEN
 WHERE ID = ?
 `
@@ -1806,6 +1809,7 @@ func (q *Queries) GetAktion(ctx context.Context, id int64) (Aktionen, error) {
 		&i.Erledigt,
 		&i.IDUserErledigt,
 		&i.ErledigtAm,
+		&i.Bemerkung,
 	)
 	return i, err
 }
@@ -3135,7 +3139,7 @@ func (q *Queries) IncreaseHerdeStockById(ctx context.Context, arg IncreaseHerdeS
 }
 
 const listAktionen = `-- name: ListAktionen :many
-SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, 
+SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, a.bemerkung,
        u1.USERNAME as username,
        u2.USERNAME as username_erledigt
 FROM AKTIONEN a
@@ -3168,6 +3172,7 @@ type ListAktionenRow struct {
 	Erledigt         sql.NullInt64  `json:"erledigt"`
 	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
 	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Bemerkung        sql.NullString `json:"bemerkung"`
 	Username         sql.NullString `json:"username"`
 	UsernameErledigt sql.NullString `json:"username_erledigt"`
 }
@@ -3198,6 +3203,7 @@ func (q *Queries) ListAktionen(ctx context.Context, arg ListAktionenParams) ([]L
 			&i.Erledigt,
 			&i.IDUserErledigt,
 			&i.ErledigtAm,
+			&i.Bemerkung,
 			&i.Username,
 			&i.UsernameErledigt,
 		); err != nil {
@@ -5199,8 +5205,9 @@ SET AKTIONEN_KZ       = ?,
     ANZAHL_INTERVALLE = ?,
     ERLEDIGT          = ?,
     ID_USER_ERLEDIGT  = ?,
-    ERLEDIGT_AM       = ?
-WHERE ID = ? RETURNING id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am
+    ERLEDIGT_AM       = ?,
+    BEMERKUNG         = ?
+WHERE ID = ? RETURNING id, aktionen_kz, id_user, aktionsdatum, bezeichnung, intervall_tage, anzahl_intervalle, erledigt, id_user_erledigt, erledigt_am, bemerkung
 `
 
 type UpdateAktionParams struct {
@@ -5213,6 +5220,7 @@ type UpdateAktionParams struct {
 	Erledigt         sql.NullInt64  `json:"erledigt"`
 	IDUserErledigt   sql.NullInt64  `json:"id_user_erledigt"`
 	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Bemerkung        sql.NullString `json:"bemerkung"`
 	ID               int64          `json:"id"`
 }
 
@@ -5227,6 +5235,7 @@ func (q *Queries) UpdateAktion(ctx context.Context, arg UpdateAktionParams) (Akt
 		arg.Erledigt,
 		arg.IDUserErledigt,
 		arg.ErledigtAm,
+		arg.Bemerkung,
 		arg.ID,
 	)
 	var i Aktionen
@@ -5241,6 +5250,7 @@ func (q *Queries) UpdateAktion(ctx context.Context, arg UpdateAktionParams) (Akt
 		&i.Erledigt,
 		&i.IDUserErledigt,
 		&i.ErledigtAm,
+		&i.Bemerkung,
 	)
 	return i, err
 }

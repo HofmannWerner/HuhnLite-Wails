@@ -2,6 +2,8 @@
   "mode": "standalone",
   "db_engine": "sqlite",
   "db_connection": "HuhnLite.db",
+  "db_connect_test": "HuhnLite_test.db",
+  "test": 0,
   "port": 8080,
   "system": 1
 }

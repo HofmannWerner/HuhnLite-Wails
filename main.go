@@ -26,6 +26,11 @@ func main() {
 	// Load config
 	cfg := config.LoadConfig()
 
+	if cfg.Test == 1 && cfg.DBConnectTest != "" {
+		log.Printf("Test-Datenbank-Modus ist aktiv. Schalte um auf: %s", cfg.DBConnectTest)
+		cfg.DBConnectionString = cfg.DBConnectTest
+	}
+
 	// Server-Modus: Starte reinen Gin Webserver und beende danach (ohne Wails-GUI)
 	if cfg.Mode == "server" {
 		log.Printf("Running in SERVER mode")

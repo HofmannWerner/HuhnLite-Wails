@@ -2223,6 +2223,7 @@ func (w *MySQLWrapper) CreateAktion(ctx context.Context, arg repo.CreateAktionPa
 		Erledigt:         toNullInt32(arg.Erledigt),
 		IDUserErledigt:   toNullInt32(arg.IDUserErledigt),
 		ErledigtAm:       toNullString(arg.ErledigtAm),
+		Bemerkung:        toNullString(arg.Bemerkung),
 	})
 	if err != nil {
 		log.Printf("[DB] CreateAktion ERROR: %v", err)
@@ -2245,6 +2246,7 @@ func (w *MySQLWrapper) UpdateAktion(ctx context.Context, arg repo.UpdateAktionPa
 		Erledigt:         toNullInt32(arg.Erledigt),
 		IDUserErledigt:   toNullInt32(arg.IDUserErledigt),
 		ErledigtAm:       toNullString(arg.ErledigtAm),
+		Bemerkung:        toNullString(arg.Bemerkung),
 		ID:               int32(arg.ID),
 	})
 	if err != nil {
@@ -2271,6 +2273,7 @@ func convertAktion(v repo_mysql.Aktionen) repo.Aktionen {
 		Erledigt:         sql.NullInt64{Int64: int64(v.Erledigt.Int32), Valid: v.Erledigt.Valid},
 		IDUserErledigt:   sql.NullInt64{Int64: int64(v.IDUserErledigt.Int32), Valid: v.IDUserErledigt.Valid},
 		ErledigtAm:       v.ErledigtAm,
+		Bemerkung:        v.Bemerkung,
 	}
 }
 
@@ -2286,6 +2289,7 @@ func convertListAktionenRow(v repo_mysql.ListAktionenRow) repo.ListAktionenRow {
 		Erledigt:         v.Erledigt,
 		IDUserErledigt:   v.IDUserErledigt,
 		ErledigtAm:       v.ErledigtAm,
+		Bemerkung:        v.Bemerkung,
 		Username:         v.Username,
 		UsernameErledigt: v.UsernameErledigt,
 	}

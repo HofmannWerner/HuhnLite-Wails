@@ -14,6 +14,10 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
+export function IsTestDB() {
+  return window['go']['main']['App']['IsTestDB']();
+}
+
 export function OpenHelp(arg1) {
   return window['go']['main']['App']['OpenHelp'](arg1);
 }
@@ -24,4 +28,8 @@ export function Quit() {
 
 export function SaveWindowState(arg1, arg2) {
   return window['go']['main']['App']['SaveWindowState'](arg1, arg2);
+}
+
+export function ToggleTestDB(arg1) {
+  return window['go']['main']['App']['ToggleTestDB'](arg1);
 }

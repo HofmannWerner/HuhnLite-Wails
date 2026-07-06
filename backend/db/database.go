@@ -15,11 +15,13 @@ import (
 )
 
 type DB struct {
-	SQL       *sql.DB
-	Repo      repo.Querier
-	RepoMySQL *repo_mysql.Queries
-	Config    config.Config
-	Engine    string
+	SQL           *sql.DB
+	Repo          repo.Querier
+	RepoMySQL     *repo_mysql.Queries
+	Config        config.Config
+	Engine        string
+	ActiveConnStr string
+	IsTestMode    bool
 }
 
 func Connect(cfg config.Config) (*DB, error) {
@@ -138,6 +140,7 @@ func Connect(cfg config.Config) (*DB, error) {
 			}{
 				{"ERLEDIGT_AM", "VARCHAR(25) DEFAULT ''"},
 				{"ID_USER_ERLEDIGT", "INTEGER DEFAULT 0"},
+				{"BEMERKUNG", "TEXT"},
 			}
 			for _, col := range columns {
 				var hasColumn bool
@@ -353,10 +356,12 @@ func Connect(cfg config.Config) (*DB, error) {
 	log.Printf("Successfully connected to %s database at %s", cfg.DBEngine, cfg.DBConnectionString)
 
 	d := &DB{
-		SQL:       conn,
-		RepoMySQL: repo_mysql.New(conn),
-		Config:    cfg,
-		Engine:    cfg.DBEngine,
+		SQL:           conn,
+		RepoMySQL:     repo_mysql.New(conn),
+		Config:        cfg,
+		Engine:        cfg.DBEngine,
+		ActiveConnStr: cfg.DBConnectionString,
+		IsTestMode:    cfg.Test == 1,
 	}
 
 	if cfg.DBEngine == "mysql" {
@@ -366,4 +371,44 @@ func Connect(cfg config.Config) (*DB, error) {
 	}
 
 	return d, nil
+}
+
+func (d *DB) SwitchConnection(connString string, isTest bool) error {
+	var conn *sql.DB
+	var err error
+
+	if d.Engine == "sqlite" {
+		conn, err = sql.Open("sqlite", connString)
+	} else if d.Engine == "mysql" {
+		conn, err = sql.Open("mysql", connString)
+	} else {
+		return fmt.Errorf("unsupported database engine: %s", d.Engine)
+	}
+
+	if err != nil {
+		return err
+	}
+	if err := conn.Ping(); err != nil {
+		conn.Close()
+		return err
+	}
+
+	// Close old connection
+	if d.SQL != nil {
+		d.SQL.Close()
+	}
+
+	d.SQL = conn
+	d.RepoMySQL = repo_mysql.New(conn)
+	if d.Engine == "mysql" {
+		d.Repo = NewMySQLWrapper(repo.New(conn), d.RepoMySQL, conn)
+	} else {
+		d.Repo = repo.New(conn)
+	}
+
+	d.ActiveConnStr = connString
+	d.IsTestMode = isTest
+
+	log.Printf("Successfully switched database (TestMode: %v) to: %s", isTest, connString)
+	return nil
 }

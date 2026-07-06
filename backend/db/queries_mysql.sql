@@ -1373,7 +1373,7 @@ FROM AKTIONEN
 WHERE ID = ?;
 
 -- name: ListAktionen :many
-SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, 
+SELECT a.id, a.aktionen_kz, a.id_user, a.aktionsdatum, a.bezeichnung, a.intervall_tage, a.anzahl_intervalle, a.erledigt, a.id_user_erledigt, a.erledigt_am, a.bemerkung,
        u1.USERNAME as username,
        u2.USERNAME as username_erledigt
 FROM AKTIONEN a
@@ -1387,8 +1387,8 @@ WHERE (? = 0 OR a.ID_USER = ? OR a.ID_USER = 0)
 ORDER BY a.AKTIONSDATUM DESC;
 
 -- name: CreateAktion :execresult
-INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO AKTIONEN (AKTIONEN_KZ, ID_USER, AKTIONSDATUM, BEZEICHNUNG, INTERVALL_TAGE, ANZAHL_INTERVALLE, ERLEDIGT, ID_USER_ERLEDIGT, ERLEDIGT_AM, BEMERKUNG)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: UpdateAktion :exec
 UPDATE AKTIONEN
@@ -1400,7 +1400,8 @@ SET AKTIONEN_KZ       = ?,
     ANZAHL_INTERVALLE = ?,
     ERLEDIGT          = ?,
     ID_USER_ERLEDIGT  = ?,
-    ERLEDIGT_AM       = ?
+    ERLEDIGT_AM       = ?,
+    BEMERKUNG         = ?
 WHERE ID = ?;
 
 -- name: DeleteAktion :exec

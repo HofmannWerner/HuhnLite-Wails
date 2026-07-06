@@ -8,8 +8,12 @@ export function GetHelpContent(arg1:string):Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
 
+export function IsTestDB():Promise<boolean>;
+
 export function OpenHelp(arg1:string):Promise<string>;
 
 export function Quit():Promise<void>;
 
 export function SaveWindowState(arg1:context.Context,arg2:string):Promise<void>;
+
+export function ToggleTestDB(arg1:boolean):Promise<string>;

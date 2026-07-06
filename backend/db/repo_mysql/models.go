@@ -19,6 +19,7 @@ type Aktionen struct {
 	Erledigt         sql.NullInt32  `json:"erledigt"`
 	IDUserErledigt   sql.NullInt32  `json:"id_user_erledigt"`
 	ErledigtAm       sql.NullString `json:"erledigt_am"`
+	Bemerkung        sql.NullString `json:"bemerkung"`
 }
 
 type Benutzer struct {

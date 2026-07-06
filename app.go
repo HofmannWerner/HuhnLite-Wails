@@ -11,6 +11,7 @@ import (
 	stdruntime "runtime"
 
 	"huhnlite-wails/backend/api"
+	"huhnlite-wails/backend/config"
 	"huhnlite-wails/backend/db"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -131,8 +132,46 @@ func (a *App) GetDBStatus() map[string]string {
 	}
 	return map[string]string{
 		"engine": a.database.Engine,
-		"host":   a.database.Config.DBConnectionString,
+		"host":   a.database.ActiveConnStr,
 	}
+}
+
+// IsTestDB returns whether the database is currently running in test mode
+func (a *App) IsTestDB() bool {
+	if a.database == nil {
+		return false
+	}
+	return a.database.IsTestMode
+}
+
+// ToggleTestDB toggles between the production and test database
+func (a *App) ToggleTestDB(useTest bool) (string, error) {
+	if a.database == nil {
+		return "", fmt.Errorf("database not initialized")
+	}
+
+	var targetConn string
+	if useTest {
+		targetConn = a.database.Config.DBConnectTest
+		if targetConn == "" {
+			return "", fmt.Errorf("no test database connection string defined in settings (db_connect_test)")
+		}
+	} else {
+		targetConn = a.database.Config.DBConnectionString
+	}
+
+	err := a.database.SwitchConnection(targetConn, useTest)
+	if err != nil {
+		return "", err
+	}
+
+	testVal := 0
+	if useTest {
+		testVal = 1
+	}
+	_ = config.SaveTestSetting(testVal, a.database.Engine)
+
+	return a.database.ActiveConnStr, nil
 }
 
 // Quit closes the application
