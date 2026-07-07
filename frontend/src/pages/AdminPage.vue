@@ -13,6 +13,15 @@
           </q-card-section>
 
           <q-card-section class="q-pa-xl">
+            <!-- Test DB Warning -->
+            <div v-if="!isTestDb" class="bg-warning text-black q-pa-md rounded-borders q-mb-lg row items-center">
+              <q-icon name="warning" size="md" class="q-mr-md" />
+              <div class="col text-subtitle1 text-weight-bold">
+                Diese Systemwartung (Stundenshift) ist nur im Test-Modus (Test-Datenbank) zulässig!
+                Bitte aktivieren Sie oben die Test-Datenbank.
+              </div>
+            </div>
+
             <div class="row q-col-gutter-xl items-center">
 
               <!-- Eingabe links -->
@@ -23,6 +32,7 @@
                   filled
                   bg-color="white"
                   outlined
+                  :disable="!isTestDb"
                   :placeholder="t('auto.zahl_eingeben')"
                   input-style="font-size: 2rem; text-align: center; font-weight: bold;"
                   :hint="t('auto.positive_zahl_zukunft_negative_zahl_verg')"
@@ -46,6 +56,7 @@
                   unelevated
                   padding="lg"
                   :loading="processing"
+                  :disable="!isTestDb"
                   @click="confirmAndRun"
                 />
                 <q-btn
@@ -80,6 +91,7 @@ const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { useQuasar, date as qDate } from 'quasar';
 import { api } from '../boot/api';
+import { IsTestDB } from '../../wailsjs/go/main/App';
 
 const $q = useQuasar();
 
@@ -87,6 +99,7 @@ const latestDate = ref('');
 const daysInput = ref('0');
 const suggestedDiff = ref(0);
 const processing = ref(false);
+const isTestDb = ref(false);
 
 const extractString = (val: unknown): string => {
   if (val === null || val === undefined) return '';
@@ -95,6 +108,16 @@ const extractString = (val: unknown): string => {
   }
   return String(val);
 };
+
+async function checkTestDb() {
+  if (window.go && window.go.main && window.go.main.App) {
+    try {
+      isTestDb.value = await IsTestDB();
+    } catch (e) {
+      console.error('Failed to check test DB status:', e);
+    }
+  }
+}
 
 async function loadInitData() {
   console.log('AdminPage: Lade-Vorgang gestartet');
@@ -166,6 +189,7 @@ async function runUpdate(days: number) {
 }
 
 onMounted(async () => {
+  await checkTestDb();
   await loadInitData();
 });
 </script>

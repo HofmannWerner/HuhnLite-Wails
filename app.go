@@ -165,6 +165,9 @@ func (a *App) ToggleTestDB(useTest bool) (string, error) {
 		return "", err
 	}
 
+	// Schema/Migrations auf der neuen Verbindung ausführen
+	api.MigrateDB(a.database)
+
 	testVal := 0
 	if useTest {
 		testVal = 1

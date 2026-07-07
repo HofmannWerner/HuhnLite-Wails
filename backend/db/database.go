@@ -23,16 +23,20 @@ type DB struct {
 	ActiveConnStr string
 	IsTestMode    bool
 }
-
 func Connect(cfg config.Config) (*DB, error) {
 	var conn *sql.DB
 	var err error
 
+	connStr := cfg.DBConnectionString
+	if cfg.Test == 1 && cfg.DBConnectTest != "" {
+		connStr = cfg.DBConnectTest
+	}
+
 	if cfg.DBEngine == "sqlite" {
-		conn, err = sql.Open("sqlite", cfg.DBConnectionString)
+		conn, err = sql.Open("sqlite", connStr)
 	} else if cfg.DBEngine == "mysql" {
 		// Expecting MariaDB/MySQL DSN
-		conn, err = sql.Open("mysql", cfg.DBConnectionString)
+		conn, err = sql.Open("mysql", connStr)
 	} else {
 		return nil, fmt.Errorf("unsupported database engine: %s", cfg.DBEngine)
 	}

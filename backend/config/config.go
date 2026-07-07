@@ -186,15 +186,25 @@ func LoadConfig() Config {
 	}
 
 	for _, configName := range configFiles {
-		paths := []string{
-			filepath.Join(cwd, configName),
-			filepath.Join(parent, configName),
-		}
-		if appDataDir != "" {
-			paths = append(paths, filepath.Join(appDataDir, configName))
-		}
-		if bundleDir != "" && !isProgramFiles {
-			paths = append(paths, filepath.Join(bundleDir, configName))
+		var paths []string
+		if isProgramFiles && appDataDir != "" {
+			// Prioritize AppData settings when running from Program Files (since Program Files is read-only)
+			paths = []string{
+				filepath.Join(appDataDir, configName),
+				filepath.Join(cwd, configName),
+				filepath.Join(parent, configName),
+			}
+		} else {
+			paths = []string{
+				filepath.Join(cwd, configName),
+				filepath.Join(parent, configName),
+			}
+			if appDataDir != "" {
+				paths = append(paths, filepath.Join(appDataDir, configName))
+			}
+			if bundleDir != "" && !isProgramFiles {
+				paths = append(paths, filepath.Join(bundleDir, configName))
+			}
 		}
 		// If running in macOS bundle, check Contents/Resources
 		if errExec == nil && filepath.Base(filepath.Dir(execPath)) == "MacOS" && filepath.Base(filepath.Dir(filepath.Dir(execPath))) == "Contents" {

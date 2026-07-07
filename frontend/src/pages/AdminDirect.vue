@@ -11,6 +11,15 @@
       </q-card-section>
 
       <q-card-section class="q-pa-xl">
+        <!-- Test DB Warning -->
+        <div v-if="!isTestDb" class="bg-warning text-black q-pa-md rounded-borders q-mb-lg row items-center">
+          <q-icon name="warning" size="md" class="q-mr-md" />
+          <div class="col text-subtitle1 text-weight-bold">
+            Diese Systemwartung (Stundenshift) ist nur im Test-Modus (Test-Datenbank) zulässig!
+            Bitte aktivieren Sie oben die Test-Datenbank.
+          </div>
+        </div>
+
         <div class="text-h6 q-mb-md">{{ t('auto.wieviele_tage_verschieben') }}</div>
 
         <q-input
@@ -18,6 +27,7 @@
           filled
           bg-color="white"
           outlined
+          :disable="!isTestDb"
           :placeholder="t('auto.zahl_hier_eingeben')"
           class="q-mb-lg"
           input-style="font-size: 2.5rem; text-align: center; color: #1976D2;"
@@ -32,6 +42,7 @@
           rounded
           unelevated
           :loading="loading"
+          :disable="!isTestDb"
           @click="startAction"
         />
 
@@ -59,12 +70,14 @@ const { t } = useI18n();
 import { ref, onMounted } from 'vue';
 import { useQuasar, date as qDate } from 'quasar';
 import { api } from '../boot/api';
+import { IsTestDB } from '../../wailsjs/go/main/App';
 
 const $q = useQuasar();
 const days = ref('666'); // Testwert: Wenn man 666 sieht, ist es diese Datei!
 const latestDate = ref('');
 const suggested = ref(0);
 const loading = ref(false);
+const isTestDb = ref(false);
 
 const extractString = (val: any) => {
   if (val === null || val === undefined) return '';
@@ -72,7 +85,18 @@ const extractString = (val: any) => {
   return String(val);
 };
 
+async function checkTestDb() {
+  if (window.go && window.go.main && window.go.main.App) {
+    try {
+      isTestDb.value = await IsTestDB();
+    } catch (e) {
+      console.error('Failed to check test DB status:', e);
+    }
+  }
+}
+
 async function init() {
+  await checkTestDb();
   try {
     const res = await api.get('/api/admin/latest-date');
     if (res.data && res.data.max_date) {

@@ -21,26 +21,24 @@
         </q-checkbox>
 
         <!-- Global Date/Time Selector -->
-        <div class="row items-center q-gutter-x-md q-px-md bg-white-opacity-10 rounded-borders q-ml-md">
-           <q-icon name="schedule" size="xs" />
+        <div class="row items-center q-gutter-x-md q-px-md bg-white rounded-borders q-ml-md date-time-selector">
+           <q-icon name="schedule" size="xs" class="text-black" />
            <q-input
             v-model="sessionDate"
             type="date"
-            dark
             dense
             borderless
             readonly
-            input-class="text-weight-bold"
+            input-class="text-weight-bold text-black"
             style="width: 130px; background: transparent;"
           />
           <q-input
             v-model="sessionTime"
             type="time"
-            dark
             dense
             borderless
             readonly
-            input-class="text-weight-bold"
+            input-class="text-weight-bold text-black"
             style="width: 80px; background: transparent;"
           />
         </div>
@@ -223,7 +221,7 @@
 
 
 
-          <q-item v-if="session.can('sql_struktur_verwalten')" clickable v-ripple to="/admin"
+          <q-item v-if="session.can('sql_struktur_verwalten') && isTestDb" clickable v-ripple to="/admin"
                   :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
             <q-item-section avatar>
               <q-icon name="storage"/>
@@ -731,5 +729,11 @@ watch(() => sessionStore.isLoggedIn, (newVal) => {
   border: none !important;
   -webkit-appearance: none;
   opacity: 1 !important;
+}
+.date-time-selector :deep(input) {
+  color: #000000 !important;
+}
+.date-time-selector {
+  color: #000000 !important;
 }
 </style>

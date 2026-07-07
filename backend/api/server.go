@@ -894,12 +894,12 @@ func getHelpDir(database *wailsdb.DB) string {
 
 func StartServer(database *wailsdb.DB) *gin.Engine {
 	log.Printf("[DEBUG] StartServer called with engine: %s", database.Engine)
-	conn := database.SQL
-	queries := database.Repo
+	/* conn := database.SQL */
+	/* queries := database.Repo */
 	currentDBPath := database.Config.DBConnectionString
 	backupDir := filepath.Join(filepath.Dir(currentDBPath), "backups")
 	_ = os.MkdirAll(backupDir, 0755)
-	migrateDB(database)
+	MigrateDB(database)
 
 	// Gin Engine initialisieren
 	r := gin.New()
@@ -952,7 +952,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// Database override
 		var dbVal string
-		err := conn.QueryRowContext(c, "SELECT VALUE FROM SYSTEMSETTINGS WHERE NAME = 'auth_required'").Scan(&dbVal)
+		err := database.SQL.QueryRowContext(c, "SELECT VALUE FROM SYSTEMSETTINGS WHERE NAME = 'auth_required'").Scan(&dbVal)
 		if err == nil {
 			authEnabled = (dbVal == "true" || dbVal == "1")
 			log.Printf("[API] /api/config - auth_required from DB: %s -> authEnabled: %v", dbVal, authEnabled)
@@ -978,7 +978,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	r.GET("/api/system-settings/:name", func(c *gin.Context) {
 		name := c.Param("name")
 		var value string
-		err := conn.QueryRowContext(c, "SELECT VALUE FROM SYSTEMSETTINGS WHERE NAME = ?", name).Scan(&value)
+		err := database.SQL.QueryRowContext(c, "SELECT VALUE FROM SYSTEMSETTINGS WHERE NAME = ?", name).Scan(&value)
 		if err != nil {
 			log.Printf("[API] GET /api/system-settings/%s - Error: %v", name, err)
 			if err == sql.ErrNoRows {
@@ -1011,7 +1011,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		if database.Engine == "mysql" {
 			upsertQuery = "INSERT INTO SYSTEMSETTINGS (NAME, VALUE) VALUES (?, ?) ON DUPLICATE KEY UPDATE VALUE = VALUES(VALUE)"
 		}
-		_, err := conn.ExecContext(c, upsertQuery, req.Name, req.Value)
+		_, err := database.SQL.ExecContext(c, upsertQuery, req.Name, req.Value)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1030,7 +1030,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			idInt = -1
 		}
 
-		res, err := queries.GetFirmenparameterByHerde(c, idInt)
+		res, err := database.Repo.GetFirmenparameterByHerde(c, idInt)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusOK, gin.H{})
@@ -1043,7 +1043,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/firmenparameter-herden-ids", func(c *gin.Context) {
-		rows, err := conn.QueryContext(c, "SELECT DISTINCT ID_HERDEN FROM FIRMENPARAMETER WHERE ID_HERDEN > 0")
+		rows, err := database.SQL.QueryContext(c, "SELECT DISTINCT ID_HERDEN FROM FIRMENPARAMETER WHERE ID_HERDEN > 0")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1068,7 +1068,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Check if parameters exist for this Herde
-		currentParam, err := queries.GetFirmenparameterByHerde(c, herdeID)
+		currentParam, err := database.Repo.GetFirmenparameterByHerde(c, herdeID)
 		if err == nil {
 			c.JSON(http.StatusOK, gin.H{"data": currentParam, "is_new": false})
 			return
@@ -1078,7 +1078,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 2. If it does not exist, get Firma parameter (ID_HERDEN = -1)
-		firmaParam, err := queries.GetFirmenparameterByHerde(c, -1)
+		firmaParam, err := database.Repo.GetFirmenparameterByHerde(c, -1)
 		if err != nil && err != sql.ErrNoRows {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1113,14 +1113,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Try herd specific
-		res, err := queries.GetFirmenparameterByHerde(c, herdeID)
+		res, err := database.Repo.GetFirmenparameterByHerde(c, herdeID)
 		if err == nil {
 			c.JSON(http.StatusOK, res)
 			return
 		}
 
 		// 2. Fallback to global (-1)
-		res, err = queries.GetFirmenparameterByHerde(c, -1)
+		res, err = database.Repo.GetFirmenparameterByHerde(c, -1)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "default parameters not found"})
@@ -1240,9 +1240,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// FOOLPROOF STRATEGY: Delete any existing record for this herd, then insert the new one.
-		_ = queries.DeleteFirmenparameter(c, req.IDHerden)
+		_ = database.Repo.DeleteFirmenparameter(c, req.IDHerden)
 
-		res, err := queries.CreateFirmenparameter(c, params)
+		res, err := database.Repo.CreateFirmenparameter(c, params)
 		if err != nil {
 			log.Printf("[API] POST Firmenparameter Save Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -1267,7 +1267,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		log.Printf("[API] PUT /api/firmenparameter/%d - Data: %+v", idHerden, req)
 
 		// FOOLPROOF STRATEGY: Delete any existing record for this herd, then insert the new one.
-		_ = queries.DeleteFirmenparameter(c, idHerden)
+		_ = database.Repo.DeleteFirmenparameter(c, idHerden)
 
 		params := db.CreateFirmenparameterParams{
 			IDHerden:                  idHerden,
@@ -1317,7 +1317,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Futterinventur:            req.Futterinventur,
 		}
 
-		_, dbErr := queries.CreateFirmenparameter(c, params)
+		_, dbErr := database.Repo.CreateFirmenparameter(c, params)
 		if dbErr != nil {
 			log.Printf("[API] Firmenparameter Save Error: %v", dbErr)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": dbErr.Error()})
@@ -1327,7 +1327,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		log.Printf("DEBUG: Result for ID_HERDEN: %d, Pseudolager: %d (1=ON, 0=OFF)\n", idHerden, req.Pseudolager)
 
 		// Now fetch the record to return it - this is MUCH SAFER than RETURNING *
-		res, err := queries.GetFirmenparameterByHerde(c, idHerden)
+		res, err := database.Repo.GetFirmenparameterByHerde(c, idHerden)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch record after save: " + err.Error()})
 			return
@@ -1347,7 +1347,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// Get the underlying db.Exec result to check RowsAffected
 		arg := idHerden
-		res, err := conn.ExecContext(c, "DELETE FROM FIRMENPARAMETER WHERE ID_HERDEN = ?", arg)
+		res, err := database.SQL.ExecContext(c, "DELETE FROM FIRMENPARAMETER WHERE ID_HERDEN = ?", arg)
 		if err != nil {
 			log.Printf("DEBUG: DELETE failed for ID %d: %v\n", idHerden, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -1362,7 +1362,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// SHOWTV APIs
 	r.GET("/api/showtv", func(c *gin.Context) {
-		res, err := queries.ListShowTV(c)
+		res, err := database.Repo.ListShowTV(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1390,7 +1390,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Tvname: req.Tvname,
 			Showit: req.Showit,
 		}
-		res, err := queries.UpdateShowTV(c, params)
+		res, err := database.Repo.UpdateShowTV(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1401,7 +1401,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	// Rasse APIs
 
 	r.GET("/api/rasse", func(c *gin.Context) {
-		res, err := queries.ListRassen(c)
+		res, err := database.Repo.ListRassen(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1417,7 +1417,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.CreateRasse(c, req.Rasse)
+		res, err := database.Repo.CreateRasse(c, req.Rasse)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1443,7 +1443,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			ID:    idInt,
 			Rasse: req.Rasse,
 		}
-		res, err := queries.UpdateRasse(c, params)
+		res, err := database.Repo.UpdateRasse(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1461,13 +1461,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// Check if any herds are using this rasse
 		var count int64
-		err = conn.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_RASSE = ?", idInt).Scan(&count)
+		err = database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_RASSE = ?", idInt).Scan(&count)
 		if err == nil && count > 0 {
 			c.JSON(http.StatusConflict, gin.H{"error": "Rasse kann nicht gelöscht werden, da sie noch Herden zugeordnet ist."})
 			return
 		}
 
-		if err := queries.DeleteRasse(c, idInt); err != nil {
+		if err := database.Repo.DeleteRasse(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -1476,7 +1476,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Mwst APIs
 	r.GET("/api/mwst", func(c *gin.Context) {
-		res, err := queries.ListMwst(c)
+		res, err := database.Repo.ListMwst(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1499,7 +1499,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Prozent: req.Prozent,
 			Konto:   req.Konto,
 		}
-		res, err := queries.CreateMwst(c, params)
+		res, err := database.Repo.CreateMwst(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1529,7 +1529,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Prozent: req.Prozent,
 			Konto:   req.Konto,
 		}
-		res, err := queries.UpdateMwst(c, params)
+		res, err := database.Repo.UpdateMwst(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1544,7 +1544,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeleteMwst(c, idInt); err != nil {
+		if err := database.Repo.DeleteMwst(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -1553,7 +1553,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Futtersorten APIs
 	r.GET("/api/eierpreise", func(c *gin.Context) {
-		res, err := queries.ListEierpreise(c)
+		res, err := database.Repo.ListEierpreise(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1562,7 +1562,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/futtersorten", func(c *gin.Context) {
-		res, err := queries.ListFuttersorten(c)
+		res, err := database.Repo.ListFuttersorten(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1578,7 +1578,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.CreateFuttersorte(c, req.Bezeichnung)
+		res, err := database.Repo.CreateFuttersorte(c, req.Bezeichnung)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1604,7 +1604,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			ID:          idInt,
 			Bezeichnung: req.Bezeichnung,
 		}
-		res, err := queries.UpdateFuttersorte(c, params)
+		res, err := database.Repo.UpdateFuttersorte(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1619,7 +1619,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeleteFuttersorte(c, idInt); err != nil {
+		if err := database.Repo.DeleteFuttersorte(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -1628,7 +1628,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Silo APIs
 	r.GET("/api/silo", func(c *gin.Context) {
-		res, err := queries.ListSilos(c)
+		res, err := database.Repo.ListSilos(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1663,7 +1663,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Inventurfuellmenge: req.Inventurfuellmenge,
 			IDLieferant:        req.IDLieferant,
 		}
-		res, err := queries.CreateSilo(c, params)
+		res, err := database.Repo.CreateSilo(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1706,7 +1706,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Inventurfuellmenge: req.Inventurfuellmenge,
 			IDLieferant:        req.IDLieferant,
 		}
-		res, err := queries.UpdateSilo(c, params)
+		res, err := database.Repo.UpdateSilo(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -1736,7 +1736,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		log.Printf("[INVENTUR] Start processing SiloID: %d, Date: %s, Qty: %.2f", siloID, req.Inventurdatum, req.Inventurfuellmenge)
 
 		// 1. Transaction starten
-		tx, err := conn.BeginTx(c, nil)
+		tx, err := database.SQL.BeginTx(c, nil)
 		if err != nil {
 			log.Printf("[INVENTUR] Failed to begin transaction: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Starten der Transaktion: " + err.Error()})
@@ -2006,15 +2006,15 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// Check if any herds or fodder bookings are using this silo
 		var countH, countF int64
-		_ = conn.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_SILO = ?", idInt).Scan(&countH)
-		_ = conn.QueryRowContext(c, "SELECT COUNT(*) FROM FUTTER WHERE ID_SILO = ?", idInt).Scan(&countF)
+		_ = database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_SILO = ?", idInt).Scan(&countH)
+		_ = database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM FUTTER WHERE ID_SILO = ?", idInt).Scan(&countF)
 
 		if countH > 0 || countF > 0 {
 			c.JSON(http.StatusConflict, gin.H{"error": "Silo kann nicht gelöscht werden, da es noch Herden oder Futterbuchungen zugeordnet ist."})
 			return
 		}
 
-		if err := queries.DeleteSilo(c, idInt); err != nil {
+		if err := database.Repo.DeleteSilo(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -2023,7 +2023,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Eilager & EilagerBuchung APIs
 	r.GET("/api/eilager", func(c *gin.Context) {
-		res, err := queries.ListEilager(c)
+		res, err := database.Repo.ListEilager(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2038,7 +2038,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID format"})
 			return
 		}
-		res, err := queries.ListEilagerBuchungenByLager(c, idInt)
+		res, err := database.Repo.ListEilagerBuchungenByLager(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2048,7 +2048,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/eilagerbuchungen/kz/:kz", func(c *gin.Context) {
 		kz := c.Param("kz")
-		res, err := queries.ListEilagerBuchungenByKZ(c, kz)
+		res, err := database.Repo.ListEilagerBuchungenByKZ(c, kz)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2059,7 +2059,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	r.GET("/api/eilagerbuchungen/sum-by-source/:buchungId/:lagerId", func(c *gin.Context) {
 		bId, _ := strconv.ParseInt(c.Param("buchungId"), 10, 64)
 		lId, _ := strconv.ParseInt(c.Param("lagerId"), 10, 64)
-		res, err := queries.GetEilagerSumBySource(c, db.GetEilagerSumBySourceParams{
+		res, err := database.Repo.GetEilagerSumBySource(c, db.GetEilagerSumBySourceParams{
 			IDBuchung:      bId,
 			IDFremdeslager: lId,
 		})
@@ -2077,7 +2077,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID format"})
 			return
 		}
-		res, err := queries.GetEilagerSumByBuchungID(c, idInt)
+		res, err := database.Repo.GetEilagerSumByBuchungID(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2094,7 +2094,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Get the booking
-		b, err := queries.GetBuchung(c, idInt)
+		b, err := database.Repo.GetBuchung(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Performance record not found"})
 			return
@@ -2105,7 +2105,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 2. If it's a split record, get group totals
 		if (kz == "V" || kz == "S") && vam != "" {
-			perf, err := queries.GetBuchungGroupTotals(c, db.GetBuchungGroupTotalsParams{
+			perf, err := database.Repo.GetBuchungGroupTotals(c, db.GetBuchungGroupTotalsParams{
 				IDHerden:     b.IDHerden,
 				Vermitteltam: b.Vermitteltam,
 			})
@@ -2113,7 +2113,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get group performance: " + err.Error()})
 				return
 			}
-			used, err := queries.GetEilagerGroupTotals(c, db.GetEilagerGroupTotalsParams{
+			used, err := database.Repo.GetEilagerGroupTotals(c, db.GetEilagerGroupTotalsParams{
 				IDHerden:     b.IDHerden,
 				Vermitteltam: b.Vermitteltam,
 			})
@@ -2138,7 +2138,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			"SMALL":    b.Small,
 			"VOLLEIKG": b.Vollei,
 		}
-		used, _ := queries.GetEilagerSumByBuchungID(c, idInt)
+		used, _ := database.Repo.GetEilagerSumByBuchungID(c, idInt)
 		c.JSON(http.StatusOK, gin.H{
 			"is_group": false,
 			"perf":     perf,
@@ -2226,7 +2226,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		if params.KzLager == "" || params.KzLager == "x" {
 			if params.IDEilager != 0 {
-				if l, err := queries.GetEilager(c, params.IDEilager); err == nil {
+				if l, err := database.Repo.GetEilager(c, params.IDEilager); err == nil {
 					if s, ok := l.Kz.(string); ok {
 						params.KzLager = s
 					}
@@ -2237,12 +2237,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// LOGIK FÜR UMBUCHUNGEN IN VERKAUFSLAGER (KZ 'V')
 		isVerkaufLager := params.KzLager == "V"
 		if !isVerkaufLager && params.IDEilager != 0 {
-			if l, err := queries.GetEilager(c, params.IDEilager); err == nil && l.Kz == "V" {
+			if l, err := database.Repo.GetEilager(c, params.IDEilager); err == nil && l.Kz == "V" {
 				isVerkaufLager = true
 			}
 		}
 		if !isVerkaufLager && params.IDFremdeslager != 0 {
-			if l, err := queries.GetEilager(c, params.IDFremdeslager); err == nil && l.Kz == "V" {
+			if l, err := database.Repo.GetEilager(c, params.IDFremdeslager); err == nil && l.Kz == "V" {
 				isVerkaufLager = true
 			}
 		}
@@ -2252,7 +2252,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 1. Mengen von Quellbuchung abziehen
 		if params.IDFremdebuchung > 0 {
-			ebSource, err := queries.GetEilagerBuchung(c, params.IDFremdebuchung)
+			ebSource, err := database.Repo.GetEilagerBuchung(c, params.IDFremdebuchung)
 			if err == nil {
 				updateParams := db.UpdateEilagerBuchungParams{
 					ID:              ebSource.ID,
@@ -2275,11 +2275,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					IDFremdebuchung: ebSource.IDFremdebuchung,
 					Verkauf:         ebSource.Verkauf,
 				}
-				_, _ = queries.UpdateEilagerBuchung(c, updateParams)
+				_, _ = database.Repo.UpdateEilagerBuchung(c, updateParams)
 			}
 		}
 
-		res, err := queries.AddEilagerBuchung(c, params)
+		res, err := database.Repo.AddEilagerBuchung(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2287,7 +2287,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		if isVerkaufLager {
 			// 2. Verkauf-Satz erstellen
-			prices, _ := queries.ListEierpreise(c)
+			prices, _ := database.Repo.ListEierpreise(c)
 			var pS, pM, pL, pXL float64
 			for _, p := range prices {
 				switch p.Eierklasse {
@@ -2325,7 +2325,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				Charge:           params.Charge,
 				Rabattprozent:    0,
 			}
-			_, _ = queries.CreateVerkauf(c, verkaufParams)
+			_, _ = database.Repo.CreateVerkauf(c, verkaufParams)
 		}
 
 		c.JSON(http.StatusOK, res)
@@ -2424,7 +2424,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Altdaten holen
-		old, err := queries.GetEilagerBuchung(c, idInt)
+		old, err := database.Repo.GetEilagerBuchung(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Buchung nicht gefunden"})
 			return
@@ -2432,7 +2432,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 1. Mengen-Differenz auf Quellbuchung anpassen
 		if params.IDFremdebuchung > 0 && params.IDFremdebuchung == old.IDFremdebuchung {
-			ebSource, err := queries.GetEilagerBuchung(c, params.IDFremdebuchung)
+			ebSource, err := database.Repo.GetEilagerBuchung(c, params.IDFremdebuchung)
 			if err == nil {
 				updateParams := db.UpdateEilagerBuchungParams{
 					ID:              ebSource.ID,
@@ -2455,24 +2455,24 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					IDFremdebuchung: ebSource.IDFremdebuchung,
 					Verkauf:         ebSource.Verkauf,
 				}
-				_, _ = queries.UpdateEilagerBuchung(c, updateParams)
+				_, _ = database.Repo.UpdateEilagerBuchung(c, updateParams)
 			}
 		}
 
 		// 2. Verkauf-Toggle Logik
 		if old.Verkauf == 1 && params.Verkauf == 0 {
 			// Verkauf löschen
-			v, err := queries.GetVerkaufByEilagerbuchung(c, idInt)
+			v, err := database.Repo.GetVerkaufByEilagerbuchung(c, idInt)
 			if err == nil {
 				if v.Verbucht {
 					c.JSON(http.StatusForbidden, gin.H{"error": "Zugehöriger Verkauf ist bereits verbucht. Flag kann nicht entfernt werden."})
 					return
 				}
-				_ = queries.DeleteVerkauf(c, v.ID)
+				_ = database.Repo.DeleteVerkauf(c, v.ID)
 			}
 		} else if old.Verkauf == 0 && params.Verkauf == 1 {
 			// Verkauf neu anlegen
-			prices, _ := queries.ListEierpreise(c)
+			prices, _ := database.Repo.ListEierpreise(c)
 			var pS, pM, pL, pXL float64
 			for _, p := range prices {
 				switch p.Eierklasse {
@@ -2487,7 +2487,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				}
 			}
 			gesamt := ((float64(params.Small) * pS) + (float64(params.Medium) * pM) + (float64(params.Large) * pL) + (float64(params.Xl) * pXL)) / 100.0
-			_, _ = queries.CreateVerkauf(c, db.CreateVerkaufParams{
+			_, _ = database.Repo.CreateVerkauf(c, db.CreateVerkaufParams{
 				IDEilagerbuchung: idInt,
 				IDBuchung:        params.IDBuchung,
 				Buchungsdatum:    params.Buchungsdatum,
@@ -2509,7 +2509,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		if params.KzLager == "" || params.KzLager == "x" {
 			if params.IDEilager != 0 {
-				if l, err := queries.GetEilager(c, params.IDEilager); err == nil {
+				if l, err := database.Repo.GetEilager(c, params.IDEilager); err == nil {
 					if s, ok := l.Kz.(string); ok {
 						params.KzLager = s
 					}
@@ -2517,7 +2517,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 		}
 
-		res, err := queries.UpdateEilagerBuchung(c, params)
+		res, err := database.Repo.UpdateEilagerBuchung(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2533,7 +2533,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		eb, err := queries.GetEilagerBuchung(c, idInt)
+		eb, err := database.Repo.GetEilagerBuchung(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Buchung nicht gefunden"})
 			return
@@ -2541,19 +2541,19 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 1. Verkauf check
 		if eb.Verkauf == 1 {
-			v, err := queries.GetVerkaufByEilagerbuchung(c, idInt)
+			v, err := database.Repo.GetVerkaufByEilagerbuchung(c, idInt)
 			if err == nil {
 				if v.Verbucht {
 					c.JSON(http.StatusForbidden, gin.H{"error": "Zugehöriger Verkauf ist bereits verbucht. Löschen nicht möglich."})
 					return
 				}
-				_ = queries.DeleteVerkauf(c, v.ID)
+				_ = database.Repo.DeleteVerkauf(c, v.ID)
 			}
 		}
 
 		// 2. Mengen an Quellbuchung zurückgeben
 		if eb.IDFremdebuchung > 0 {
-			ebSource, err := queries.GetEilagerBuchung(c, eb.IDFremdebuchung)
+			ebSource, err := database.Repo.GetEilagerBuchung(c, eb.IDFremdebuchung)
 			if err == nil {
 				updateParams := db.UpdateEilagerBuchungParams{
 					ID:              ebSource.ID,
@@ -2576,11 +2576,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					IDFremdebuchung: ebSource.IDFremdebuchung,
 					Verkauf:         ebSource.Verkauf,
 				}
-				_, _ = queries.UpdateEilagerBuchung(c, updateParams)
+				_, _ = database.Repo.UpdateEilagerBuchung(c, updateParams)
 			}
 		}
 
-		if err := queries.DeleteEilagerBuchung(c, idInt); err != nil {
+		if err := database.Repo.DeleteEilagerBuchung(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -2618,7 +2618,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Volleikg:      0,
 			Aw:            req.Aw,
 		}
-		res, err := queries.CreateEilager(c, params)
+		res, err := database.Repo.CreateEilager(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2645,7 +2645,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 		// Bei Update holen wir erst den aktuellen Bestand, da dieser nur über Buchungen geändert werden darf
-		current, err := queries.GetEilager(c, idInt)
+		current, err := database.Repo.GetEilager(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Eilager nicht gefunden"})
 			return
@@ -2665,7 +2665,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Volleikg:      current.Volleikg,
 			Aw:            req.Aw,
 		}
-		res, err := queries.UpdateEilager(c, params)
+		res, err := database.Repo.UpdateEilager(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2683,15 +2683,15 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// Check if used in herds or bookings
 		var countH, countB int64
-		_ = conn.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_EILAGER = ?", idInt).Scan(&countH)
-		_ = conn.QueryRowContext(c, "SELECT COUNT(*) FROM EILAGERBUCHUNG WHERE ID_EILAGER = ?", idInt).Scan(&countB)
+		_ = database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_EILAGER = ?", idInt).Scan(&countH)
+		_ = database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM EILAGERBUCHUNG WHERE ID_EILAGER = ?", idInt).Scan(&countB)
 
 		if countH > 0 || countB > 0 {
 			c.JSON(http.StatusConflict, gin.H{"error": "Eilager kann nicht gelöscht werden, da es noch Herden oder Buchungen zugeordnet ist."})
 			return
 		}
 
-		if err := queries.DeleteEilager(c, idInt); err != nil {
+		if err := database.Repo.DeleteEilager(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -2700,7 +2700,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Lagerplatz APIs
 	r.GET("/api/lagerplatz", func(c *gin.Context) {
-		res, err := queries.ListLagerplaetze(c)
+		res, err := database.Repo.ListLagerplaetze(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2715,7 +2715,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID format"})
 			return
 		}
-		res, err := queries.ListLagerplaetzeByEilager(c, idInt)
+		res, err := database.Repo.ListLagerplaetzeByEilager(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2738,7 +2738,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Bezeichnung: req.Bezeichnung,
 			Bemerkung:   req.Bemerkung,
 		}
-		res, err := queries.CreateLagerplatz(c, params)
+		res, err := database.Repo.CreateLagerplatz(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2768,7 +2768,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Bezeichnung: req.Bezeichnung,
 			Bemerkung:   req.Bemerkung,
 		}
-		res, err := queries.UpdateLagerplatz(c, params)
+		res, err := database.Repo.UpdateLagerplatz(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2783,7 +2783,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID format"})
 			return
 		}
-		if err := queries.DeleteLagerplatz(c, idInt); err != nil {
+		if err := database.Repo.DeleteLagerplatz(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -2802,7 +2802,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 		}
 
-		res, err := queries.GetBestandsuebersicht(c, db.GetBestandsuebersichtParams{
+		res, err := database.Repo.GetBestandsuebersicht(c, db.GetBestandsuebersichtParams{
 			Column1:   idInt,
 			IDEilager: idInt,
 		})
@@ -2815,7 +2815,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Person APIs
 	r.GET("/api/person", func(c *gin.Context) {
-		res, err := queries.ListPersonen(c)
+		res, err := database.Repo.ListPersonen(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2824,7 +2824,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/person/zuechter", func(c *gin.Context) {
-		res, err := queries.ListZuechter(c)
+		res, err := database.Repo.ListZuechter(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2833,7 +2833,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/person/lieferant", func(c *gin.Context) {
-		res, err := queries.ListLieferanten(c)
+		res, err := database.Repo.ListLieferanten(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2842,11 +2842,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/company/person", func(c *gin.Context) {
-		res, err := queries.GetCompanyPerson(c)
+		res, err := database.Repo.GetCompanyPerson(c)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				// Create default company record if not exist
-				defaultCompany, err := queries.CreatePerson(c, db.CreatePersonParams{
+				defaultCompany, err := database.Repo.CreatePerson(c, db.CreatePersonParams{
 					Name:  "Meine Firma",
 					Kz:    "F",
 					Ort:   "Musterstadt",
@@ -2906,7 +2906,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Foto:           decodeBase64(req.Foto),
 			Homepage:       req.Homepage,
 		}
-		res, err := queries.CreatePerson(c, params)
+		res, err := database.Repo.CreatePerson(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2962,7 +2962,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Foto:           decodeBase64(req.Foto),
 			Homepage:       req.Homepage,
 		}
-		res, err := queries.UpdatePerson(c, params)
+		res, err := database.Repo.UpdatePerson(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -2977,7 +2977,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeletePerson(c, idInt); err != nil {
+		if err := database.Repo.DeletePerson(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -2986,7 +2986,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Verkauf APIs
 	r.GET("/api/verkauf", func(c *gin.Context) {
-		res, err := queries.ListVerkauf(c)
+		res, err := database.Repo.ListVerkauf(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3000,7 +3000,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		res, err := queries.GetVerkauf(c, idInt)
+		res, err := database.Repo.GetVerkauf(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 			return
@@ -3032,7 +3032,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		prices, _ := queries.ListEierpreise(c)
+		prices, _ := database.Repo.ListEierpreise(c)
 		var pS, pM, pL, pXL float64
 		for _, p := range prices {
 			switch p.Eierklasse {
@@ -3055,7 +3055,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// Charge aus Eilagerbuchung holen, falls vorhanden und nicht überschrieben
 		var chargeStr = req.Charge
 		if req.IDEilagerbuchung > 0 && chargeStr == "" {
-			_ = conn.QueryRowContext(c, "SELECT CHARGE FROM EILAGERBUCHUNG WHERE ID = ?", req.IDEilagerbuchung).Scan(&chargeStr)
+			_ = database.SQL.QueryRowContext(c, "SELECT CHARGE FROM EILAGERBUCHUNG WHERE ID = ?", req.IDEilagerbuchung).Scan(&chargeStr)
 		}
 
 		params := db.CreateVerkaufParams{
@@ -3076,7 +3076,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Charge:           chargeStr,
 			Rabattprozent:    req.Rabattprozent,
 		}
-		res, err := queries.CreateVerkauf(c, params)
+		res, err := database.Repo.CreateVerkauf(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3130,7 +3130,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Charge:           req.Charge,
 			Rabattprozent:    req.Rabattprozent,
 		}
-		res, err := queries.UpdateVerkauf(c, params)
+		res, err := database.Repo.UpdateVerkauf(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3148,7 +3148,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Stall APIs
 	r.GET("/api/stall", func(c *gin.Context) {
-		res, err := queries.ListStaelle(c)
+		res, err := database.Repo.ListStaelle(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3169,7 +3169,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Stallnummer: req.Stallnummer,
 			Bezeichnung: req.Bezeichnung,
 		}
-		res, err := queries.CreateStall(c, params)
+		res, err := database.Repo.CreateStall(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3197,7 +3197,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Stallnummer: req.Stallnummer,
 			Bezeichnung: req.Bezeichnung,
 		}
-		res, err := queries.UpdateStall(c, params)
+		res, err := database.Repo.UpdateStall(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3215,7 +3215,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// Check if any herds are assigned to this stall
 		var count int64
-		err = conn.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_STALL = ?", idInt).Scan(&count)
+		err = database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM HERDEN WHERE ID_STALL = ?", idInt).Scan(&count)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler bei der Belegungsprüfung: " + err.Error()})
 			return
@@ -3225,7 +3225,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		if err := queries.DeleteStall(c, idInt); err != nil {
+		if err := database.Repo.DeleteStall(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -3234,7 +3234,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Herden APIs
 	r.GET("/api/herden", func(c *gin.Context) {
-		herden, err := queries.ListHerden(c)
+		herden, err := database.Repo.ListHerden(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3254,7 +3254,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 			// EggStats
 			params := h.ID
-			eggRes, _ := queries.GetEggStatsByHerde(c, db.GetEggStatsByHerdeParams{
+			eggRes, _ := database.Repo.GetEggStatsByHerde(c, db.GetEggStatsByHerdeParams{
 				ID:       params,
 				IDHerden: params,
 			})
@@ -3268,7 +3268,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 
 			// WeeklyStats
-			weekRes, _ := queries.GetEggStatsWeeklyByHerde(c, h.ID)
+			weekRes, _ := database.Repo.GetEggStatsWeeklyByHerde(c, h.ID)
 			var weekly []map[string]interface{}
 			for _, row := range weekRes {
 				weekly = append(weekly, map[string]interface{}{
@@ -3289,7 +3289,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/herden/lookup", func(c *gin.Context) {
-		res, err := queries.ListHerdenLookup(c)
+		res, err := database.Repo.ListHerdenLookup(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3304,7 +3304,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		res, err := queries.GetEggStatsByHerde(c, db.GetEggStatsByHerdeParams{
+		res, err := database.Repo.GetEggStatsByHerde(c, db.GetEggStatsByHerdeParams{
 			ID:       idInt,
 			IDHerden: idInt,
 		})
@@ -3342,7 +3342,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		activeOnlyStr := c.DefaultQuery("onlyActive", "0")
 		activeOnlyInt, _ := strconv.ParseInt(activeOnlyStr, 10, 64)
 
-		res, err := queries.GetEggStatsByHerdeFiltered(c, db.GetEggStatsByHerdeFilteredParams{
+		res, err := database.Repo.GetEggStatsByHerdeFiltered(c, db.GetEggStatsByHerdeFilteredParams{
 			IDHerden:   idInt,
 			OnlyActive: activeOnlyInt,
 			Year:       year,
@@ -3372,7 +3372,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		res, err := queries.GetLatestBookingByHerde(c, idInt)
+		res, err := database.Repo.GetLatestBookingByHerde(c, idInt)
 		if err != nil {
 			// If no booking found, return 404 or empty object
 			c.JSON(http.StatusNotFound, gin.H{"error": "no booking found"})
@@ -3391,7 +3391,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		activeOnlyStr := c.DefaultQuery("onlyActive", "0")
 		activeOnlyInt, _ := strconv.ParseInt(activeOnlyStr, 10, 64)
 
-		res, err := queries.GetEggBookingYears(c, db.GetEggBookingYearsParams{
+		res, err := database.Repo.GetEggBookingYears(c, db.GetEggBookingYearsParams{
 			IDHerden:   idInt,
 			OnlyActive: activeOnlyInt,
 		})
@@ -3409,7 +3409,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		res, err := queries.GetEggStatsWeeklyByHerde(c, idInt)
+		res, err := database.Repo.GetEggStatsWeeklyByHerde(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3489,7 +3489,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Allebuchungenmitdatum: req.AlleBuchungenMitDatum,
 		}
 		log.Printf("[API] POST /api/herden - Creating: %+v", params)
-		res, err := queries.CreateHerde(c, params)
+		res, err := database.Repo.CreateHerde(c, params)
 		if err != nil {
 			log.Printf("[API] POST /api/herden - Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -3542,7 +3542,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Allebuchungenmitdatum: req.AlleBuchungenMitDatum,
 		}
 		log.Printf("[API] PUT /api/herden/%d - Updating: %+v", idInt, params)
-		res, err := queries.UpdateHerde(c, params)
+		res, err := database.Repo.UpdateHerde(c, params)
 		if err != nil {
 			log.Printf("[API] PUT /api/herden/%d - Error: %v", idInt, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -3565,14 +3565,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Get herde to obtain herdennummer
-		herde, err := queries.GetHerde(c, req.IDHerden)
+		herde, err := database.Repo.GetHerde(c, req.IDHerden)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Herde nicht gefunden"})
 			return
 		}
 
 		// 1. Tierbewegung erstellen (Typ 'V' = Verlust)
-		_, err = queries.CreateTierbewegung(c, db.CreateTierbewegungParams{
+		_, err = database.Repo.CreateTierbewegung(c, db.CreateTierbewegungParams{
 			Herdennummer:   toNullInt64(herde.Herdennummer),
 			IDBuchung:      sql.NullInt64{Valid: false},
 			Typ:            "V",
@@ -3589,7 +3589,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 2. Bestand in Herden-Tabelle reduzieren
-		err = queries.UpdateHerdeStock(c, db.UpdateHerdeStockParams{
+		err = database.Repo.UpdateHerdeStock(c, db.UpdateHerdeStockParams{
 			Anfangsbestand: req.Verluste,
 			ID:             req.IDHerden,
 		})
@@ -3599,7 +3599,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 3. Neuen Bestand laden für Feedback
-		updatedHerde, err := queries.GetHerde(c, req.IDHerden)
+		updatedHerde, err := database.Repo.GetHerde(c, req.IDHerden)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Bestand konnte nicht gelesen werden"})
 			return
@@ -3625,21 +3625,21 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Buchung (Leistung) laden
-		buchung, err := queries.GetBuchung(c, req.IDLeistung)
+		buchung, err := database.Repo.GetBuchung(c, req.IDLeistung)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Buchung nicht gefunden: " + err.Error()})
 			return
 		}
 
 		// 2. Bereits verbuchte Mengen laden
-		sums, err := queries.GetEilagerSumByBuchungID(c, req.IDLeistung)
+		sums, err := database.Repo.GetEilagerSumByBuchungID(c, req.IDLeistung)
 		if err != nil && err != sql.ErrNoRows {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Summen konnten nicht geladen werden: " + err.Error()})
 			return
 		}
 
 		// 3. Eilager (Pseudolager) laden für KZ_LAGER
-		lager, err := queries.GetEilager(c, req.IDEilager)
+		lager, err := database.Repo.GetEilager(c, req.IDEilager)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Eilager nicht gefunden: " + err.Error()})
 			return
@@ -3663,7 +3663,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 5. Neue Eilagerbuchung erstellen
-		_, err = queries.AddEilagerBuchung(c, db.AddEilagerBuchungParams{
+		_, err = database.Repo.AddEilagerBuchung(c, db.AddEilagerBuchungParams{
 			IDBuchung:     req.IDLeistung,
 			IDEilager:     req.IDEilager,
 			Buchungsdatum: req.Datum,
@@ -3700,14 +3700,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Get herde to obtain herdennummer
-		herde, err := queries.GetHerde(c, req.IDHerden)
+		herde, err := database.Repo.GetHerde(c, req.IDHerden)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Herde nicht gefunden"})
 			return
 		}
 
 		// 1. Tierbewegung erstellen
-		_, err = queries.CreateTierbewegung(c, db.CreateTierbewegungParams{
+		_, err = database.Repo.CreateTierbewegung(c, db.CreateTierbewegungParams{
 			Herdennummer:   toNullInt64(herde.Herdennummer),
 			IDBuchung:      sql.NullInt64{Valid: false},
 			Typ:            "V",
@@ -3724,7 +3724,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 2. Bestand in Herden-Tabelle reduzieren
-		err = queries.UpdateHerdeStock(c, db.UpdateHerdeStockParams{
+		err = database.Repo.UpdateHerdeStock(c, db.UpdateHerdeStockParams{
 			Anfangsbestand: req.Verluste,
 			ID:             req.IDHerden,
 		})
@@ -3739,7 +3739,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	r.GET("/api/admin/latest-date", func(c *gin.Context) {
 		var maxDate sql.NullString
 		// Wir ermitteln das aktuellste Datum aus der Tabelle 'buchung'
-		err := conn.QueryRowContext(c, "SELECT max(BUCHUNGSDATUM) FROM BUCHUNG").Scan(&maxDate)
+		err := database.SQL.QueryRowContext(c, "SELECT max(BUCHUNGSDATUM) FROM BUCHUNG").Scan(&maxDate)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3757,7 +3757,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Transaktion starten
-		tx, err := conn.BeginTx(c, nil)
+		tx, err := database.SQL.BeginTx(c, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -3899,7 +3899,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeleteHerde(c, idInt); err != nil {
+		if err := database.Repo.DeleteHerde(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -3944,7 +3944,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Buchung APIs
 	r.GET("/api/buchung", func(c *gin.Context) {
-		res, err := queries.ListBuchungen(c)
+		res, err := database.Repo.ListBuchungen(c)
 		if err != nil {
 			log.Printf("[API] GET /api/buchung - Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -4000,7 +4000,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID format"})
 			return
 		}
-		res, err := queries.GetBuchung(c, idInt)
+		res, err := database.Repo.GetBuchung(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "entry not found"})
 			return
@@ -4015,7 +4015,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		res, err := queries.GetLatestBookingByHerde(c, herdeID)
+		res, err := database.Repo.GetLatestBookingByHerde(c, herdeID)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusOK, gin.H{"buchungsdatum": nil, "tierbestand": nil})
@@ -4046,7 +4046,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Parameter laden
-		params, err := queries.GetFirmenparameterByHerde(c, req.IDHerden)
+		params, err := database.Repo.GetFirmenparameterByHerde(c, req.IDHerden)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Parameter konnten nicht geladen werden"})
 			return
@@ -4078,7 +4078,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			// Pfad B (Else): Nutze KlassenAufteilungAlter(Lebenswoche)
 			idTabAlter := params.IDTabellealter
 			if idTabAlter > 0 && req.Aw > 0 {
-				dWeight, err = GetEigewichtByAlter(c, queries, idTabAlter, req.Aw)
+				dWeight, err = GetEigewichtByAlter(c, database.Repo, idTabAlter, req.Aw)
 				if err != nil {
 					dWeight = 0
 				}
@@ -4088,7 +4088,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		if dWeight > 0 {
 			idTabGewicht := params.IDTabellegewicht
 			if idTabGewicht > 0 {
-				s, m, l, xl, err := GetEierverteilungByGewicht(c, queries, req.Klassea, idTabGewicht, dWeight)
+				s, m, l, xl, err := GetEierverteilungByGewicht(c, database.Repo, req.Klassea, idTabGewicht, dWeight)
 				if err != nil {
 					if err == sql.ErrNoRows {
 						c.JSON(http.StatusOK, gin.H{
@@ -4162,14 +4162,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		siloNr := req.Silonr
 		if siloNr <= 0 {
-			siloNr = getSiloNrForHerd(c, conn, req.IDHerden)
+			siloNr = getSiloNrForHerd(c, database.SQL, req.IDHerden)
 		}
 
 		log.Printf("[API] POST /api/buchung - Received: %+v, Resolved SiloNr: %d", req, siloNr)
 
 		// Dublettenprüfung
 		var count int64
-		err := conn.QueryRowContext(c, "SELECT COUNT(*) FROM BUCHUNG WHERE ID_HERDEN = ? AND BUCHUNGSDATUM = ?", req.IDHerden, req.Buchungsdatum).Scan(&count)
+		err := database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM BUCHUNG WHERE ID_HERDEN = ? AND BUCHUNGSDATUM = ?", req.IDHerden, req.Buchungsdatum).Scan(&count)
 		if err != nil {
 			log.Printf("[API] POST /api/buchung - Duplicate Check Error: %v", err)
 		}
@@ -4181,7 +4181,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		log.Printf("[API] POST /api/buchung - Loading parameters for Herde %d...", req.IDHerden)
 		// Parameter und letzte Buchung laden
-		paramsRow, err := queries.GetFirmenparameterByHerde(c, req.IDHerden)
+		paramsRow, err := database.Repo.GetFirmenparameterByHerde(c, req.IDHerden)
 		if err != nil {
 			log.Printf("[API] POST /api/buchung - GetFirmenparameter Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Laden der Parameter: " + err.Error()})
@@ -4190,7 +4190,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		log.Printf("[API] POST /api/buchung - Parameters loaded: %+v", paramsRow)
 
 		log.Printf("[API] POST /api/buchung - Loading latest booking for Herde %d...", req.IDHerden)
-		lastBooking, err := queries.GetLatestBookingByHerde(c, req.IDHerden)
+		lastBooking, err := database.Repo.GetLatestBookingByHerde(c, req.IDHerden)
 
 		doVermittlung := false
 		var diffDays int
@@ -4208,7 +4208,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		} else {
 			log.Printf("[API] POST /api/buchung - No latest booking found, trying fallback to herd start date...")
 			// NEU: Fallback auf das Legedatum der Herde, falls noch gar keine Buchung existiert
-			if h, err := queries.GetHerde(c, req.IDHerden); err == nil && h.Legedatum != "" {
+			if h, err := database.Repo.GetHerde(c, req.IDHerden); err == nil && h.Legedatum != "" {
 				log.Printf("[API] POST /api/buchung - Fallback to herd Legedatum: %s", h.Legedatum)
 				lastDate, _ = time.Parse("2006-01-02", sanitizeDate(h.Legedatum))
 				lastDate = lastDate.AddDate(0, 0, -1) // ALT = Legedatum - 1 Tag
@@ -4243,7 +4243,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 			// NEU: Lücke säubern, um Doppelerfassungen zu vermeiden
 			// Zuerst verknüpfte Lagerbuchungen löschen
-			_, err = conn.ExecContext(c, `
+			_, err = database.SQL.ExecContext(c, `
 				DELETE FROM EILAGERBUCHUNG 
 				WHERE ID_BUCHUNG IN (
 					SELECT ID FROM BUCHUNG 
@@ -4254,7 +4254,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 
 			// Dann die Buchungen selbst löschen
-			_, err = conn.ExecContext(c, "DELETE FROM BUCHUNG WHERE ID_HERDEN = ? AND BUCHUNGSDATUM > ? AND BUCHUNGSDATUM <= ?",
+			_, err = database.SQL.ExecContext(c, "DELETE FROM BUCHUNG WHERE ID_HERDEN = ? AND BUCHUNGSDATUM > ? AND BUCHUNGSDATUM <= ?",
 				req.IDHerden, lastDate.Format("2006-01-02"), req.Buchungsdatum)
 			if err != nil {
 				log.Printf("Warnung: Konnte Lücke nicht säubern: %v", err)
@@ -4315,7 +4315,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					Vermittelt:      "V", // Vermittelt
 					Futterverbrauchtier: req.Futterverbrauchtier,
 				}
-				res, err := queries.CreateBuchung(c, p)
+				res, err := database.Repo.CreateBuchung(c, p)
 				if err != nil {
 					log.Printf("[API] POST /api/buchung - Vermittlung Error at day %d (%s): %v", i, currentDate, err)
 					c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler bei Vermittlungsschleife: " + err.Error()})
@@ -4323,7 +4323,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				}
 				lastCreatedRes = res
 				// Jede Teilbuchung automatisch ins Eilager buchen (wenn Parameter aktiv)
-				_ = doAutomaticEilagerBuchung(c, conn, queries, res.ID)
+				_ = doAutomaticEilagerBuchung(c, database.SQL, database.Repo, res.ID)
 			}
 			log.Printf("[API] POST /api/buchung - Vermittlung finished successfully.")
 			c.JSON(http.StatusOK, lastCreatedRes)
@@ -4362,13 +4362,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Vermittelt:      "N", // Normal
 			Futterverbrauchtier: req.Futterverbrauchtier,
 		}
-		res, err := queries.CreateBuchung(c, params)
+		res, err := database.Repo.CreateBuchung(c, params)
 		if err != nil {
 			log.Printf("[API] POST /api/buchung - Error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		_ = doAutomaticEilagerBuchung(c, conn, queries, res.ID)
+		_ = doAutomaticEilagerBuchung(c, database.SQL, database.Repo, res.ID)
 		c.JSON(http.StatusOK, res)
 	})
 
@@ -4418,7 +4418,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		req.Buchungsdatum = sanitizeDate(req.Buchungsdatum)
 		req.Vermitteltam = sanitizeDate(req.Vermitteltam)
 
-		existing, err := queries.GetBuchung(c, idInt)
+		existing, err := database.Repo.GetBuchung(c, idInt)
 		var existingSilonr, existingFvt, existingFkt int64
 		if err == nil {
 			existingSilonr = existing.Silonr
@@ -4431,7 +4431,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			siloNr = existingSilonr
 		}
 		if siloNr <= 0 {
-			siloNr = getSiloNrForHerd(c, conn, req.IDHerden)
+			siloNr = getSiloNrForHerd(c, database.SQL, req.IDHerden)
 		}
 
 		fvt := req.Futterverbrauchtier
@@ -4446,7 +4446,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// Dublettenprüfung (unter Ausschluss des eigenen Datensatzes)
 		var count int64
-		err = conn.QueryRowContext(c, "SELECT COUNT(*) FROM BUCHUNG WHERE ID_HERDEN = ? AND BUCHUNGSDATUM = ? AND ID != ?", req.IDHerden, req.Buchungsdatum, idInt).Scan(&count)
+		err = database.SQL.QueryRowContext(c, "SELECT COUNT(*) FROM BUCHUNG WHERE ID_HERDEN = ? AND BUCHUNGSDATUM = ? AND ID != ?", req.IDHerden, req.Buchungsdatum, idInt).Scan(&count)
 		if err == nil && count > 0 {
 			c.JSON(http.StatusConflict, gin.H{"error": "Doppelte Buchung nicht zulässig"})
 			return
@@ -4484,12 +4484,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Vermittelt:      req.Vermittelt,
 			Futterverbrauchtier: fvt,
 		}
-		res, err := queries.UpdateBuchung(c, params)
+		res, err := database.Repo.UpdateBuchung(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		_ = doAutomaticEilagerBuchung(c, conn, queries, res.ID)
+		_ = doAutomaticEilagerBuchung(c, database.SQL, database.Repo, res.ID)
 		c.JSON(http.StatusOK, res)
 	})
 
@@ -4502,7 +4502,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Zuerst den Datensatz laden, um zu prüfen ob es eine Vermittlung ist
-		res, err := queries.GetBuchung(c, idInt)
+		res, err := database.Repo.GetBuchung(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Buchung nicht gefunden"})
 			return
@@ -4515,7 +4515,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// 2. Wenn S oder V, dann die ganze Gruppe löschen
 		if (kz == "S" || kz == "V") && vam != "" {
 			// Zuerst verknüpfte Lagerbuchungen der ganzen Gruppe löschen
-			_, err := conn.ExecContext(c, `
+			_, err := database.SQL.ExecContext(c, `
 				DELETE FROM EILAGERBUCHUNG 
 				WHERE ID_BUCHUNG IN (
 					SELECT ID FROM BUCHUNG 
@@ -4526,7 +4526,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 
 			// Dann die Buchungsgruppe löschen
-			_, err = conn.ExecContext(c, "DELETE FROM BUCHUNG WHERE ID_HERDEN = ? AND VERMITTELTAM = ? AND VERMITTELT IN ('S', 'V')", res.IDHerden, vam)
+			_, err = database.SQL.ExecContext(c, "DELETE FROM BUCHUNG WHERE ID_HERDEN = ? AND VERMITTELTAM = ? AND VERMITTELT IN ('S', 'V')", res.IDHerden, vam)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Löschen der Vermittlungs-Gruppe: " + err.Error()})
 				return
@@ -4534,12 +4534,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		} else {
 			// Normaler Einzelsatz
 			// Zuerst verknüpfte Lagerbuchung löschen
-			_, err = conn.ExecContext(c, "DELETE FROM EILAGERBUCHUNG WHERE ID_BUCHUNG = ?", idInt)
+			_, err = database.SQL.ExecContext(c, "DELETE FROM EILAGERBUCHUNG WHERE ID_BUCHUNG = ?", idInt)
 			if err != nil {
 				log.Printf("Warnung: Lagerbuchung konnte nicht gelöscht werden: %v", err)
 			}
 
-			if err := queries.DeleteBuchung(c, idInt); err != nil {
+			if err := database.Repo.DeleteBuchung(c, idInt); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
@@ -4550,7 +4550,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Futter APIs
 	r.GET("/api/futter", func(c *gin.Context) {
-		res, err := queries.ListFutterBuchungen(c)
+		res, err := database.Repo.ListFutterBuchungen(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4599,7 +4599,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Aw:             req.Aw,
 			IDFuttersorten: req.IDFuttersorten,
 		}
-		res, err := queries.CreateFutterBuchung(c, params)
+		res, err := database.Repo.CreateFutterBuchung(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4655,7 +4655,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Aw:             req.Aw,
 			IDFuttersorten: req.IDFuttersorten,
 		}
-		res, err := queries.UpdateFutterBuchung(c, params)
+		res, err := database.Repo.UpdateFutterBuchung(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4670,7 +4670,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeleteFutterBuchung(c, idInt); err != nil {
+		if err := database.Repo.DeleteFutterBuchung(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -4678,11 +4678,11 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/company/params", func(c *gin.Context) {
-		res, err := queries.GetGlobalFirmenparameter(c)
+		res, err := database.Repo.GetGlobalFirmenparameter(c)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				// If global params don't exist, create them
-				defaultParams, err := queries.CreateFirmenparameter(c, db.CreateFirmenparameterParams{
+				defaultParams, err := database.Repo.CreateFirmenparameter(c, db.CreateFirmenparameterParams{
 					IDHerden: -1,
 					Kz:       "F",
 				})
@@ -4702,7 +4702,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	// Tierbewegungen APIs
 	r.GET("/api/tierbewegungen", func(c *gin.Context) {
 		lang := c.DefaultQuery("lang", "de")
-		res, err := queries.ListTierbewegungen(c, lang)
+		res, err := database.Repo.ListTierbewegungen(c, lang)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4737,7 +4737,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			IDHerdenNach:   toNullInt64(req.IDHerdenNach),
 			Kosten:         toNullFloat64(req.Kosten),
 		}
-		res, err := queries.CreateTierbewegung(c, params)
+		res, err := database.Repo.CreateTierbewegung(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4746,7 +4746,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// Fall 1: Zugang (Typ 'Z')
 		if req.Typ == "Z" {
 			// 1. Herde aktualisieren (Bestand + Kosten)
-			err = queries.IncreaseHerdeStockAndCosts(c, db.IncreaseHerdeStockAndCostsParams{
+			err = database.Repo.IncreaseHerdeStockAndCosts(c, db.IncreaseHerdeStockAndCostsParams{
 				Anfangsbestand: req.Bewegungen,
 				Einstallkosten: req.Kosten,
 				Herdennummer:   req.Herdennummer,
@@ -4756,7 +4756,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 
 			// 2. Buchung aktualisieren (Bestand)
-			err = queries.UpdateBuchungStock(c, db.UpdateBuchungStockParams{
+			err = database.Repo.UpdateBuchungStock(c, db.UpdateBuchungStockParams{
 				Tierbestand:   req.Bewegungen,
 				Herdennummer:  req.Herdennummer,
 				Buchungsdatum: req.Bewegungsdatum,
@@ -4803,7 +4803,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			IDHerdenNach:   toNullInt64(req.IDHerdenNach),
 			Kosten:         toNullFloat64(req.Kosten),
 		}
-		res, err := queries.UpdateTierbewegung(c, params)
+		res, err := database.Repo.UpdateTierbewegung(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4812,7 +4812,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/buchungen/detailed", func(c *gin.Context) {
-		res, err := queries.ListBuchungenWithHerde(c)
+		res, err := database.Repo.ListBuchungenWithHerde(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4836,7 +4836,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Transaktion starten
-		tx, err := conn.BeginTx(c, nil)
+		tx, err := database.SQL.BeginTx(c, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4927,7 +4927,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeleteTierbewegung(c, idInt); err != nil {
+		if err := database.Repo.DeleteTierbewegung(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -4936,7 +4936,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Kostentabkopf APIs
 	r.GET("/api/kostentabkopf", func(c *gin.Context) {
-		res, err := queries.GetKostentabkopf(c)
+		res, err := database.Repo.GetKostentabkopf(c)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -4971,7 +4971,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			AbschreibungR:    req.AbschreibungR,
 			Kostentag:        req.Kostentag,
 		}
-		res, err := queries.UpdateKostentabkopf(c, params)
+		res, err := database.Repo.UpdateKostentabkopf(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -4981,7 +4981,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Kosten APIs
 	r.GET("/api/kosten", func(c *gin.Context) {
-		res, err := queries.ListKosten(c)
+		res, err := database.Repo.ListKosten(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5008,7 +5008,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Tage:          req.Tage,
 			Buchungsdatum: req.Buchungsdatum,
 		}
-		res, err := queries.CreateKosten(c, params)
+		res, err := database.Repo.CreateKosten(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5042,7 +5042,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Tage:          req.Tage,
 			Buchungsdatum: req.Buchungsdatum,
 		}
-		res, err := queries.UpdateKosten(c, params)
+		res, err := database.Repo.UpdateKosten(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5057,7 +5057,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeleteKosten(c, idInt); err != nil {
+		if err := database.Repo.DeleteKosten(c, idInt); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -5068,7 +5068,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	// TextTypen APIs
 	r.GET("/api/texttypen", func(c *gin.Context) {
 		lang := c.DefaultQuery("lang", "de")
-		res, err := queries.ListTextTypen(c)
+		res, err := database.Repo.ListTextTypen(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5141,7 +5141,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		kzClean := wailsdb.SanitizeKZ(req.Kz)
 
-		res, err := queries.CreateTextTyp(c, db.CreateTextTypParams{
+		res, err := database.Repo.CreateTextTyp(c, db.CreateTextTypParams{
 			Kz:          kzClean,
 			Bezeichnung: req.Bezeichnung,
 			SystemKz:    sysVal,
@@ -5164,7 +5164,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		if appconfig.LoadConfig().System == 0 {
-			items, err := queries.ListTextTypen(c)
+			items, err := database.Repo.ListTextTypen(c)
 			if err == nil {
 				for _, item := range items {
 					if item.ID == id && item.SystemKz == 1 {
@@ -5201,7 +5201,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		log.Printf("[API] PUT /api/texttypen/%d - Mapped: KZ=%s, Bez=%s, Sys=%d", id, kzVal, bezVal, sysVal)
 
-		updatedRes, err := queries.UpdateTextTyp(c, db.UpdateTextTypParams{
+		updatedRes, err := database.Repo.UpdateTextTyp(c, db.UpdateTextTypParams{
 			ID:          id,
 			Kz:          kzVal,
 			Bezeichnung: bezVal,
@@ -5224,7 +5224,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		if appconfig.LoadConfig().System == 0 {
-			items, err := queries.ListTextTypen(c)
+			items, err := database.Repo.ListTextTypen(c)
 			if err == nil {
 				for _, item := range items {
 					if item.ID == id && item.SystemKz == 1 {
@@ -5236,7 +5236,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 		}
 
-		if err := queries.DeleteTextTyp(c, id); err != nil {
+		if err := database.Repo.DeleteTextTyp(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -5246,7 +5246,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	// Texte APIs
 	r.GET("/api/texte", func(c *gin.Context) {
 		lang := c.DefaultQuery("lang", "de")
-		res, err := queries.ListTexte(c, lang)
+		res, err := database.Repo.ListTexte(c, lang)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5256,7 +5256,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/texte/typ/:typ", func(c *gin.Context) {
 		lang := c.DefaultQuery("lang", "de")
-		res, err := queries.ListTexteByType(c, db.ListTexteByTypeParams{
+		res, err := database.Repo.ListTexteByType(c, db.ListTexteByTypeParams{
 			SpracheKz: lang,
 			TextTypKz: c.Param("typ"),
 		})
@@ -5269,7 +5269,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/texte/verwendung", func(c *gin.Context) {
 		lang := c.DefaultQuery("lang", "de")
-		res, err := queries.ListVerwendungsTexte(c, lang)
+		res, err := database.Repo.ListVerwendungsTexte(c, lang)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5279,7 +5279,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/texte/kz/:kz", func(c *gin.Context) {
 		lang := c.DefaultQuery("lang", "de")
-		res, err := queries.ListTexteByKZ(c, db.ListTexteByKZParams{
+		res, err := database.Repo.ListTexteByKZ(c, db.ListTexteByKZParams{
 			SpracheKz: lang,
 			Kz:        c.Param("kz"),
 		})
@@ -5308,7 +5308,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		sysVal := toInt64(req.System)
 		statusVal := toInt64(req.Status)
 
-		tx, err := conn.BeginTx(c, nil)
+		tx, err := database.SQL.BeginTx(c, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5320,9 +5320,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		var qtx db.Querier
 		if database.Engine == "mysql" {
-			qtx = queries.(*wailsdb.MySQLWrapper).WithTx(tx)
+			qtx = database.Repo.(*wailsdb.MySQLWrapper).WithTx(tx)
 		} else {
-			qtx = queries.(*db.Queries).WithTx(tx)
+			qtx = database.Repo.(*db.Queries).WithTx(tx)
 		}
 
 		res, err := qtx.CreateText(c, db.CreateTextParams{
@@ -5360,7 +5360,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		if appconfig.LoadConfig().System == 0 {
-			items, err := queries.ListTexte(c, "de")
+			items, err := database.Repo.ListTexte(c, "de")
 			if err == nil {
 				for _, item := range items {
 					if item.ID == id && item.SystemKz == 1 {
@@ -5392,7 +5392,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		log.Printf("[API] PUT /api/texte/%d - Mapped Data: %+v, Final SystemKz: %d", id, req, sysVal)
 
-		tx, err := conn.BeginTx(c, nil)
+		tx, err := database.SQL.BeginTx(c, nil)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5401,9 +5401,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		var qtx db.Querier
 		if database.Engine == "mysql" {
-			qtx = queries.(*wailsdb.MySQLWrapper).WithTx(tx)
+			qtx = database.Repo.(*wailsdb.MySQLWrapper).WithTx(tx)
 		} else {
-			qtx = queries.(*db.Queries).WithTx(tx)
+			qtx = database.Repo.(*db.Queries).WithTx(tx)
 		}
 
 		// 1. Update text entry
@@ -5450,7 +5450,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		if appconfig.LoadConfig().System == 0 {
-			items, err := queries.ListTexte(c, "de")
+			items, err := database.Repo.ListTexte(c, "de")
 			if err == nil {
 				for _, item := range items {
 					if item.ID == id && item.SystemKz == 1 {
@@ -5462,7 +5462,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 		}
 
-		if err := queries.DeleteText(c, id); err != nil {
+		if err := database.Repo.DeleteText(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -5548,12 +5548,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Schließe alte Verbindung
-		if conn != nil {
-			conn.Close()
+		if database.SQL != nil {
+			database.SQL.Close()
 		}
 
-		conn = newConn
-		queries = db.New(conn)
+		database.SQL = newConn
+		database.Repo = db.New(database.SQL)
 		currentDBPath = req.Path
 
 		c.JSON(http.StatusOK, gin.H{
@@ -5594,16 +5594,16 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 2. Verbindung schließen
-		if conn != nil {
-			conn.Close()
+		if database.SQL != nil {
+			database.SQL.Close()
 		}
 
 		// 3. Datei überschreiben
 		err = copyFile(req.Path, currentDBPath)
 		if err != nil {
 			// Versuche alte Verbindung wieder zu öffnen
-			conn, _ = sql.Open("sqlite", currentDBPath)
-			queries = db.New(conn)
+			database.SQL, _ = sql.Open("sqlite", currentDBPath)
+			database.Repo = db.New(database.SQL)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Datei-Wiederherstellung fehlgeschlagen: " + err.Error()})
 			return
 		}
@@ -5615,8 +5615,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		conn = newConn
-		queries = db.New(conn)
+		database.SQL = newConn
+		database.Repo = db.New(database.SQL)
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "restored",
@@ -5679,12 +5679,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Schließe alte Verbindung
-		if conn != nil {
-			conn.Close()
+		if database.SQL != nil {
+			database.SQL.Close()
 		}
 
-		conn = newConn
-		queries = db.New(conn)
+		database.SQL = newConn
+		database.Repo = db.New(database.SQL)
 		currentDBPath = req.Path
 
 		c.JSON(http.StatusOK, gin.H{
@@ -5695,7 +5695,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	r.GET("/api/solltabellen", func(c *gin.Context) {
-		res, err := queries.ListSolltabellen(c)
+		res, err := database.Repo.ListSolltabellen(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5705,7 +5705,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/tabellenkopf/typ/:typ", func(c *gin.Context) {
 		typ := c.Param("typ")
-		res, err := queries.ListTabellenkopfByType(c, typ)
+		res, err := database.Repo.ListTabellenkopfByType(c, typ)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5738,7 +5738,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Anlagedatum:    req.Anlagedatum,
 			Datum:          req.Datum,
 		}
-		res, err := queries.UpdateTabellenkopf(c, params)
+		res, err := database.Repo.UpdateTabellenkopf(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5765,7 +5765,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			Anlagedatum:    req.Anlagedatum,
 			Datum:          req.Datum,
 		}
-		res, err := queries.CreateTabellenkopf(c, params)
+		res, err := database.Repo.CreateTabellenkopf(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5779,7 +5779,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// 1. Get the Tabellenkopf to know Typ and Nummer
 		var ttyp interface{}
 		var tnum int64
-		err := conn.QueryRowContext(c, "SELECT TABELLENTYP, TABELLENNUMMER FROM TABELLENKOPF WHERE ID = ?", id).Scan(&ttyp, &tnum)
+		err := database.SQL.QueryRowContext(c, "SELECT TABELLENTYP, TABELLENNUMMER FROM TABELLENKOPF WHERE ID = ?", id).Scan(&ttyp, &tnum)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Tabelle nicht gefunden"})
 			return
@@ -5789,13 +5789,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 2. Delete rows in associated tables
 		if typStr == "G" {
-			_, _ = conn.ExecContext(c, "DELETE FROM GEWICHTTABELLE WHERE TABELLENNUMMER = ?", tnum)
+			_, _ = database.SQL.ExecContext(c, "DELETE FROM GEWICHTTABELLE WHERE TABELLENNUMMER = ?", tnum)
 		} else if typStr == "L" {
-			_, _ = conn.ExecContext(c, "DELETE FROM LSLKLASSIK WHERE TABELLENNUMMER = ?", tnum)
+			_, _ = database.SQL.ExecContext(c, "DELETE FROM LSLKLASSIK WHERE TABELLENNUMMER = ?", tnum)
 		}
 
 		// 3. Delete the header
-		_, err = conn.ExecContext(c, "DELETE FROM TABELLENKOPF WHERE ID = ?", id)
+		_, err = database.SQL.ExecContext(c, "DELETE FROM TABELLENKOPF WHERE ID = ?", id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5806,7 +5806,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/lsl_klassik/tabnum/:tabnum", func(c *gin.Context) {
 		tabnum, _ := strconv.ParseInt(c.Param("tabnum"), 10, 64)
-		res, err := queries.ListLSLKlassikByTabNum(c, tabnum)
+		res, err := database.Repo.ListLSLKlassikByTabNum(c, tabnum)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5830,7 +5830,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.CreateLSLKlassik(c, db.CreateLSLKlassikParams{
+		res, err := database.Repo.CreateLSLKlassik(c, db.CreateLSLKlassikParams{
 			Tabellennummer: req.Tabellennummer,
 			Alterinwochen:  req.Alterinwochen,
 			Eizahlkum:      req.Eizahlkum,
@@ -5870,7 +5870,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.UpdateLSLKlassik(c, db.UpdateLSLKlassikParams{
+		res, err := database.Repo.UpdateLSLKlassik(c, db.UpdateLSLKlassikParams{
 			ID:             id,
 			Tabellennummer: req.Tabellennummer,
 			Alterinwochen:  req.Alterinwochen,
@@ -5896,7 +5896,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige ID: " + idStr})
 			return
 		}
-		if err := queries.DeleteLSLKlassik(c, id); err != nil {
+		if err := database.Repo.DeleteLSLKlassik(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -5905,7 +5905,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/gewichttabelle/tabnum/:tabnum", func(c *gin.Context) {
 		tabnum, _ := strconv.ParseInt(c.Param("tabnum"), 10, 64)
-		res, err := queries.ListGewichtByTabNum(c, tabnum)
+		res, err := database.Repo.ListGewichtByTabNum(c, tabnum)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -5929,7 +5929,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.CreateGewichtTabelle(c, db.CreateGewichtTabelleParams{
+		res, err := database.Repo.CreateGewichtTabelle(c, db.CreateGewichtTabelleParams{
 			Tabellennummer: req.Tabellennummer,
 			Eigewicht:      req.Eigewicht,
 			Klasse1:        req.Klasse1,
@@ -5969,7 +5969,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.UpdateGewichtTabelle(c, db.UpdateGewichtTabelleParams{
+		res, err := database.Repo.UpdateGewichtTabelle(c, db.UpdateGewichtTabelleParams{
 			ID:             id,
 			Tabellennummer: req.Tabellennummer,
 			Eigewicht:      req.Eigewicht,
@@ -5995,7 +5995,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige ID: " + idStr})
 			return
 		}
-		if err := queries.DeleteGewichtTabelle(c, id); err != nil {
+		if err := database.Repo.DeleteGewichtTabelle(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -6005,7 +6005,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	r.GET("/api/tabellen/gewicht/:tabnr/:weight", func(c *gin.Context) {
 		tabNr, _ := strconv.ParseInt(c.Param("tabNr"), 10, 64)
 		weight, _ := strconv.ParseFloat(c.Param("weight"), 64)
-		res, err := queries.GetGewichtByTabNumAndWeight(c, db.GetGewichtByTabNumAndWeightParams{
+		res, err := database.Repo.GetGewichtByTabNumAndWeight(c, db.GetGewichtByTabNumAndWeightParams{
 			Tabellennummer: tabNr,
 			ROUND:          weight,
 		})
@@ -6019,7 +6019,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	r.GET("/api/tabellen/lsl/:tabnr/:age", func(c *gin.Context) {
 		tabNr, _ := strconv.ParseInt(c.Param("tabNr"), 10, 64)
 		age, _ := strconv.ParseInt(c.Param("age"), 10, 64)
-		res, err := queries.GetLSLByTabNumAndAge(c, db.GetLSLByTabNumAndAgeParams{
+		res, err := database.Repo.GetLSLByTabNumAndAge(c, db.GetLSLByTabNumAndAgeParams{
 			Tabellennummer: tabNr,
 			Alterinwochen:  age,
 		})
@@ -6032,7 +6032,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Preistabelle (Eierpreise)
 	r.GET("/api/preise", func(c *gin.Context) {
-		res, err := queries.ListEierpreise(c)
+		res, err := database.Repo.ListEierpreise(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -6053,7 +6053,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.CreateEierpreis(c, db.CreateEierpreisParams{
+		res, err := database.Repo.CreateEierpreis(c, db.CreateEierpreisParams{
 			KzHaltungstyp: req.KzHaltungstyp,
 			Eierklasse:    req.Eierklasse,
 			GewichtVon:    req.GewichtVon,
@@ -6087,7 +6087,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.UpdateEierpreis(c, db.UpdateEierpreisParams{
+		res, err := database.Repo.UpdateEierpreis(c, db.UpdateEierpreisParams{
 			ID:            id,
 			KzHaltungstyp: req.KzHaltungstyp,
 			Eierklasse:    req.Eierklasse,
@@ -6110,7 +6110,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige ID: " + idStr})
 			return
 		}
-		if err := queries.DeleteEierpreis(c, id); err != nil {
+		if err := database.Repo.DeleteEierpreis(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -6119,7 +6119,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// --- FELD-KONFIGURATION ---
 	r.GET("/api/field-configs", func(c *gin.Context) {
-		res, err := queries.ListFieldTranslations(c, "de")
+		res, err := database.Repo.ListFieldTranslations(c, "de")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -6145,10 +6145,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Edit catalog entry (NAMEINDB)
-		_, _ = conn.Exec("UPDATE FELD_KATALOG SET NAMEINDB = ? WHERE ID = ?", req.Nameindb, id)
+		_, _ = database.SQL.Exec("UPDATE FELD_KATALOG SET NAMEINDB = ? WHERE ID = ?", req.Nameindb, id)
 
 		// Edit translation
-		res, err := queries.UpsertFieldTranslation(c, db.UpsertFieldTranslationParams{
+		res, err := database.Repo.UpsertFieldTranslation(c, db.UpsertFieldTranslationParams{
 			IDFeldKatalog: id,
 			SpracheKz:     "de",
 			Betreff:       req.Betreff,
@@ -6171,7 +6171,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-		res, err := queries.CreateFieldKatalog(c, db.CreateFieldKatalogParams{
+		res, err := database.Repo.CreateFieldKatalog(c, db.CreateFieldKatalogParams{
 			Kz:       req.Kz,
 			Feldname: req.Feldname,
 			Nameindb: req.Nameindb,
@@ -6190,7 +6190,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige ID: " + idStr})
 			return
 		}
-		_, err = conn.Exec("DELETE FROM FELD_KATALOG WHERE ID = ?", id)
+		_, err = database.SQL.Exec("DELETE FROM FELD_KATALOG WHERE ID = ?", id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -6202,9 +6202,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		var tableRows *sql.Rows
 		var err error
 		if database.Engine == "mysql" {
-			tableRows, err = conn.Query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()")
+			tableRows, err = database.SQL.Query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()")
 		} else {
-			tableRows, err = conn.Query("SELECT NAME FROM sqlite_master WHERE type='table' AND NAME NOT LIKE 'sqlite_%'")
+			tableRows, err = database.SQL.Query("SELECT NAME FROM sqlite_master WHERE type='table' AND NAME NOT LIKE 'sqlite_%'")
 		}
 
 		if err != nil {
@@ -6228,9 +6228,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			var cols *sql.Rows
 			var err error
 			if database.Engine == "mysql" {
-				cols, err = conn.Query("SELECT 0 as cid, COLUMN_NAME as name, DATA_TYPE as dtype, IF(IS_NULLABLE='NO', 1, 0) as notnull, COLUMN_DEFAULT as dfltValue, IF(COLUMN_KEY='PRI', 1, 0) as pk FROM information_schema.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()", tableName)
+				cols, err = database.SQL.Query("SELECT 0 as cid, COLUMN_NAME as name, DATA_TYPE as dtype, IF(IS_NULLABLE='NO', 1, 0) as notnull, COLUMN_DEFAULT as dfltValue, IF(COLUMN_KEY='PRI', 1, 0) as pk FROM information_schema.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()", tableName)
 			} else {
-				cols, err = conn.Query(fmt.Sprintf("PRAGMA table_info('%s')", tableName))
+				cols, err = database.SQL.Query(fmt.Sprintf("PRAGMA table_info('%s')", tableName))
 			}
 			if err != nil {
 				continue
@@ -6248,7 +6248,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 3. Neue Felder in einer Transaktion hinzufügen
-		tx, err := conn.Begin()
+		tx, err := database.SQL.Begin()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaktionsfehler: " + err.Error()})
 			return
@@ -6303,7 +6303,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// --- DYNAMISCHE REPORTS ---
 	r.GET("/api/reports", func(c *gin.Context) {
-		res, err := queries.ListDynamischeSQL(c)
+		res, err := database.Repo.ListDynamischeSQL(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Laden der Berichtsliste: " + err.Error()})
 			return
@@ -6318,7 +6318,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Ungültige Report-ID: " + idStr})
 			return
 		}
-		res, err := queries.GetDynamischeSQL(c, id)
+		res, err := database.Repo.GetDynamischeSQL(c, id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Report nicht gefunden"})
@@ -6358,10 +6358,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 		// Feldkatalog synchronisieren und SQL normalisieren (Aliase auf Großschreibung "AS")
-		req.SqlstatementNative = syncFieldCatalog(conn, req.SqlstatementNative)
-		req.DetailSqlNative = syncFieldCatalog(conn, req.DetailSqlNative)
+		req.SqlstatementNative = syncFieldCatalog(database.SQL, req.SqlstatementNative)
+		req.DetailSqlNative = syncFieldCatalog(database.SQL, req.DetailSqlNative)
 
-		res, err := queries.CreateDynamischeSQL(c, db.CreateDynamischeSQLParams{
+		res, err := database.Repo.CreateDynamischeSQL(c, db.CreateDynamischeSQLParams{
 			Beschreibung:       req.Beschreibung,
 			Sqlstatement:       req.Sqlstatement,
 			KategorieKz:        req.KategorieKz,
@@ -6400,7 +6400,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		if appconfig.LoadConfig().System == 0 {
-			item, err := queries.GetDynamischeSQL(c, id)
+			item, err := database.Repo.GetDynamischeSQL(c, id)
 			if err == nil {
 				sysStr := strings.TrimSpace(item.SystemKz)
 				if sysStr != "" && sysStr != "0" && strings.ToLower(sysStr) != "false" {
@@ -6439,10 +6439,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Feldkatalog synchronisieren und SQL normalisieren (Aliase auf Großschreibung "AS")
-		req.SqlstatementNative = syncFieldCatalog(conn, req.SqlstatementNative)
-		req.DetailSqlNative = syncFieldCatalog(conn, req.DetailSqlNative)
+		req.SqlstatementNative = syncFieldCatalog(database.SQL, req.SqlstatementNative)
+		req.DetailSqlNative = syncFieldCatalog(database.SQL, req.DetailSqlNative)
 
-		res, err := queries.UpdateDynamischeSQL(c, db.UpdateDynamischeSQLParams{
+		res, err := database.Repo.UpdateDynamischeSQL(c, db.UpdateDynamischeSQLParams{
 			ID:                 id,
 			Beschreibung:       req.Beschreibung,
 			Sqlstatement:       req.Sqlstatement,
@@ -6482,7 +6482,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		if appconfig.LoadConfig().System == 0 {
-			item, err := queries.GetDynamischeSQL(c, id)
+			item, err := database.Repo.GetDynamischeSQL(c, id)
 			if err == nil {
 				sysStr := strings.TrimSpace(item.SystemKz)
 				if sysStr != "" && sysStr != "0" && strings.ToLower(sysStr) != "false" {
@@ -6493,7 +6493,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 		}
 
-		if err := queries.DeleteDynamischeSQL(c, id); err != nil {
+		if err := database.Repo.DeleteDynamischeSQL(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -6519,10 +6519,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		req.Params["LANG"] = lang
 		req.Params["SPR_KZ"] = lang
 
-		translations, _ := queries.ListTranslateFeldnamen(c, lang)
+		translations, _ := database.Repo.ListTranslateFeldnamen(c, lang)
 
 		runAdHocSql := func(isql string) (string, []interface{}, error) {
-			isql = translateSqlAliases(c, conn, isql, lang)
+			isql = translateSqlAliases(c, database.SQL, isql, lang)
 			// Parameter-Map normalisieren (Upper)
 			paramsUpper := make(map[string]interface{})
 			for k, v := range req.Params {
@@ -6711,7 +6711,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Master-SQL: " + err.Error()})
 				return
 			}
-			masterRows, err = executeQueryToMaps(c, conn, mSqlFinal, mArgs)
+			masterRows, err = executeQueryToMaps(c, database.SQL, mSqlFinal, mArgs)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Master-EXEC: " + err.Error()})
 				return
@@ -6728,15 +6728,15 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Detail-SQL: " + err.Error()})
 				return
 			}
-			detailRows, err = executeQueryToMaps(c, conn, dSqlFinal, dArgs)
+			detailRows, err = executeQueryToMaps(c, database.SQL, dSqlFinal, dArgs)
 			if err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"error": "Detail-EXEC: " + err.Error()})
 				return
 			}
 		}
 
-		_, masterRows = translateResponseKeys(nil, masterRows, lang, conn)
-		_, detailRows = translateResponseKeys(nil, detailRows, lang, conn)
+		_, masterRows = translateResponseKeys(nil, masterRows, lang, database.SQL)
+		_, detailRows = translateResponseKeys(nil, detailRows, lang, database.SQL)
 
 		c.JSON(http.StatusOK, gin.H{
 			"master":     masterRows,
@@ -6774,7 +6774,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		req.Params["SPR_KZ"] = lang
 
 		// 2. Report laden
-		report, err := queries.GetDynamischeSQL(c, id)
+		report, err := database.Repo.GetDynamischeSQL(c, id)
 		if err == nil {
 			log.Printf("[REPORTS] Report geladen: ID=%d, Typ=%v, IstSumme=%d, SumSQL=%q", report.ID, report.TypKz, report.IstSummenzeile, report.Summenzeile)
 		}
@@ -6796,7 +6796,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// --- STEP 1: PARAMS GLOBAL EXTRAHIEREN (FÜR ALLE TYPEN) ---
 		combinedSQL := report.Sqlstatement + " " + toString(report.DetailSql)
 		// Platzhalter §...§ vorab ersetzen für die Parameter-Suche
-		translations, _ := queries.ListTranslateFeldnamen(c, lang)
+		translations, _ := database.Repo.ListTranslateFeldnamen(c, lang)
 		for _, t := range translations {
 			placeholder := "§" + strings.ToUpper(t.Betreff) + "§"
 			combinedSQL = strings.ReplaceAll(combinedSQL, placeholder, t.Inhalt)
@@ -6970,7 +6970,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 			// 3. Query ausführen
 			log.Printf("[REPORTS] Executing SQL (Lang=%s): %s with params: %v", lang, finalSQL, localArgs)
-			rows, err := conn.QueryContext(c, finalSQL, localArgs...)
+			rows, err := database.SQL.QueryContext(c, finalSQL, localArgs...)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -7017,12 +7017,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		// FALL T/M/G/L: Master-Detail-Reporting
 		if typ == "T" || typ == "M" || typ == "G" || typ == "L" {
 			// A: Global (Firma & Firmenparameter)
-			firmaRows, _ := executeQueryToMaps(c, conn, "SELECT * FROM PERSON WHERE KZ = 'F' LIMIT 1", nil)
+			firmaRows, _ := executeQueryToMaps(c, database.SQL, "SELECT * FROM PERSON WHERE KZ = 'F' LIMIT 1", nil)
 			var firma map[string]interface{}
 			if len(firmaRows) > 0 {
 				firma = firmaRows[0]
 			}
-			paramRows, _ := executeQueryToMaps(c, conn, "SELECT * FROM FIRMENPARAMETER LIMIT 1", nil)
+			paramRows, _ := executeQueryToMaps(c, database.SQL, "SELECT * FROM FIRMENPARAMETER LIMIT 1", nil)
 			var firmenparams map[string]interface{}
 			if len(paramRows) > 0 {
 				firmenparams = paramRows[0]
@@ -7033,13 +7033,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			if mSql == "" {
 				mSql = strings.TrimSpace(toString(report.Sqlstatement))
 			}
-			mSql = translateSqlAliases(c, conn, mSql, lang)
+			mSql = translateSqlAliases(c, database.SQL, mSql, lang)
 			masterRows, mCols, err := runSqlWithParams(mSql, req.Params)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Master-SQL Fehler: " + err.Error()})
 				return
 			}
-			populateOriginalKeys(masterRows, lang, conn)
+			populateOriginalKeys(masterRows, lang, database.SQL)
 
 			// C: Template laden
 			var tmplContent []byte
@@ -7057,7 +7057,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			}
 
 			// Metadaten & Übersetzungen
-			catalogFields, _ := queries.ListFieldTranslations(c, "de")
+			catalogFields, _ := database.Repo.ListFieldTranslations(c, "de")
 			metaMap := make(map[string]int64)
 			for _, f := range catalogFields {
 				metaMap[strings.ToUpper(f.Feldname)] = f.Nameindb
@@ -7073,12 +7073,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			masterSumsMap := make(map[interface{}][]map[string]interface{})
 
 			if report.IstSummenzeile == 1 && toString(report.Summenzeile) != "" && !strings.Contains(strings.ToUpper(toString(report.Summenzeile)), "§MASTER.") {
-				sRows, sc, err := runSqlWithParams(translateSqlAliases(c, conn, toString(report.Summenzeile), lang), req.Params)
+				sRows, sc, err := runSqlWithParams(translateSqlAliases(c, database.SQL, toString(report.Summenzeile), lang), req.Params)
 				if err != nil {
 					log.Printf("[REPORTS] Global Summenzeile Fehler: %v", err)
 				} else {
 					globalSumRows = sRows
-					populateOriginalKeys(globalSumRows, lang, conn)
+					populateOriginalKeys(globalSumRows, lang, database.SQL)
 					globalSCols = sc
 					log.Printf("[REPORTS] Globale Summenzeile geladen: %d Zeilen", len(globalSumRows))
 				}
@@ -7092,7 +7092,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			if baseDSql == "" {
 				baseDSql = strings.TrimSpace(toString(report.DetailSql))
 			}
-			baseDSql = translateSqlAliases(c, conn, baseDSql, lang)
+			baseDSql = translateSqlAliases(c, database.SQL, baseDSql, lang)
 
 			// Automatische Verknüpfung ermitteln (Konvention: ID_TABELLENNAME)
 			var dCols []string
@@ -7209,7 +7209,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					rows, cols, err := runSqlWithParams(dSql, req.Params)
 					if err == nil {
 						dRows = rows
-						populateOriginalKeys(dRows, lang, conn)
+						populateOriginalKeys(dRows, lang, database.SQL)
 						if len(dCols) == 0 {
 							dCols = cols
 						}
@@ -7231,7 +7231,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				// --- Summenzeile pro Master (Subtotals) ---
 				var currentSumRows []map[string]interface{}
 				if report.IstSummenzeile == 1 && toString(report.Summenzeile) != "" {
-					sumSql := translateSqlAliases(c, conn, toString(report.Summenzeile), lang)
+					sumSql := translateSqlAliases(c, database.SQL, toString(report.Summenzeile), lang)
 					if strings.Contains(strings.ToUpper(sumSql), "§MASTER.") {
 						// Platzhalter ersetzen
 						reM := regexp.MustCompile(`(?i)§MASTER\.([^§]+)§`)
@@ -7251,7 +7251,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 						sRows, _, err := runSqlWithParams(sumSql, req.Params)
 						if err == nil {
 							currentSumRows = sRows
-							populateOriginalKeys(currentSumRows, lang, conn)
+							populateOriginalKeys(currentSumRows, lang, database.SQL)
 							if mID != nil {
 								masterSumsMap[mID] = sRows
 							}
@@ -7312,9 +7312,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 				}
 			}
 
-			mCols, filteredMasterRows = translateResponseKeys(mCols, filteredMasterRows, lang, conn)
-			dCols, allDetailRows = translateResponseKeys(dCols, allDetailRows, lang, conn)
-			_, globalSumRows = translateResponseKeys(nil, globalSumRows, lang, conn)
+			mCols, filteredMasterRows = translateResponseKeys(mCols, filteredMasterRows, lang, database.SQL)
+			dCols, allDetailRows = translateResponseKeys(dCols, allDetailRows, lang, database.SQL)
+			_, globalSumRows = translateResponseKeys(nil, globalSumRows, lang, database.SQL)
 
 			c.JSON(http.StatusOK, gin.H{
 				"typ":              typ,
@@ -7331,43 +7331,43 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		if typ == "S" || typ == "L" {
-			translatedSQL := translateSqlAliases(c, conn, report.Sqlstatement, lang)
+			translatedSQL := translateSqlAliases(c, database.SQL, report.Sqlstatement, lang)
 			res, cols, err := runSqlWithParams(translatedSQL, req.Params)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Lesen der Daten: " + err.Error()})
 				return
 			}
-			populateOriginalKeys(res, lang, conn)
+			populateOriginalKeys(res, lang, database.SQL)
 
 			var sumRows []map[string]interface{}
 			var sCols []string
 			if report.IstSummenzeile == 1 && toString(report.Summenzeile) != "" {
-				sumSql := translateSqlAliases(c, conn, toString(report.Summenzeile), lang)
+				sumSql := translateSqlAliases(c, database.SQL, toString(report.Summenzeile), lang)
 				sRows, sc, err := runSqlWithParams(sumSql, req.Params)
 				if err != nil {
 					log.Printf("[REPORTS] Summenzeile Fehler: %v", err)
 				} else {
 					sumRows = sRows
-					populateOriginalKeys(sumRows, lang, conn)
+					populateOriginalKeys(sumRows, lang, database.SQL)
 					sCols = sc
 				}
 			}
-			cols, res = translateResponseKeys(cols, res, lang, conn)
-			_, sumRows = translateResponseKeys(nil, sumRows, lang, conn)
+			cols, res = translateResponseKeys(cols, res, lang, database.SQL)
+			_, sumRows = translateResponseKeys(nil, sumRows, lang, database.SQL)
 
 			// Falls HTML angefordert wurde (für Druck)
 			if isTrue(req.Params["_PRINT_"]) {
-				firmaRows, _ := executeQueryToMaps(c, conn, "SELECT * FROM PERSON WHERE KZ = 'F' LIMIT 1", nil)
+				firmaRows, _ := executeQueryToMaps(c, database.SQL, "SELECT * FROM PERSON WHERE KZ = 'F' LIMIT 1", nil)
 				var firma map[string]interface{}
 				if len(firmaRows) > 0 {
 					firma = firmaRows[0]
 				}
-				paramRows, _ := executeQueryToMaps(c, conn, "SELECT * FROM FIRMENPARAMETER LIMIT 1", nil)
+				paramRows, _ := executeQueryToMaps(c, database.SQL, "SELECT * FROM FIRMENPARAMETER LIMIT 1", nil)
 				var firmenparams map[string]interface{}
 				if len(paramRows) > 0 {
 					firmenparams = paramRows[0]
 				}
-				catalogFields, _ := queries.ListFieldTranslations(c, "de")
+				catalogFields, _ := database.Repo.ListFieldTranslations(c, "de")
 				metaMap := make(map[string]int64)
 				for _, f := range catalogFields {
 					metaMap[strings.ToUpper(f.Feldname)] = f.Nameindb
@@ -7417,7 +7417,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 		_ = c.ShouldBindJSON(&req)
 
-		report, err := queries.GetDynamischeSQL(c, id)
+		report, err := database.Repo.GetDynamischeSQL(c, id)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Report nicht gefunden"})
@@ -7434,8 +7434,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		req.Params["LANG"] = lang
 		req.Params["SPR_KZ"] = lang
 
-		translations, _ := queries.ListTranslateFeldnamen(c, lang)
-		sqlStr := translateSqlAliases(c, conn, report.Sqlstatement, lang)
+		translations, _ := database.Repo.ListTranslateFeldnamen(c, lang)
+		sqlStr := translateSqlAliases(c, database.SQL, report.Sqlstatement, lang)
 		for _, t := range translations {
 			placeholder := "§" + strings.ToUpper(t.Betreff) + "§"
 			replacement := t.Inhalt
@@ -7600,10 +7600,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		lang := c.DefaultQuery("lang", "de")
-		finalSQL := translateSqlAliases(c, conn, req.SQL, lang)
+		finalSQL := translateSqlAliases(c, database.SQL, req.SQL, lang)
 
 		// 1. Übersetzungen (§...§)
-		translations, _ := queries.ListTranslateFeldnamen(c, lang)
+		translations, _ := database.Repo.ListTranslateFeldnamen(c, lang)
 		for _, t := range translations {
 			placeholder := "§" + strings.ToUpper(t.Betreff) + "§"
 			replacement := t.Inhalt
@@ -7636,7 +7636,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			finalSQL = re3.ReplaceAllString(finalSQL, finalVal)
 		}
 
-		rows, err := conn.QueryContext(c, finalSQL)
+		rows, err := database.SQL.QueryContext(c, finalSQL)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("SQL Fehler: %v", err)})
 			return
@@ -7726,7 +7726,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	// TABELLEN-SEEDING (Optional: INITIALE DATEN FÜR FELD_KATALOG)
-	fields, _ := queries.ListFieldTranslations(context.Background(), "de")
+	fields, _ := database.Repo.ListFieldTranslations(context.Background(), "de")
 	if len(fields) == 0 {
 		defaultFields := []struct {
 			KZ   string
@@ -7745,13 +7745,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			{"J", "KL6", "Jumbo"},
 		}
 		for _, f := range defaultFields {
-			res, _ := queries.CreateFieldKatalog(context.Background(), db.CreateFieldKatalogParams{
+			res, _ := database.Repo.CreateFieldKatalog(context.Background(), db.CreateFieldKatalogParams{
 				Kz:       f.KZ,
 				Feldname: f.FELD,
 				Nameindb: 1,
 			})
 			if res.ID > 0 {
-				_, _ = queries.UpsertFieldTranslation(context.Background(), db.UpsertFieldTranslationParams{
+				_, _ = database.Repo.UpsertFieldTranslation(context.Background(), db.UpsertFieldTranslationParams{
 					IDFeldKatalog: res.ID,
 					SpracheKz:     "de",
 					Inhalt:        f.DESC,
@@ -7763,9 +7763,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// --- BENUTZER PROFILE & BERECHTIGUNGEN ---
 
-	adminProfile, _ := queries.GetBenutzerProfilByKZ(context.Background(), "A")
+	adminProfile, _ := database.Repo.GetBenutzerProfilByKZ(context.Background(), "A")
 	if adminProfile.ID == 0 {
-		_, _ = queries.CreateBenutzerProfil(context.Background(), db.CreateBenutzerProfilParams{
+		_, _ = database.Repo.CreateBenutzerProfil(context.Background(), db.CreateBenutzerProfilParams{
 			ProfilKz:                "A",
 			Beschreibung:            "Administrator mit Vollzugriff",
 			FDashboard:              1,
@@ -7788,10 +7788,10 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	}
 
 	// Seeding Default Admin User if not exists
-	adminUser, _ := queries.GetBenutzerByUsername(context.Background(), "Admin")
+	adminUser, _ := database.Repo.GetBenutzerByUsername(context.Background(), "Admin")
 	if adminUser.ID == 0 {
 		pass, _ := encryptAES("1234", "HuhnLite")
-		_, _ = queries.CreateBenutzer(context.Background(), db.CreateBenutzerParams{
+		_, _ = database.Repo.CreateBenutzer(context.Background(), db.CreateBenutzerParams{
 			Username:          "Admin",
 			Passwort:          pass,
 			IDBenutzerProfile: adminProfile.ID,
@@ -7800,7 +7800,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	}
 
 	r.GET("/api/userprofiles", func(c *gin.Context) {
-		res, err := queries.ListBenutzerProfile(c)
+		res, err := database.Repo.ListBenutzerProfile(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -7810,7 +7810,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/userprofiles/:kz", func(c *gin.Context) {
 		kz := c.Param("kz")
-		res, err := queries.GetBenutzerProfilByKZ(c, kz)
+		res, err := database.Repo.GetBenutzerProfilByKZ(c, kz)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				c.JSON(http.StatusNotFound, gin.H{"error": "Profil nicht gefunden"})
@@ -7824,7 +7824,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.GET("/api/permissions/:kz", func(c *gin.Context) {
 		kz := c.Param("kz")
-		res, err := queries.GetBenutzerProfilByKZ(c, kz)
+		res, err := database.Repo.GetBenutzerProfilByKZ(c, kz)
 		if err != nil {
 			// Falls Profil nicht existiert, geben wir leere Rechte zurück
 			c.JSON(http.StatusOK, gin.H{})
@@ -7865,7 +7865,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			ProfilKz:     req.ProfilKz,
 			Beschreibung: req.Beschreibung,
 		}
-		res, err := queries.CreateBenutzerProfil(c, params)
+		res, err := database.Repo.CreateBenutzerProfil(c, params)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -7919,7 +7919,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			ProfilKz:                kz,
 		}
 
-		res, err := queries.UpdateBenutzerProfil(c, params)
+		res, err := database.Repo.UpdateBenutzerProfil(c, params)
 
 		if err != nil {
 			log.Printf("PUT /api/userprofiles/%s: DB Update Error: %v", kz, err)
@@ -7935,7 +7935,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Das Admin-Profil kann nicht gelöscht werden"})
 			return
 		}
-		err := queries.DeleteBenutzerProfil(c, kz)
+		err := database.Repo.DeleteBenutzerProfil(c, kz)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -7946,7 +7946,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	// --- BENUTZER VERWALTUNG ---
 
 	r.GET("/api/benutzer", func(c *gin.Context) {
-		res, err := queries.ListBenutzer(c)
+		res, err := database.Repo.ListBenutzer(c)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -7972,7 +7972,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		res, err := queries.CreateBenutzer(c, db.CreateBenutzerParams{
+		res, err := database.Repo.CreateBenutzer(c, db.CreateBenutzerParams{
 			Username:          req.Username,
 			Passwort:          encryptedPass,
 			IDBenutzerProfile: req.IDBenutzerProfile,
@@ -8009,7 +8009,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		err = queries.UpdateBenutzer(c, db.UpdateBenutzerParams{
+		err = database.Repo.UpdateBenutzer(c, db.UpdateBenutzerParams{
 			ID:                idInt,
 			Passwort:          encryptedPass,
 			IDBenutzerProfile: req.IDBenutzerProfile,
@@ -8030,7 +8030,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		err = queries.DeleteBenutzer(c, idInt)
+		err = database.Repo.DeleteBenutzer(c, idInt)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -8048,7 +8048,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		user, err := queries.GetBenutzerByUsername(c, req.Username)
+		user, err := database.Repo.GetBenutzerByUsername(c, req.Username)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Ungültiger Benutzer oder Passwort"})
 			return
@@ -8066,7 +8066,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// Profil & Berechtigungen laden
-		profile, err := queries.GetBenutzerProfilByID(c, user.IDBenutzerProfile)
+		profile, err := database.Repo.GetBenutzerProfilByID(c, user.IDBenutzerProfile)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Berechtigungen konnten nicht geladen werden"})
 			return
@@ -8100,7 +8100,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// --- SCHEMA INFO ENDPOINTS FOR REPORT BUILDER ---
 	r.GET("/api/schema/tables", func(c *gin.Context) {
-		rows, err := conn.Query("SELECT name FROM sqlite_master JOIN SHOWTV ON sqlite_master.name = SHOWTV.TVNAME WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' AND SHOWTV.SHOWIT = 1 ORDER BY name")
+		rows, err := database.SQL.Query("SELECT name FROM sqlite_master JOIN SHOWTV ON sqlite_master.name = SHOWTV.TVNAME WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' AND SHOWTV.SHOWIT = 1 ORDER BY name")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -8120,9 +8120,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		var rows *sql.Rows
 		var err error
 		if database.Engine == "mysql" {
-			rows, err = conn.Query("SELECT 0 as cid, COLUMN_NAME as name, DATA_TYPE as dtype, IF(IS_NULLABLE='NO', 1, 0) as notnull, COLUMN_DEFAULT as dfltValue, IF(COLUMN_KEY='PRI', 1, 0) as pk FROM information_schema.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()", table)
+			rows, err = database.SQL.Query("SELECT 0 as cid, COLUMN_NAME as name, DATA_TYPE as dtype, IF(IS_NULLABLE='NO', 1, 0) as notnull, COLUMN_DEFAULT as dfltValue, IF(COLUMN_KEY='PRI', 1, 0) as pk FROM information_schema.COLUMNS WHERE TABLE_NAME = ? AND TABLE_SCHEMA = DATABASE()", table)
 		} else {
-			rows, err = conn.Query(fmt.Sprintf("PRAGMA table_info(\"%s\")", table))
+			rows, err = database.SQL.Query(fmt.Sprintf("PRAGMA table_info(\"%s\")", table))
 		}
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -8150,7 +8150,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		var value string
-		err := conn.QueryRow("SELECT VALUE FROM USER_STATE WHERE USERNAME = ? AND KEY = ?", username, key).Scan(&value)
+		err := database.SQL.QueryRow("SELECT VALUE FROM USER_STATE WHERE USERNAME = ? AND KEY = ?", username, key).Scan(&value)
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusOK, gin.H{"value": ""})
 			return
@@ -8179,7 +8179,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			upsertQuery = `INSERT INTO USER_STATE (USERNAME, KEY, VALUE) VALUES (?, ?, ?)
 				ON DUPLICATE KEY UPDATE VALUE = VALUES(VALUE)`
 		}
-		_, err := conn.Exec(upsertQuery, req.Username, req.Key, req.Value)
+		_, err := database.SQL.Exec(upsertQuery, req.Username, req.Key, req.Value)
 
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -8215,7 +8215,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		fmt.Printf("[API] GET /api/aktionen: user=%d, start='%s', end='%s', kz='%s', raw_erledigt='%s' -> status=%d\n", 
 			idUser, start, end, kz, showErledigtRaw, statusInt)
 
-		res, err := queries.ListAktionen(c, db.ListAktionenParams{
+		res, err := database.Repo.ListAktionen(c, db.ListAktionenParams{
 			IDUser:    idUser,
 			StartDate: start,
 			EndDate:   end,
@@ -8296,7 +8296,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			req.ErledigtAm = time.Now().Format("2006-01-02 15:04:05")
 		}
 
-		res, err := queries.CreateAktion(c, db.CreateAktionParams{
+		res, err := database.Repo.CreateAktion(c, db.CreateAktionParams{
 			AktionenKz:       toNullString(req.AktionenKz),
 			IDUser:           toNullInt64(req.IDUser),
 			Aktionsdatum:     toNullString(req.Aktionsdatum),
@@ -8344,7 +8344,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			req.ErledigtAm = ""
 		}
 
-		res, err := queries.UpdateAktion(c, db.UpdateAktionParams{
+		res, err := database.Repo.UpdateAktion(c, db.UpdateAktionParams{
 			ID:               id,
 			AktionenKz:       toNullString(req.AktionenKz),
 			IDUser:           toNullInt64(req.IDUser),
@@ -8370,7 +8370,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid ID"})
 			return
 		}
-		if err := queries.DeleteAktion(c, id); err != nil {
+		if err := database.Repo.DeleteAktion(c, id); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -9014,7 +9014,7 @@ func generateDefaultListHtml(report db.DynamischeSql, firma, firmenparams map[st
 	sb.WriteString("<br/><p style='font-size:10px; color:gray; text-align:right; font-family: sans-serif;'>Erstellt am: " + time.Now().Format("02.01.2006 15:04") + "</p></body></html>")
 	return sb.String()
 }
-func migrateDB(database *wailsdb.DB) {
+func MigrateDB(database *wailsdb.DB) {
 	db := database.SQL
 	log.Println("Prüfe Datenbank-Schema...")
 
