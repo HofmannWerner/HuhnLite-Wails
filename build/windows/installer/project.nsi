@@ -104,8 +104,12 @@ Section
 
     # Safely copy settings and database files if they do not exist
     IfFileExists "$INSTDIR\HuhnLite.db" db_exists
-        File "..\..\..\HuhnLite.db"
+        File "/nonfatal" "..\..\..\HuhnLite.db"
     db_exists:
+
+    IfFileExists "$INSTDIR\HuhnLite_test.db" db_test_exists
+        File "/nonfatal" "..\..\..\HuhnLite_test.db"
+    db_test_exists:
 
     IfFileExists "$INSTDIR\settings.json" settings_exists
         File "..\..\..\settings.json"

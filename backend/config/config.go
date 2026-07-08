@@ -104,6 +104,7 @@ func LoadConfig() Config {
 		// Files to copy from sourceDirForCopy to appDataDir if they don't exist in appDataDir
 		filesToCopy := []string{
 			"HuhnLite.db",
+			"HuhnLite_test.db",
 			"settings.json",
 			"settings_mariadb.json",
 			"settings_server.json",

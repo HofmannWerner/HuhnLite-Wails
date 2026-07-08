@@ -66,6 +66,7 @@ if [ -d "build/bin/HuhnLite-Local.app" ]; then
     cp -R images/* build/bin/HuhnLite-Local.app/Contents/Resources/images/
     cp settings.json build/bin/HuhnLite-Local.app/Contents/Resources/settings.json
     [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite.db
+    [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite_test.db
 fi
 
 # Sichern der HuhnLite-Local Build-Ergebnisse, da der nächste Wails-Build build/bin/ löscht
@@ -73,6 +74,7 @@ mkdir -p build/local_temp
 [ -d build/bin/HuhnLite-Local.app ] && mv build/bin/HuhnLite-Local.app build/local_temp/
 [ -f build/bin/settings.json ] && mv build/bin/settings.json build/local_temp/
 [ -f build/bin/HuhnLite.db ] && mv build/bin/HuhnLite.db build/local_temp/
+[ -f build/bin/HuhnLite_test.db ] && mv build/bin/HuhnLite_test.db build/local_temp/
 
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-MariaDB (Netzwerk)..."
@@ -98,6 +100,7 @@ fi
 [ -d build/local_temp/HuhnLite-Local.app ] && mv build/local_temp/HuhnLite-Local.app build/bin/
 [ -f build/local_temp/settings.json ] && mv build/local_temp/settings.json build/bin/
 [ -f build/local_temp/HuhnLite.db ] && mv build/local_temp/HuhnLite.db build/bin/
+[ -f build/local_temp/HuhnLite_test.db ] && mv build/local_temp/HuhnLite_test.db build/bin/
 rm -rf build/local_temp
 
 echo "------------------------------------------"

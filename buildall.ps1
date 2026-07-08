@@ -59,6 +59,12 @@ if (Test-Path "HuhnLite.db") {
     Write-Host "HuhnLite.db kopiert." -ForegroundColor Gray
 }
 
+if (Test-Path "HuhnLite_test.db") {
+    if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
+    Copy-Item "HuhnLite_test.db" "build\bin\HuhnLite_test.db" -Force
+    Write-Host "HuhnLite_test.db kopiert." -ForegroundColor Gray
+}
+
 if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
     Write-Host "Erstelle NSIS Installer für HuhnLite-Local..." -ForegroundColor Cyan
     Push-Location "build\windows\installer"

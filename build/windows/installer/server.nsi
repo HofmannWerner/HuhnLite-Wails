@@ -66,8 +66,11 @@ Section
     # Safely copy database if SQLite version and it doesn't exist
     !ifdef INSTALL_SQLITE_DB
         IfFileExists "$INSTDIR\HuhnLite.db" db_exists
-            File "..\..\..\HuhnLite.db"
+            File "/nonfatal" "..\..\..\HuhnLite.db"
         db_exists:
+        IfFileExists "$INSTDIR\HuhnLite_test.db" db_test_exists
+            File "/nonfatal" "..\..\..\HuhnLite_test.db"
+        db_test_exists:
     !endif
 
     # Safely copy server settings file
