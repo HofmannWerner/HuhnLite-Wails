@@ -267,7 +267,6 @@ type Herden struct {
 	Legedatum             string  `json:"legedatum"`
 	Einstallkosten        float64 `json:"einstallkosten"`
 	Datum                 string  `json:"datum"`
-	Zeitstempel           string  `json:"zeitstempel"`
 	Aktiv                 int64   `json:"aktiv"`
 	Aw                    int64   `json:"aw"`
 	Allebuchungenmitdatum int64   `json:"allebuchungenmitdatum"`

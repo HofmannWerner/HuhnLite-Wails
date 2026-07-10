@@ -5480,10 +5480,18 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		timestamp := time.Now().Format("0601021504")
-		destPath := filepath.Join(backupDir, fmt.Sprintf("HuhnLite%s.db", timestamp))
+		activePath := database.ActiveConnStr
+		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		_ = os.MkdirAll(activeBackupDir, 0755)
 
-		err := copyFile(currentDBPath, destPath)
+		dbFilename := filepath.Base(activePath)
+		ext := filepath.Ext(dbFilename)
+		baseName := strings.TrimSuffix(dbFilename, ext)
+
+		timestamp := time.Now().Format("0601021504")
+		destPath := filepath.Join(activeBackupDir, fmt.Sprintf("%s%s%s", baseName, timestamp, ext))
+
+		err := copyFile(activePath, destPath)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Backup fehlgeschlagen: " + err.Error()})
 			return
@@ -5495,7 +5503,9 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	// DB Management Endpunkte
 	r.GET("/api/db/list", func(c *gin.Context) {
 		var files []string
-		dirs := []string{filepath.Dir(currentDBPath), backupDir}
+		activePath := database.ActiveConnStr
+		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		dirs := []string{filepath.Dir(activePath), activeBackupDir}
 
 		seen := make(map[string]bool)
 		for _, dir := range dirs {
@@ -5511,7 +5521,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		c.JSON(http.StatusOK, gin.H{
 			"files":   files,
-			"current": currentDBPath,
+			"current": activePath,
 		})
 	})
 
@@ -5525,10 +5535,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Sicherheits-Backup der aktuellen DB
+		activePath := database.ActiveConnStr
+		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		_ = os.MkdirAll(activeBackupDir, 0755)
 		timestamp := time.Now().Format("0601021504")
-		safetyBackup := filepath.Join(backupDir, fmt.Sprintf("SafetyBackup_before_switch_%s.db", timestamp))
+		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBackup_before_switch_%s.db", timestamp))
 
-		err := copyFile(currentDBPath, safetyBackup)
+		err := copyFile(activePath, safetyBackup)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Sicherheits-Backup fehlgeschlagen: " + err.Error()})
 			return
@@ -5554,11 +5567,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		database.SQL = newConn
 		database.Repo = db.New(database.SQL)
+		database.ActiveConnStr = req.Path
 		currentDBPath = req.Path
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":        "switched",
-			"current":       currentDBPath,
+			"current":       database.ActiveConnStr,
 			"safety_backup": filepath.Base(safetyBackup),
 		})
 	})
@@ -5581,13 +5595,16 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Sicherheits-Backup der aktuellen DB
+		activePath := database.ActiveConnStr
+		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		_ = os.MkdirAll(activeBackupDir, 0755)
 		timestamp := time.Now().Format("0601021504")
-		safetyBackup := filepath.Join(backupDir, fmt.Sprintf("SafetyBeforeRestore_%s.db", timestamp))
+		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBeforeRestore_%s.db", timestamp))
 
 		dbMutex.Lock()
 		defer dbMutex.Unlock()
 
-		err := copyFile(currentDBPath, safetyBackup)
+		err := copyFile(activePath, safetyBackup)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Sicherheits-Backup vor Restore fehlgeschlagen: " + err.Error()})
 			return
@@ -5599,17 +5616,17 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 3. Datei überschreiben
-		err = copyFile(req.Path, currentDBPath)
+		err = copyFile(req.Path, activePath)
 		if err != nil {
 			// Versuche alte Verbindung wieder zu öffnen
-			database.SQL, _ = sql.Open("sqlite", currentDBPath)
+			database.SQL, _ = sql.Open("sqlite", activePath)
 			database.Repo = db.New(database.SQL)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Datei-Wiederherstellung fehlgeschlagen: " + err.Error()})
 			return
 		}
 
 		// 4. Verbindung neu öffnen
-		newConn, err := sql.Open("sqlite", currentDBPath)
+		newConn, err := sql.Open("sqlite", activePath)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Verbindung nach Restore fehlgeschlagen: " + err.Error()})
 			return
@@ -5620,7 +5637,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "restored",
-			"current": currentDBPath,
+			"current": database.ActiveConnStr,
 			"safety":  filepath.Base(safetyBackup),
 		})
 	})
@@ -5657,10 +5674,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 3. Sicherheits-Backup der aktuellen DB
+		activePath := database.ActiveConnStr
+		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		_ = os.MkdirAll(activeBackupDir, 0755)
 		timestamp := time.Now().Format("0601021504")
-		safetyBackup := filepath.Join(backupDir, fmt.Sprintf("SafetyBackup_before_manual_switch_%s.db", timestamp))
+		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBackup_before_manual_switch_%s.db", timestamp))
 
-		err = copyFile(currentDBPath, safetyBackup)
+		err = copyFile(activePath, safetyBackup)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Sicherheits-Backup fehlgeschlagen: " + err.Error()})
 			return
@@ -5685,11 +5705,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		database.SQL = newConn
 		database.Repo = db.New(database.SQL)
+		database.ActiveConnStr = req.Path
 		currentDBPath = req.Path
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "success",
-			"current": currentDBPath,
+			"current": database.ActiveConnStr,
 			"safety":  filepath.Base(safetyBackup),
 		})
 	})

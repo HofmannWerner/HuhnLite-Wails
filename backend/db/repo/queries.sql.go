@@ -842,7 +842,7 @@ func (q *Queries) CreateGewichtTabelle(ctx context.Context, arg CreateGewichtTab
 const createHerde = `-- name: CreateHerde :one
 INSERT INTO HERDEN (HERDENNUMMER, BEZEICHNUNG, ID_RASSE, ID_ZUECHTER, ID_EILAGER, ANFANGSBESTAND, EINSTALLDATUM,
                     LEGEDATUM, EINSTALLKOSTEN, ID_SILO, ID_STALL, AKTIV, ALLEBUCHUNGENMITDATUM)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, id_silo, id_stall, id_eilager, id_gewichttab, id_zuechter, id_rasse, herdennummer, bezeichnung, anfangskosten, anfangsbestand, einstalldatum, legedatum, einstallkosten, datum, zeitstempel, aktiv, aw, allebuchungenmitdatum
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, id_silo, id_stall, id_eilager, id_gewichttab, id_zuechter, id_rasse, herdennummer, bezeichnung, anfangskosten, anfangsbestand, einstalldatum, legedatum, einstallkosten, datum, aktiv, aw, allebuchungenmitdatum
 `
 
 type CreateHerdeParams struct {
@@ -894,7 +894,6 @@ func (q *Queries) CreateHerde(ctx context.Context, arg CreateHerdeParams) (Herde
 		&i.Legedatum,
 		&i.Einstallkosten,
 		&i.Datum,
-		&i.Zeitstempel,
 		&i.Aktiv,
 		&i.Aw,
 		&i.Allebuchungenmitdatum,
@@ -920,7 +919,7 @@ SELECT SQLC.ARG(HERDENNUMMER),
        SQLC.ARG(ID_STALL),
        SQLC.ARG(AKTIV),
        SQLC.ARG(ALLEBUCHUNGENMITDATUM) WHERE EXISTS (SELECT 1 FROM EILAGER WHERE ID = SQLC.ARG(ID_EILAGER))
-RETURNING ID, ID_SILO, ID_STALL, ID_EILAGER, ID_GEWICHTTAB, ID_ZUECHTER, ID_RASSE, HERDENNUMMER, BEZEICHNUNG, ANFANGSKOSTEN, ANFANGSBESTAND, EINSTALLDATUM, LEGEDATUM, EINSTALLKOSTEN, DATUM, ZEITSTEMPEL, AKTIV, AW, ALLEBUCHUNGENMITDATUM
+RETURNING ID, ID_SILO, ID_STALL, ID_EILAGER, ID_GEWICHTTAB, ID_ZUECHTER, ID_RASSE, HERDENNUMMER, BEZEICHNUNG, ANFANGSKOSTEN, ANFANGSBESTAND, EINSTALLDATUM, LEGEDATUM, EINSTALLKOSTEN, DATUM, AKTIV, AW, ALLEBUCHUNGENMITDATUM
 `
 
 func (q *Queries) CreateHerdeChecked(ctx context.Context) (Herden, error) {
@@ -942,7 +941,6 @@ func (q *Queries) CreateHerdeChecked(ctx context.Context) (Herden, error) {
 		&i.Legedatum,
 		&i.Einstallkosten,
 		&i.Datum,
-		&i.Zeitstempel,
 		&i.Aktiv,
 		&i.Aw,
 		&i.Allebuchungenmitdatum,
@@ -2726,7 +2724,7 @@ func (q *Queries) GetGlobalFirmenparameter(ctx context.Context) (Firmenparameter
 }
 
 const getHerde = `-- name: GetHerde :one
-SELECT id, id_silo, id_stall, id_eilager, id_gewichttab, id_zuechter, id_rasse, herdennummer, bezeichnung, anfangskosten, anfangsbestand, einstalldatum, legedatum, einstallkosten, datum, zeitstempel, aktiv, aw, allebuchungenmitdatum
+SELECT id, id_silo, id_stall, id_eilager, id_gewichttab, id_zuechter, id_rasse, herdennummer, bezeichnung, anfangskosten, anfangsbestand, einstalldatum, legedatum, einstallkosten, datum, aktiv, aw, allebuchungenmitdatum
 FROM HERDEN
 WHERE ID = ?
 `
@@ -2750,7 +2748,6 @@ func (q *Queries) GetHerde(ctx context.Context, id int64) (Herden, error) {
 		&i.Legedatum,
 		&i.Einstallkosten,
 		&i.Datum,
-		&i.Zeitstempel,
 		&i.Aktiv,
 		&i.Aw,
 		&i.Allebuchungenmitdatum,
@@ -4006,7 +4003,7 @@ func (q *Queries) ListGewichtByTabNum(ctx context.Context, tabellennummer int64)
 }
 
 const listHerden = `-- name: ListHerden :many
-SELECT h.id, h.id_silo, h.id_stall, h.id_eilager, h.id_gewichttab, h.id_zuechter, h.id_rasse, h.herdennummer, h.bezeichnung, h.anfangskosten, h.anfangsbestand, h.einstalldatum, h.legedatum, h.einstallkosten, h.datum, h.zeitstempel, h.aktiv, h.aw, h.allebuchungenmitdatum,
+SELECT h.id, h.id_silo, h.id_stall, h.id_eilager, h.id_gewichttab, h.id_zuechter, h.id_rasse, h.herdennummer, h.bezeichnung, h.anfangskosten, h.anfangsbestand, h.einstalldatum, h.legedatum, h.einstallkosten, h.datum, h.aktiv, h.aw, h.allebuchungenmitdatum,
        COALESCE(S.BEZEICHNUNG, '') AS STALL_BEZEICHNUNG,
        COALESCE(S.STALLNUMMER, 0)  AS STALLNUMMER
 FROM HERDEN H
@@ -4029,7 +4026,6 @@ type ListHerdenRow struct {
 	Legedatum             string  `json:"legedatum"`
 	Einstallkosten        float64 `json:"einstallkosten"`
 	Datum                 string  `json:"datum"`
-	Zeitstempel           string  `json:"zeitstempel"`
 	Aktiv                 int64   `json:"aktiv"`
 	Aw                    int64   `json:"aw"`
 	Allebuchungenmitdatum int64   `json:"allebuchungenmitdatum"`
@@ -4062,7 +4058,6 @@ func (q *Queries) ListHerden(ctx context.Context) ([]ListHerdenRow, error) {
 			&i.Legedatum,
 			&i.Einstallkosten,
 			&i.Datum,
-			&i.Zeitstempel,
 			&i.Aktiv,
 			&i.Aw,
 			&i.Allebuchungenmitdatum,
@@ -4089,7 +4084,6 @@ SELECT H.ID, H.ID_SILO, H.ID_STALL, H.ID_EILAGER, H.ID_GEWICHTTAB, H.ID_ZUECHTER
        COALESCE(H.LEGEDATUM, '0001-01-01') AS LEGEDATUM, 
        H.EINSTALLKOSTEN, 
        COALESCE(H.DATUM, '0001-01-01') AS DATUM, 
-       COALESCE(H.ZEITSTEMPEL, '') AS ZEITSTEMPEL, 
        H.AKTIV, H.AW, H.ALLEBUCHUNGENMITDATUM,
        COALESCE(E.BEZEICHNUNG, '') AS LAGERNAME,
        COALESCE(S.BEZEICHNUNG, '') AS STALL_BEZEICHNUNG,
@@ -4115,7 +4109,6 @@ type ListHerdenDetailedRow struct {
 	Legedatum             string  `json:"legedatum"`
 	Einstallkosten        float64 `json:"einstallkosten"`
 	Datum                 string  `json:"datum"`
-	Zeitstempel           string  `json:"zeitstempel"`
 	Aktiv                 int64   `json:"aktiv"`
 	Aw                    int64   `json:"aw"`
 	Allebuchungenmitdatum int64   `json:"allebuchungenmitdatum"`
@@ -4149,7 +4142,6 @@ func (q *Queries) ListHerdenDetailed(ctx context.Context) ([]ListHerdenDetailedR
 			&i.Legedatum,
 			&i.Einstallkosten,
 			&i.Datum,
-			&i.Zeitstempel,
 			&i.Aktiv,
 			&i.Aw,
 			&i.Allebuchungenmitdatum,
@@ -6169,7 +6161,7 @@ SET HERDENNUMMER = ?,
     ID_STALL = ?,
     AKTIV = ?,
     ALLEBUCHUNGENMITDATUM = ?
-WHERE ID = ? RETURNING id, id_silo, id_stall, id_eilager, id_gewichttab, id_zuechter, id_rasse, herdennummer, bezeichnung, anfangskosten, anfangsbestand, einstalldatum, legedatum, einstallkosten, datum, zeitstempel, aktiv, aw, allebuchungenmitdatum
+WHERE ID = ? RETURNING id, id_silo, id_stall, id_eilager, id_gewichttab, id_zuechter, id_rasse, herdennummer, bezeichnung, anfangskosten, anfangsbestand, einstalldatum, legedatum, einstallkosten, datum, aktiv, aw, allebuchungenmitdatum
 `
 
 type UpdateHerdeParams struct {
@@ -6223,7 +6215,6 @@ func (q *Queries) UpdateHerde(ctx context.Context, arg UpdateHerdeParams) (Herde
 		&i.Legedatum,
 		&i.Einstallkosten,
 		&i.Datum,
-		&i.Zeitstempel,
 		&i.Aktiv,
 		&i.Aw,
 		&i.Allebuchungenmitdatum,

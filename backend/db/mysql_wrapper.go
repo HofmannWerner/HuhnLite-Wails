@@ -38,6 +38,7 @@ func (w *MySQLWrapper) WithTx(tx *sql.Tx) *MySQLWrapper {
 }
 
 func (w *MySQLWrapper) queryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	log.Printf("[MARIADB-DEBUG] QueryRow: %s | Args: %v", strings.TrimSpace(query), args)
 	if w.tx != nil {
 		return w.tx.QueryRowContext(ctx, query, args...)
 	}
@@ -45,10 +46,18 @@ func (w *MySQLWrapper) queryRow(ctx context.Context, query string, args ...inter
 }
 
 func (w *MySQLWrapper) query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	log.Printf("[MARIADB-DEBUG] Query: %s | Args: %v", strings.TrimSpace(query), args)
+	var rows *sql.Rows
+	var err error
 	if w.tx != nil {
-		return w.tx.QueryContext(ctx, query, args...)
+		rows, err = w.tx.QueryContext(ctx, query, args...)
+	} else {
+		rows, err = w.db.QueryContext(ctx, query, args...)
 	}
-	return w.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		log.Printf("[MARIADB-DEBUG] Query Error: %v", err)
+	}
+	return rows, err
 }
 
 // Hilfsfunktionen für Typ-Konvertierung
@@ -275,9 +284,10 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 	var items []repo.ListBuchungenRow
 	for rows.Next() {
 		var i repo.ListBuchungenRow
-		var id, idh, lw, hnr, ka, v, s, k, vo, b, tb, idet, idgt, sn, sm, l, m, xl, aw, hnr_r, h_ide, h_akt, fvt int32
+		var id, idh, lw, hnr, ka, v, s, k, vo, b, tb, idet, idgt, sn, sm, l, m, xl, aw, fvt int32
 		var gp, kg, em, fk, dge interface{}
 		var bdat, kl6, vam, zst, h_bez_r sql.NullString
+		var hnr_r, h_ide, h_akt interface{}
 		if err := rows.Scan(
 			&id, &idh, &lw, &hnr, &bdat, &gp, &kg,
 			&ka, &v, &em, &s, &k, &vo, &b,
@@ -285,6 +295,7 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 			&vam, &sm, &l, &m, &xl, &zst, &dge, &aw, &i.Vermittelt, &fvt,
 			&hnr_r, &h_bez_r, &h_ide, &h_akt,
 		); err != nil {
+			log.Printf("[DB] ListBuchungen Scan Error: %v", err)
 			return nil, err
 		}
 		i.ID = int64(id)
@@ -316,11 +327,32 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 		i.Dgewichtei = toFloat(dge)
 		i.Aw = int64(aw)
 		i.Futterverbrauchtier = int64(fvt)
-		i.HerdenNummerRel = sql.NullInt64{Int64: int64(hnr_r), Valid: true}
+		i.HerdenNummerRel = sql.NullInt64{Int64: toInt64(hnr_r), Valid: hnr_r != nil}
 		i.HerdenBezeichnungRel = h_bez_r
-		i.HerdenIDEilager = sql.NullInt64{Int64: int64(h_ide), Valid: true}
-		i.HerdenAktivRel = sql.NullInt64{Int64: int64(h_akt), Valid: true}
+		i.HerdenIDEilager = sql.NullInt64{Int64: toInt64(h_ide), Valid: h_ide != nil}
+		i.HerdenAktivRel = sql.NullInt64{Int64: toInt64(h_akt), Valid: h_akt != nil}
 		items = append(items, i)
+	}
+	return items, nil
+}
+
+func (w *MySQLWrapper) ListBuchungenWithHerde(ctx context.Context) ([]repo.ListBuchungenWithHerdeRow, error) {
+	log.Printf("[DB] ListBuchungenWithHerde called")
+	res, err := w.mysql.ListBuchungenWithHerde(ctx)
+	if err != nil {
+		log.Printf("[DB] ListBuchungenWithHerde Query Error: %v", err)
+		return nil, err
+	}
+	items := make([]repo.ListBuchungenWithHerdeRow, len(res))
+	for i, v := range res {
+		items[i] = repo.ListBuchungenWithHerdeRow{
+			ID:                int64(v.ID),
+			IDHerden:          int64(v.IDHerden),
+			Herdennummer:      int64(v.Herdennummer),
+			Buchungsdatum:     v.Buchungsdatum,
+			Tierbestand:       int64(v.Tierbestand),
+			HerdenBezeichnung: v.HerdenBezeichnung,
+		}
 	}
 	return items, nil
 }
@@ -347,6 +379,7 @@ func (w *MySQLWrapper) GetBuchung(ctx context.Context, id int64) (repo.Buchung, 
 		&vam, &sm, &l, &m, &xl, &zst, &dge, &aw, &vermittelt, &fvt,
 	)
 	if err != nil {
+		log.Printf("[DB] GetBuchung Scan Error for ID %d: %v", id, err)
 		return repo.Buchung{}, err
 	}
 
@@ -487,7 +520,6 @@ func (w *MySQLWrapper) ListHerden(ctx context.Context) ([]repo.ListHerdenRow, er
 			Legedatum:             v.Legedatum,
 			Einstallkosten:        v.Einstallkosten,
 			Datum:                 v.Datum,
-			Zeitstempel:           v.Zeitstempel,
 			Aktiv:                 int64(v.Aktiv),
 			Aw:                    int64(v.Aw),
 			Allebuchungenmitdatum: int64(v.Allebuchungenmitdatum),
@@ -647,7 +679,7 @@ func (w *MySQLWrapper) GetEggStatsWeeklyByHerde(ctx context.Context, idHerden in
 
 func (w *MySQLWrapper) ListEilager(ctx context.Context) ([]repo.ListEilagerRow, error) {
 	log.Printf("[DB] ListEilager called")
-	query := `SELECT id, lagernummer, kz, bezeichnung, letzte_buchung, jumbos, xl, large, medium, small, volleikg, aw, klasse6, klasse7 FROM eilager ORDER BY lagernummer`
+	query := `SELECT id, lagernummer, kz, bezeichnung, letzte_buchung, jumbos, xl, large, medium, small, volleikg, aw, klasse6, klasse7 FROM EILAGER ORDER BY lagernummer`
 	rows, err := w.db.QueryContext(ctx, query)
 	if err != nil {
 		log.Printf("[DB] ListEilager Query Error: %v", err)
@@ -759,9 +791,9 @@ func (w *MySQLWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBe
 		                EB.MEDIUM,
 		                EB.SMALL,
 		                EB.VOLLEIKG
-		         FROM eilagerbuchung EB
-		                  LEFT JOIN eilager E ON EB.ID_EILAGER = E.ID
-		                  LEFT JOIN lagerplatz LP ON EB.ID_LAGERPLATZ = LP.ID
+		         FROM EILAGERBUCHUNG EB
+		                  LEFT JOIN EILAGER E ON EB.ID_EILAGER = E.ID
+		                  LEFT JOIN LAGERPLATZ LP ON EB.ID_LAGERPLATZ = LP.ID
 		         WHERE (? = 0 OR EB.ID_EILAGER = ?)
 		
 		         UNION ALL
@@ -779,8 +811,8 @@ func (w *MySQLWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBe
 		                -EB.MEDIUM,
 		                -EB.SMALL,
 		                -EB.VOLLEIKG
-		         FROM eilagerbuchung EB
-		                  LEFT JOIN eilager E ON EB.ID_FREMDESLAGER = E.ID
+		         FROM EILAGERBUCHUNG EB
+		                  LEFT JOIN EILAGER E ON EB.ID_FREMDESLAGER = E.ID
 		         WHERE EB.ID_FREMDESLAGER != 0 AND (? = 0 OR EB.ID_FREMDESLAGER = ?)
 		) t
 		GROUP BY CHARGE, LAGERPLATZ_ID, EILAGER_ID, EILAGER_KZ, EILAGER_BEZEICHNUNG
@@ -831,7 +863,7 @@ func (w *MySQLWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBe
 func (w *MySQLWrapper) ListEilagerBuchungenByKZ(ctx context.Context, kz interface{}) ([]repo.Eilagerbuchung, error) {
 	kzStr := toString(kz)
 	log.Printf("[DB] ListEilagerBuchungenByKZ called for KZ: %s", kzStr)
-	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM eilagerbuchung WHERE kz_lager = ? ORDER BY buchungsdatum DESC`
+	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE kz_lager = ? ORDER BY buchungsdatum DESC`
 	rows, err := w.db.QueryContext(ctx, query, kzStr)
 	if err != nil {
 		log.Printf("[DB] ListEilagerBuchungenByKZ Query Error: %v", err)
@@ -878,7 +910,7 @@ func (w *MySQLWrapper) ListEilagerBuchungenByKZ(ctx context.Context, kz interfac
 
 func (w *MySQLWrapper) ListEilagerBuchungenByLager(ctx context.Context, idEilager int64) ([]repo.Eilagerbuchung, error) {
 	log.Printf("[DB] ListEilagerBuchungenByLager called for ID: %d", idEilager)
-	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM eilagerbuchung WHERE id_eilager = ? ORDER BY buchungsdatum DESC`
+	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE id_eilager = ? ORDER BY buchungsdatum DESC`
 	rows, err := w.db.QueryContext(ctx, query, idEilager)
 	if err != nil {
 		log.Printf("[DB] ListEilagerBuchungenByLager Query Error: %v", err)
@@ -1386,12 +1418,12 @@ func (w *MySQLWrapper) ListTierbewegungen(ctx context.Context, spracheKz string)
 			   h.bezeichnung  as herden_bezeichnung,
 			   hv.bezeichnung                as herden_von_bezeichnung,
 			   hn.bezeichnung                as herden_nach_bezeichnung
-		FROM tierbewegungen t
-				 LEFT JOIN texte txt on t.id_texte = txt.id
-				 LEFT JOIN uebersetzungen u on txt.id = u.id_texte and u.sprache_kz = ?
-				 LEFT JOIN herden h on t.herdennummer = h.herdennummer
-				 LEFT JOIN herden hv on t.id_herden_von = hv.id
-				 LEFT JOIN herden hn on t.id_herden_nach = hn.id
+		FROM TIERBEWEGUNGEN t
+				 LEFT JOIN TEXTE txt on t.id_texte = txt.id
+				 LEFT JOIN UEBERSETZUNGEN u on txt.id = u.id_texte and u.sprache_kz = ?
+				 LEFT JOIN HERDEN h on t.herdennummer = h.herdennummer
+				 LEFT JOIN HERDEN hv on t.id_herden_von = hv.id
+				 LEFT JOIN HERDEN hn on t.id_herden_nach = hn.id
 		ORDER BY t.bewegungsdatum DESC
 	`
 	rows, err := w.db.QueryContext(ctx, query, spracheKz)
@@ -1438,7 +1470,7 @@ func (w *MySQLWrapper) ListTierbewegungen(ctx context.Context, spracheKz string)
 }
 
 func (w *MySQLWrapper) GetTierbewegung(ctx context.Context, id int64) (repo.Tierbewegungen, error) {
-	query := `SELECT id, herdennummer, id_buchung, typ, id_texte, bewegungsdatum, bewegungen, id_herden_von, id_herden_nach, kosten FROM tierbewegungen WHERE id = ?`
+	query := `SELECT id, herdennummer, id_buchung, typ, id_texte, bewegungsdatum, bewegungen, id_herden_von, id_herden_nach, kosten FROM TIERBEWEGUNGEN WHERE id = ?`
 	row := w.db.QueryRowContext(ctx, query, id)
 	var t repo.Tierbewegungen
 	var hnr, idb, idt, hvon, hnach int32
@@ -1659,7 +1691,7 @@ func (w *MySQLWrapper) UpdateEierpreis(ctx context.Context, arg repo.UpdateEierp
 
 func (w *MySQLWrapper) ListVerkauf(ctx context.Context) ([]repo.Verkauf, error) {
 	log.Printf("[DB] ListVerkauf called")
-	query := `SELECT id, id_eilagerbuchung, id_buchung, buchungsdatum, mengesmall, mengemedium, mengelarge, mengexl, preissmall, preismedium, preislarge, preisxl, gesamtpreis, bio, verbucht, charge, rabattprozent FROM verkauf ORDER BY buchungsdatum DESC`
+	query := `SELECT id, id_eilagerbuchung, id_buchung, buchungsdatum, mengesmall, mengemedium, mengelarge, mengexl, preissmall, preismedium, preislarge, preisxl, gesamtpreis, bio, verbucht, charge, rabattprozent FROM VERKAUF ORDER BY buchungsdatum DESC`
 	rows, err := w.db.QueryContext(ctx, query)
 	if err != nil {
 		log.Printf("[DB] ListVerkauf Query Error: %v", err)

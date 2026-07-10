@@ -364,7 +364,7 @@ func Connect(cfg config.Config) (*DB, error) {
 		RepoMySQL:     repo_mysql.New(conn),
 		Config:        cfg,
 		Engine:        cfg.DBEngine,
-		ActiveConnStr: cfg.DBConnectionString,
+		ActiveConnStr: connStr,
 		IsTestMode:    cfg.Test == 1,
 	}
 

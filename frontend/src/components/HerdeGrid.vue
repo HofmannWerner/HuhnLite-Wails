@@ -1022,19 +1022,19 @@ async function onSubmit() {
   try {
     // We must use the keys the backend expects (mix of lower/upper/snake_case)
     const payload = {
-      herdennummer: form.HERDENNUMMER,
-      id_rasse: form.ID_RASSE,
-      ID_ZUECHTER: form.ID_ZUECHTER,
-      ID_EILAGER: form.ID_EILAGER,
-      ANFANGSBESTAND: form.ANFANGSBESTAND,
+      herdennummer: Number(form.HERDENNUMMER) || 0,
+      id_rasse: Number(form.ID_RASSE) || 0,
+      ID_ZUECHTER: Number(form.ID_ZUECHTER) || 0,
+      ID_EILAGER: Number(form.ID_EILAGER) || 0,
+      ANFANGSBESTAND: Number(form.ANFANGSBESTAND) || 0,
       EINSTALLDATUM: form.EINSTALLDATUM || '0001-01-01',
       LEGEDATUM: form.LEGEDATUM || '0001-01-01',
-      EINSTALLKOSTEN: form.EINSTALLKOSTEN,
-      ID_SILO: form.ID_SILO,
-      ID_STALL: form.ID_STALL,
-      AKTIV: form.AKTIV,
+      EINSTALLKOSTEN: Number(form.EINSTALLKOSTEN) || 0.0,
+      ID_SILO: Number(form.ID_SILO) || 0,
+      ID_STALL: Number(form.ID_STALL) || 0,
+      AKTIV: Number(form.AKTIV) || 0,
       BEZEICHNUNG: form.BEZEICHNUNG,
-      ALLE_BUCHUNGEN_MIT_DATUM: form.ALLE_BUCHUNGEN_MIT_DATUM
+      ALLE_BUCHUNGEN_MIT_DATUM: Number(form.ALLE_BUCHUNGEN_MIT_DATUM) || 0
     };
 
     if (isEditing.value && editId.value) {
@@ -1046,8 +1046,13 @@ async function onSubmit() {
     }
     closeDialog();
     void loadData();
-  } catch {
-    $q.notify({ type: 'negative', message: 'Fehler beim Speichern' });
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.error || err.message || 'Unbekannter Fehler';
+    $q.notify({
+      type: 'negative',
+      message: 'Fehler beim Speichern',
+      caption: errorMsg
+    });
   }
 }
 

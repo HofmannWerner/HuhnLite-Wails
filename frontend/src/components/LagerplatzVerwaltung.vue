@@ -177,8 +177,11 @@ const extractInt = (val: any) => {
 
 import { ref, reactive, onMounted, computed } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import {api} from 'src/boot/api';
 import type { QTableProps } from 'quasar';
+
+const { t } = useI18n();
 
 interface Lagerplatz {
   ID: number;
