@@ -1,9 +1,9 @@
 {
-  "mode": "standalone",
+  "db_connection_test": "root:studio@tcp(192.168.178.60:3307)/huhnlite_test?parseTime=true\u0026allowNativePasswords=true",
+  "db_connection": "root:studio@tcp(192.168.178.60:3307)/huhnlite?parseTime=true\u0026allowNativePasswords=true",
   "db_engine": "mysql",
-  "db_connection": "root:studio@tcp(127.0.0.1:3307)/huhnlite?parseTime=true&allowNativePasswords=true",
-  "db_connection_test": "root:studio@tcp(127.0.0.1:3307)/huhnlite_test?parseTime=true&allowNativePasswords=true",
-  "test": 0,
+  "mode": "standalone",
   "port": 8080,
-  "system": 1
+  "system": 1,
+  "test": 0
 }
