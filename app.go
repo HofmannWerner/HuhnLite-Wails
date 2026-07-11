@@ -152,9 +152,9 @@ func (a *App) ToggleTestDB(useTest bool) (string, error) {
 
 	var targetConn string
 	if useTest {
-		targetConn = a.database.Config.DBConnectTest
+		targetConn = a.database.Config.DBConnectionTest
 		if targetConn == "" {
-			return "", fmt.Errorf("no test database connection string defined in settings (db_connect_test)")
+			return "", fmt.Errorf("no test database connection string defined in settings (db_connection_test)")
 		}
 	} else {
 		targetConn = a.database.Config.DBConnectionString

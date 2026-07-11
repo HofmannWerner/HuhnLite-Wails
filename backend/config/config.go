@@ -14,7 +14,7 @@ type Config struct {
 	Mode               string `json:"mode"`          // "standalone" or "server"
 	DBEngine           string `json:"db_engine"`     // "sqlite" or "mysql"
 	DBConnectionString string `json:"db_connection"` // e.g. "HuhnLite.db" or "user:pass@tcp(127.0.0.1:3306)/dbname"
-	DBConnectTest      string `json:"db_connect_test"`
+	DBConnectionTest   string `json:"db_connection_test"`
 	Test               int    `json:"test"`
 	Port               int    `json:"port"`          // HTTP Port for server mode or standalone Gin server
 	System             int    `json:"system"`        // 1 = Erlaube Bearbeiten von System-Einträgen
@@ -105,6 +105,7 @@ func LoadConfig() Config {
 		filesToCopy := []string{
 			"HuhnLite.db",
 			"HuhnLite_test.db",
+			"HuhnLite_prod.db",
 			"settings.json",
 			"settings_mariadb.json",
 			"settings_server.json",
@@ -157,7 +158,7 @@ func LoadConfig() Config {
 		Mode:               "standalone",
 		DBEngine:           "sqlite",
 		DBConnectionString: defaultDB,
-		DBConnectTest:      "",
+		DBConnectionTest:   "",
 		Test:               0,
 		Port:               8080,
 		System:             0,
@@ -229,11 +230,11 @@ func LoadConfig() Config {
 						}
 						cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
 					}
-					if cfg.DBEngine == "sqlite" && cfg.DBConnectTest != "" && !filepath.IsAbs(cfg.DBConnectTest) {
-						if strings.HasPrefix(cfg.DBConnectTest, "/Users/") || strings.HasPrefix(cfg.DBConnectTest, "Users/") {
-							cfg.DBConnectTest = filepath.Base(cfg.DBConnectTest)
+					if cfg.DBEngine == "sqlite" && cfg.DBConnectionTest != "" && !filepath.IsAbs(cfg.DBConnectionTest) {
+						if strings.HasPrefix(cfg.DBConnectionTest, "/Users/") || strings.HasPrefix(cfg.DBConnectionTest, "Users/") {
+							cfg.DBConnectionTest = filepath.Base(cfg.DBConnectionTest)
 						}
-						cfg.DBConnectTest = filepath.Join(filepath.Dir(p), cfg.DBConnectTest)
+						cfg.DBConnectionTest = filepath.Join(filepath.Dir(p), cfg.DBConnectionTest)
 					}
 					return cfg
 				}

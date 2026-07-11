@@ -28,8 +28,8 @@ func Connect(cfg config.Config) (*DB, error) {
 	var err error
 
 	connStr := cfg.DBConnectionString
-	if cfg.Test == 1 && cfg.DBConnectTest != "" {
-		connStr = cfg.DBConnectTest
+	if cfg.Test == 1 && cfg.DBConnectionTest != "" {
+		connStr = cfg.DBConnectionTest
 	}
 
 	if cfg.DBEngine == "sqlite" {
