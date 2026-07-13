@@ -155,6 +155,12 @@ fi
 
 cp settings_server_mariadb.json build/bin/settings_server_mariadb.json
 
+echo "📋 Copying help files, images and SQL files to build/bin..."
+cp HuhnLite-de.html HuhnLite-en.html HuhnLite-it.html build/bin/
+mkdir -p build/bin/images
+cp -R images/* build/bin/images/
+cp backend/db/*.sql build/bin/
+
 # Original-Zustand wiederherstellen
 set_wails_name "$ORIG_NAME"
 

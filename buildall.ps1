@@ -174,6 +174,17 @@ if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyCon
     Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Server-MariaDB." -ForegroundColor Yellow
 }
 
+Write-Host "Kopiere Hilfedateien, Bilder und SQL-Dateien in build\bin\..." -ForegroundColor Cyan
+if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
+Copy-Item "HuhnLite-de.html" "build\bin\" -Force
+Copy-Item "HuhnLite-en.html" "build\bin\" -Force
+Copy-Item "HuhnLite-it.html" "build\bin\" -Force
+
+if (!(Test-Path "build\bin\images")) { New-Item -ItemType Directory -Path "build\bin\images" -Force }
+Copy-Item "images\*" "build\bin\images\" -Recurse -Force
+
+Copy-Item "backend\db\*.sql" "build\bin\" -Force
+
 # Original-Zustand wiederherstellen
 Set-WailsName $origName
 
