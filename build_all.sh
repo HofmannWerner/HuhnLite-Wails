@@ -159,7 +159,10 @@ echo "📋 Copying help files, images and SQL files to build/bin..."
 cp HuhnLite-de.html HuhnLite-en.html HuhnLite-it.html build/bin/
 mkdir -p build/bin/images
 cp -R images/* build/bin/images/
-cp backend/db/*.sql build/bin/
+cp backend/db/schema_sqlite.sql build/bin/HuhnLite-sqlite.sql
+cp backend/db/schema_sqlite.sql build/bin/HuhnLite_sqlite.sql
+cp backend/db/schema_mysql.sql build/bin/HuhnLite-mysql.sql
+cp backend/db/schema_mysql.sql build/bin/HuhnLite_mysql.sql
 
 # Original-Zustand wiederherstellen
 set_wails_name "$ORIG_NAME"
