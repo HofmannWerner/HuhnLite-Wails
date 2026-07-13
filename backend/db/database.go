@@ -236,6 +236,55 @@ func Connect(cfg config.Config) (*DB, error) {
 			}
 		}
 
+		// Fix für HERDEN (ZEITSTEMPEL hinzufügen falls fehlend)
+		{
+			table := "HERDEN"
+			columns := []struct {
+				name string
+				spec string
+			}{
+				{"ZEITSTEMPEL", "VARCHAR(50) DEFAULT ''"},
+			}
+			for _, col := range columns {
+				var hasColumn bool
+				if cfg.DBEngine == "sqlite" {
+					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
+						for rows.Next() {
+							var cid int
+							var name, dtype string
+							var notnull, pk int
+							var dflt_value interface{}
+							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
+								hasColumn = true
+							}
+						}
+						rows.Close()
+					}
+				} else {
+					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
+					rows, err := conn.Query(checkQuery)
+					if err == nil {
+						if rows.Next() {
+							hasColumn = true
+						}
+						rows.Close()
+					}
+				}
+				if !hasColumn {
+					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
+					spec := col.spec
+					if cfg.DBEngine == "sqlite" && strings.Contains(spec, "VARCHAR") {
+						spec = "TEXT DEFAULT ''"
+					}
+					if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col.name, spec)); err == nil {
+						log.Printf("[DB] Successfully added %s to %s", col.name, table)
+					} else {
+						log.Printf("[DB] Error adding %s to %s: %v", col.name, table, err)
+					}
+				}
+			}
+		}
+
 		// Fix für BUCHUNG (FUTTERVERBRAUCHTIER hinzufügen falls fehlend)
 		{
 			table := "BUCHUNG"
