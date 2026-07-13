@@ -183,10 +183,9 @@ Copy-Item "HuhnLite-it.html" "build\bin\" -Force
 if (!(Test-Path "build\bin\images")) { New-Item -ItemType Directory -Path "build\bin\images" -Force }
 Copy-Item "images\*" "build\bin\images\" -Recurse -Force
 
-Copy-Item "backend\db\schema_sqlite.sql" "build\bin\HuhnLite-sqlite.sql" -Force
-Copy-Item "backend\db\schema_sqlite.sql" "build\bin\HuhnLite_sqlite.sql" -Force
-Copy-Item "backend\db\schema_mysql.sql" "build\bin\HuhnLite-mysql.sql" -Force
-Copy-Item "backend\db\schema_mysql.sql" "build\bin\HuhnLite_mysql.sql" -Force
+if (Test-Path "HuhnLite.db") { Copy-Item "HuhnLite.db" "build\bin\" -Force }
+if (Test-Path "HuhnLite_test.db") { Copy-Item "HuhnLite_test.db" "build\bin\" -Force }
+if (Test-Path "HuhnLite_prod.db") { Copy-Item "HuhnLite_prod.db" "build\bin\" -Force }
 
 # Original-Zustand wiederherstellen
 Set-WailsName $origName
