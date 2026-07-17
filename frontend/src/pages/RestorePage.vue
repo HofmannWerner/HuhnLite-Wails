@@ -127,7 +127,7 @@ function confirmRestore() {
   
   $q.dialog({
     title: t('auto.confirm_restore_title'),
-    message: t('auto.confirm_restore_msg', { filename: selectedFile.value.name }),
+    message: t('auto.confirm_restore_msg', { filename: selectedFile.value.name, current: currentDB.value }),
     html: true,
     cancel: true,
     persistent: true,

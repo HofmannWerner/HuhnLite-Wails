@@ -218,21 +218,21 @@ func (a *App) getHelpFilePaths(lang string) []string {
 		pathsToCheck = append(pathsToCheck, filepath.Join(cwd, fileName))
 	}
 
-	// 4. Check AppDataDir (Roaming/HuhnLite-Wails & Roaming)
+	// 4. Check AppDataDir (Roaming/HuhnLite & Roaming)
 	if configDir, err := os.UserConfigDir(); err == nil {
-		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", fileName))
+		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite", fileName))
 		pathsToCheck = append(pathsToCheck, filepath.Join(configDir, fileName))
 	}
 
-	// 5. Check LOCALAPPDATA environment variable (Local/HuhnLite-Wails & Local)
+	// 5. Check LOCALAPPDATA environment variable (Local/HuhnLite & Local)
 	if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
-		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", fileName))
+		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite", fileName))
 		pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, fileName))
 	}
 
-	// 6. Check APPDATA environment variable (Roaming/HuhnLite-Wails & Roaming)
+	// 6. Check APPDATA environment variable (Roaming/HuhnLite & Roaming)
 	if appData := os.Getenv("APPDATA"); appData != "" {
-		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", fileName))
+		pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite", fileName))
 		pathsToCheck = append(pathsToCheck, filepath.Join(appData, fileName))
 	}
 

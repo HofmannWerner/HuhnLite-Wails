@@ -141,7 +141,7 @@ func main() {
 
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:            "HuhnLite-Wails",
+		Title:            "HuhnLite",
 		Width:            width,
 		Height:           height,
 		WindowStartState: startState,

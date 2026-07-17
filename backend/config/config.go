@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	Mandant            int    `json:"mandant"`
 	Mode               string `json:"mode"`          // "standalone" or "server"
 	DBEngine           string `json:"db_engine"`     // "sqlite" or "mysql"
 	DBConnectionString string `json:"db_connection"` // e.g. "HuhnLite.db" or "user:pass@tcp(127.0.0.1:3306)/dbname"
@@ -18,6 +19,7 @@ type Config struct {
 	Test               int    `json:"test"`
 	Port               int    `json:"port"`          // HTTP Port for server mode or standalone Gin server
 	System             int    `json:"system"`        // 1 = Erlaube Bearbeiten von System-Einträgen
+	ConfigFilePath     string `json:"-"`
 }
 func LoadConfig() Config {
 	cwd, _ := os.Getwd()
@@ -38,7 +40,7 @@ func LoadConfig() Config {
 	var logPath string
 	configDir, err := os.UserConfigDir()
 	if err == nil {
-		appDataDir = filepath.Join(configDir, "HuhnLite-Wails")
+		appDataDir = filepath.Join(configDir, "HuhnLite")
 		if err := os.MkdirAll(appDataDir, 0755); err == nil {
 			logPath = filepath.Join(appDataDir, "app.log")
 			var errFile error
@@ -218,25 +220,89 @@ func LoadConfig() Config {
 			file, err := os.Open(p)
 			if err == nil {
 				defer file.Close()
-				decoder := json.NewDecoder(file)
-				if err := decoder.Decode(&cfg); err == nil {
-					log.Printf("Konfiguration aus %s geladen (Engine: %s)", p, cfg.DBEngine)
-					// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
-					if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
-						// Clean up Mac-style paths that might have been incorrectly treated as relative on Windows
-						if strings.HasPrefix(cfg.DBConnectionString, "/Users/") || strings.HasPrefix(cfg.DBConnectionString, "Users/") {
-							cfg.DBConnectionString = filepath.Base(cfg.DBConnectionString)
-							log.Printf("Bereinigter Mac-Pfad zu: %s", cfg.DBConnectionString)
+				data, errRead := io.ReadAll(file)
+				if errRead == nil {
+					var rawMap map[string]interface{}
+					if errDec := json.Unmarshal(data, &cfg); errDec == nil {
+						cfg.ConfigFilePath = p
+						log.Printf("Konfiguration aus %s geladen (Engine: %s)", p, cfg.DBEngine)
+						_ = json.Unmarshal(data, &rawMap)
+
+						if cfg.Mandant > 0 {
+							prodBase := "HuhnLite_prod.db"
+							if cfg.DBConnectionString != "" {
+								prodBase = filepath.Base(cfg.DBConnectionString)
+							}
+							testBase := "HuhnLite_test.db"
+							if cfg.DBConnectionTest != "" {
+								testBase = filepath.Base(cfg.DBConnectionTest)
+							}
+
+							settingsDir := filepath.Dir(p)
+							cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
+							cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
+
+							testKey := fmt.Sprintf("test_%d", cfg.Mandant)
+							systemKey := fmt.Sprintf("system_%d", cfg.Mandant)
+
+							if tVal, ok := rawMap[testKey]; ok {
+								if f, ok := tVal.(float64); ok {
+									cfg.Test = int(f)
+								} else if s, ok := tVal.(string); ok {
+									if s == "1" || strings.ToLower(s) == "true" {
+										cfg.Test = 1
+									} else {
+										cfg.Test = 0
+									}
+								} else if b, ok := tVal.(bool); ok {
+									if b {
+										cfg.Test = 1
+									} else {
+										cfg.Test = 0
+									}
+								}
+							} else {
+								cfg.Test = 0
+							}
+
+							if sVal, ok := rawMap[systemKey]; ok {
+								if f, ok := sVal.(float64); ok {
+									cfg.System = int(f)
+								} else if s, ok := sVal.(string); ok {
+									if s == "1" || strings.ToLower(s) == "true" {
+										cfg.System = 1
+									} else {
+										cfg.System = 0
+									}
+								} else if b, ok := sVal.(bool); ok {
+									if b {
+										cfg.System = 1
+									} else {
+										cfg.System = 0
+									}
+								}
+							} else {
+								cfg.System = 0
+							}
+						} else {
+							// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
+							if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
+								// Clean up Mac-style paths that might have been incorrectly treated as relative on Windows
+								if strings.HasPrefix(cfg.DBConnectionString, "/Users/") || strings.HasPrefix(cfg.DBConnectionString, "Users/") {
+									cfg.DBConnectionString = filepath.Base(cfg.DBConnectionString)
+									log.Printf("Bereinigter Mac-Pfad zu: %s", cfg.DBConnectionString)
+								}
+								cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
+							}
+							if cfg.DBEngine == "sqlite" && cfg.DBConnectionTest != "" && !filepath.IsAbs(cfg.DBConnectionTest) {
+								if strings.HasPrefix(cfg.DBConnectionTest, "/Users/") || strings.HasPrefix(cfg.DBConnectionTest, "Users/") {
+									cfg.DBConnectionTest = filepath.Base(cfg.DBConnectionTest)
+								}
+								cfg.DBConnectionTest = filepath.Join(filepath.Dir(p), cfg.DBConnectionTest)
+							}
 						}
-						cfg.DBConnectionString = filepath.Join(filepath.Dir(p), cfg.DBConnectionString)
+						return cfg
 					}
-					if cfg.DBEngine == "sqlite" && cfg.DBConnectionTest != "" && !filepath.IsAbs(cfg.DBConnectionTest) {
-						if strings.HasPrefix(cfg.DBConnectionTest, "/Users/") || strings.HasPrefix(cfg.DBConnectionTest, "Users/") {
-							cfg.DBConnectionTest = filepath.Base(cfg.DBConnectionTest)
-						}
-						cfg.DBConnectionTest = filepath.Join(filepath.Dir(p), cfg.DBConnectionTest)
-					}
-					return cfg
 				}
 			}
 		}
@@ -264,7 +330,7 @@ func SaveTestSetting(testVal int, engine string) error {
 	appDataDir := ""
 	configDir, err := os.UserConfigDir()
 	if err == nil {
-		appDataDir = filepath.Join(configDir, "HuhnLite-Wails")
+		appDataDir = filepath.Join(configDir, "HuhnLite")
 	}
 
 	paths := []string{
@@ -293,7 +359,15 @@ func SaveTestSetting(testVal int, engine string) error {
 			}
 
 			// Update test field
-			configMap["test"] = testVal
+			var activeMandant int
+			if m, ok := configMap["mandant"].(float64); ok {
+				activeMandant = int(m)
+			}
+			if activeMandant > 0 {
+				configMap[fmt.Sprintf("test_%d", activeMandant)] = testVal
+			} else {
+				configMap["test"] = testVal
+			}
 
 			// Marshal back
 			newData, err := json.MarshalIndent(configMap, "", "  ")

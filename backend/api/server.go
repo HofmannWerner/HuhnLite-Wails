@@ -867,19 +867,19 @@ func getHelpDir(database *wailsdb.DB) string {
 
 		// 4. Check AppDataDir
 		if configDir, err := os.UserConfigDir(); err == nil {
-			pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite-Wails", fileName))
+			pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite", fileName))
 			pathsToCheck = append(pathsToCheck, filepath.Join(configDir, fileName))
 		}
 
 		// 5. Check LOCALAPPDATA
 		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
-			pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite-Wails", fileName))
+			pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite", fileName))
 			pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, fileName))
 		}
 
 		// 6. Check APPDATA
 		if appData := os.Getenv("APPDATA"); appData != "" {
-			pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite-Wails", fileName))
+			pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite", fileName))
 			pathsToCheck = append(pathsToCheck, filepath.Join(appData, fileName))
 		}
 	}
@@ -890,6 +890,39 @@ func getHelpDir(database *wailsdb.DB) string {
 		}
 	}
 	return ""
+}
+
+
+func saveSettingsMap(p string, configMap map[string]interface{}) error {
+	newData, err := json.MarshalIndent(configMap, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(p, newData, 0644)
+}
+
+func reloadAndApplyConfig(database *wailsdb.DB) error {
+	cfg := appconfig.LoadConfig()
+	database.Config = cfg
+
+	var targetConn string
+	var useTest bool
+	if cfg.Test == 1 && cfg.DBConnectionTest != "" {
+		targetConn = cfg.DBConnectionTest
+		useTest = true
+	} else {
+		targetConn = cfg.DBConnectionString
+		useTest = false
+	}
+
+	log.Printf("[Tenant Switch] Switching connection to: %s (Test: %v)", targetConn, useTest)
+	err := database.SwitchConnection(targetConn, useTest)
+	if err != nil {
+		return err
+	}
+
+	MigrateDB(database)
+	return nil
 }
 
 func StartServer(database *wailsdb.DB) *gin.Engine {
@@ -5481,15 +5514,26 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		activePath := database.ActiveConnStr
-		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
-		_ = os.MkdirAll(activeBackupDir, 0755)
+		var activeBackupDir string
+		var timestamp string
+		var destPath string
 
 		dbFilename := filepath.Base(activePath)
 		ext := filepath.Ext(dbFilename)
 		baseName := strings.TrimSuffix(dbFilename, ext)
 
-		timestamp := time.Now().Format("0601021504")
-		destPath := filepath.Join(activeBackupDir, fmt.Sprintf("%s%s%s", baseName, timestamp, ext))
+		if database.Config.Mandant > 0 && database.Config.ConfigFilePath != "" {
+			settingsDir := filepath.Dir(database.Config.ConfigFilePath)
+			activeBackupDir = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", database.Config.Mandant), "Backups")
+			_ = os.MkdirAll(activeBackupDir, 0755)
+			timestamp = time.Now().Format("20060102") // YYYYMMDD
+			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s_%s%s", baseName, timestamp, ext))
+		} else {
+			activeBackupDir = filepath.Join(filepath.Dir(activePath), "backups")
+			_ = os.MkdirAll(activeBackupDir, 0755)
+			timestamp = time.Now().Format("0601021504")
+			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s%s%s", baseName, timestamp, ext))
+		}
 
 		err := copyFile(activePath, destPath)
 		if err != nil {
@@ -5500,12 +5544,291 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "success", "filename": filepath.Base(destPath), "path": destPath})
 	})
 
+	// Tenant management APIs
+	r.GET("/api/tenants", func(c *gin.Context) {
+		p := database.Config.ConfigFilePath
+		if p == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration file path not found"})
+			return
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(data, &configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		activeMandant := 0
+		if m, ok := configMap["mandant"].(float64); ok {
+			activeMandant = int(m)
+		}
+
+		type TenantInfo struct {
+			ID     int    `json:"id"`
+			Name   string `json:"name"`
+			System int    `json:"system"`
+			Test   int    `json:"test"`
+		}
+
+		var tenants []TenantInfo
+		re := regexp.MustCompile(`^mandant_(\d+)$`)
+		for k, v := range configMap {
+			matches := re.FindStringSubmatch(k)
+			if len(matches) == 2 {
+				id, _ := strconv.Atoi(matches[1])
+				name, _ := v.(string)
+
+				system := 0
+				if sysVal, ok := configMap[fmt.Sprintf("system_%d", id)]; ok {
+					if f, ok := sysVal.(float64); ok {
+						system = int(f)
+					}
+				}
+
+				test := 0
+				if testVal, ok := configMap[fmt.Sprintf("test_%d", id)]; ok {
+					if f, ok := testVal.(float64); ok {
+						test = int(f)
+					}
+				}
+
+				tenants = append(tenants, TenantInfo{
+					ID:     id,
+					Name:   name,
+					System: system,
+					Test:   test,
+				})
+			}
+		}
+
+		sort.Slice(tenants, func(i, j int) bool {
+			return tenants[i].ID < tenants[j].ID
+		})
+
+		c.JSON(http.StatusOK, gin.H{
+			"active_mandant": activeMandant,
+			"tenants":        tenants,
+		})
+	})
+
+	r.POST("/api/tenants/switch", func(c *gin.Context) {
+		var req struct {
+			ID int `json:"id"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		p := database.Config.ConfigFilePath
+		if p == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration file path not found"})
+			return
+		}
+
+		data, err := os.ReadFile(p)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(data, &configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		tenantKey := fmt.Sprintf("mandant_%d", req.ID)
+		if _, exists := configMap[tenantKey]; !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Tenant with ID %d does not exist", req.ID)})
+			return
+		}
+
+		configMap["mandant"] = req.ID
+		configMap[fmt.Sprintf("test_%d", req.ID)] = 0
+		configMap["test"] = 0
+
+		if err := saveSettingsMap(p, configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+			return
+		}
+
+		if err := reloadAndApplyConfig(database); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to switch connection: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "success", "active_mandant": req.ID})
+	})
+
+	r.POST("/api/tenants/create", func(c *gin.Context) {
+		var req struct {
+			Name string `json:"name"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+		if strings.TrimSpace(req.Name) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Name is required"})
+			return
+		}
+
+		p := database.Config.ConfigFilePath
+		if p == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration file path not found"})
+			return
+		}
+
+		data, err := os.ReadFile(p)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(data, &configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		n := 1
+		for {
+			tenantKey := fmt.Sprintf("mandant_%d", n)
+			if _, exists := configMap[tenantKey]; !exists {
+				break
+			}
+			n++
+		}
+
+		settingsDir := filepath.Dir(p)
+		tenantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", n))
+		if err := os.MkdirAll(tenantDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory: " + err.Error()})
+			return
+		}
+
+		refDbName := "HuhnLite.db"
+		if dbVal, ok := configMap["db_connection"].(string); ok && dbVal != "" {
+			refDbName = dbVal
+		}
+		refDbPath := filepath.Join(settingsDir, refDbName)
+
+		if _, err := os.Stat(refDbPath); os.IsNotExist(err) {
+			refDbPath = filepath.Join(settingsDir, "HuhnLite.db")
+			if _, err := os.Stat(refDbPath); os.IsNotExist(err) {
+				refDbPath = filepath.Join(settingsDir, "HuhnLite_prod.db")
+				if _, err := os.Stat(refDbPath); os.IsNotExist(err) {
+					refDbPath = database.ActiveConnStr
+				}
+			}
+		}
+
+		prodDbPath := filepath.Join(tenantDir, "HuhnLite_prod.db")
+		testDbPath := filepath.Join(tenantDir, "HuhnLite_test.db")
+
+		if err := copyFile(refDbPath, prodDbPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy reference database (prod): " + err.Error()})
+			return
+		}
+		if err := copyFile(refDbPath, testDbPath); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy reference database (test): " + err.Error()})
+			return
+		}
+
+		configMap[fmt.Sprintf("mandant_%d", n)] = req.Name
+		configMap[fmt.Sprintf("system_%d", n)] = 0
+		configMap[fmt.Sprintf("test_%d", n)] = 0
+		configMap["mandant"] = n
+		configMap["test"] = 0
+
+		if err := saveSettingsMap(p, configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+			return
+		}
+
+		if err := reloadAndApplyConfig(database); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to switch to new tenant: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "success", "active_mandant": n})
+	})
+
+	r.POST("/api/tenants/update", func(c *gin.Context) {
+		var req struct {
+			ID     int    `json:"id"`
+			Name   string `json:"name"`
+			System int    `json:"system"`
+			Test   int    `json:"test"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		p := database.Config.ConfigFilePath
+		if p == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration file path not found"})
+			return
+		}
+
+		data, err := os.ReadFile(p)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(data, &configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		tenantKey := fmt.Sprintf("mandant_%d", req.ID)
+		if _, exists := configMap[tenantKey]; !exists {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Tenant does not exist"})
+			return
+		}
+
+		configMap[tenantKey] = req.Name
+		configMap[fmt.Sprintf("system_%d", req.ID)] = req.System
+		configMap[fmt.Sprintf("test_%d", req.ID)] = req.Test
+
+		if err := saveSettingsMap(p, configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+			return
+		}
+
+		activeMandant := 0
+		if m, ok := configMap["mandant"].(float64); ok {
+			activeMandant = int(m)
+		}
+		if activeMandant == req.ID {
+			if err := reloadAndApplyConfig(database); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply config updates: " + err.Error()})
+				return
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "success"})
+	})
+
 	// DB Management Endpunkte
 	r.GET("/api/db/list", func(c *gin.Context) {
 		var files []string
 		activePath := database.ActiveConnStr
-		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
-		dirs := []string{filepath.Dir(activePath), activeBackupDir}
+		var dirs []string
+		if database.Config.Mandant > 0 {
+			dirs = []string{filepath.Join(filepath.Dir(activePath), "Backups")}
+		} else {
+			activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+			dirs = []string{filepath.Dir(activePath), activeBackupDir}
+		}
 
 		seen := make(map[string]bool)
 		for _, dir := range dirs {
@@ -5536,7 +5859,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 1. Sicherheits-Backup der aktuellen DB
 		activePath := database.ActiveConnStr
-		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		var activeBackupDir string
+		if database.Config.Mandant > 0 {
+			activeBackupDir = filepath.Join(filepath.Dir(activePath), "Backups")
+		} else {
+			activeBackupDir = filepath.Join(filepath.Dir(activePath), "backups")
+		}
 		_ = os.MkdirAll(activeBackupDir, 0755)
 		timestamp := time.Now().Format("0601021504")
 		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBackup_before_switch_%s.db", timestamp))
@@ -5596,7 +5924,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 1. Sicherheits-Backup der aktuellen DB
 		activePath := database.ActiveConnStr
-		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		var activeBackupDir string
+		if database.Config.Mandant > 0 {
+			activeBackupDir = filepath.Join(filepath.Dir(activePath), "Backups")
+		} else {
+			activeBackupDir = filepath.Join(filepath.Dir(activePath), "backups")
+		}
 		_ = os.MkdirAll(activeBackupDir, 0755)
 		timestamp := time.Now().Format("0601021504")
 		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBeforeRestore_%s.db", timestamp))
@@ -9998,7 +10331,7 @@ func syncDataFromSQLite(database *wailsdb.DB) {
 	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
 		// Fallback auf AppData Verzeichnis
 		if configDir, err := os.UserConfigDir(); err == nil {
-			sqlitePath = filepath.Join(configDir, "HuhnLite-Wails", "HuhnLite.db")
+			sqlitePath = filepath.Join(configDir, "HuhnLite", "HuhnLite.db")
 		}
 	}
 	// Letzter Versuch: macOS Pfad (aus altem Code)

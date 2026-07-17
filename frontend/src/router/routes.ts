@@ -41,7 +41,8 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/TierUmstallungPage.vue'),
         meta: {permission: 'buchungen_erfassen'}
       },
-      {path: 'restore', component: () => import('pages/RestorePage.vue'), meta: {permission: 'system_verwaltung'}}
+      {path: 'restore', component: () => import('pages/RestorePage.vue'), meta: {permission: 'system_verwaltung'}},
+      {path: 'mandanten', component: () => import('pages/MandantenPage.vue'), meta: {permission: 'system_verwaltung'}}
 
 
 

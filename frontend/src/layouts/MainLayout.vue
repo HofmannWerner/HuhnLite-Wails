@@ -8,17 +8,13 @@
           Huhn-Lite
         </q-toolbar-title>
 
-        <!-- Test Mode Toggle -->
-        <q-checkbox
-          v-model="isTestDb"
-          label="Test"
-          color="amber-9"
-          dark
-          class="q-ml-sm text-weight-bold text-amber-9"
-          @update:model-value="onToggleTestDb"
-        >
-          <q-tooltip>Datenbank umschalten (Haupt- vs. Test-Datenbank)</q-tooltip>
-        </q-checkbox>
+        <!-- Active Tenant Info -->
+        <div v-if="activeTenantName" class="row items-center q-ml-md q-px-sm bg-white-opacity-10 rounded-borders text-white" style="background: rgba(255, 255, 255, 0.1); padding: 4px 8px; border-radius: 4px;">
+          <q-icon name="business" class="q-mr-xs text-amber-9" />
+          <span class="text-weight-bold text-caption">{{ activeTenantName }}</span>
+          <q-badge v-if="isTestDb" color="negative" class="q-ml-sm text-weight-bold text-caption">TEST</q-badge>
+          <q-badge v-else color="positive" class="q-ml-sm text-weight-bold text-caption">PROD</q-badge>
+        </div>
 
         <!-- Global Date/Time Selector -->
         <div class="row items-center q-gutter-x-md q-px-md bg-white rounded-borders q-ml-md date-time-selector">
@@ -253,6 +249,14 @@
             </q-item-section>
             <q-item-section>{{ t('menu.restore') }}</q-item-section>
           </q-item>
+
+          <q-item v-if="session.can('system_verwaltung')" clickable v-ripple to="/mandanten"
+                  :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
+            <q-item-section avatar>
+              <q-icon name="business"/>
+            </q-item-section>
+            <q-item-section>{{ t('menu.mandanten') }}</q-item-section>
+          </q-item>
         </q-expansion-item>
 
         <q-separator class="q-my-md" />
@@ -350,6 +354,22 @@ const helpLoading = ref(false);
 const helpUrl = ref('');
 
 const isTestDb = ref(false);
+const activeTenantName = ref('');
+
+async function fetchActiveTenant() {
+  try {
+    const res = await api.get('/api/tenants');
+    const activeId = res.data.active_mandant;
+    const active = res.data.tenants?.find((t: any) => t.id === activeId);
+    if (active) {
+      activeTenantName.value = active.name;
+    } else {
+      activeTenantName.value = '';
+    }
+  } catch (err) {
+    console.error('Failed to fetch active tenant:', err);
+  }
+}
 
 async function checkTestDbStatus() {
   if (window.go && window.go.main && window.go.main.App) {
@@ -576,6 +596,7 @@ async function openHelp() {
 onMounted(async () => {
   console.log('MainLayout: Starte Initialisierung...');
   await checkTestDbStatus();
+  await fetchActiveTenant();
   
   let success = false;
   let retries = 10;
