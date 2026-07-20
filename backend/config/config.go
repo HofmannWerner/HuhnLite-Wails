@@ -245,6 +245,37 @@ func LoadConfig() Config {
 							cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
 							cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
 
+							// Ensure mandant directories exist and copy default databases if missing
+							if cfg.DBEngine == "sqlite" {
+								mandantsToPrepare := []int{1, 2}
+								if cfg.Mandant > 2 {
+									mandantsToPrepare = append(mandantsToPrepare, cfg.Mandant)
+								}
+								for _, m := range mandantsToPrepare {
+									mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", m))
+									if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
+										mandantProdPath := filepath.Join(mandantDir, prodBase)
+										mandantTestPath := filepath.Join(mandantDir, testBase)
+										
+										srcProd := filepath.Join(settingsDir, prodBase)
+										srcTest := filepath.Join(settingsDir, testBase)
+										
+										if _, errStat := os.Stat(mandantProdPath); os.IsNotExist(errStat) {
+											if _, errSrc := os.Stat(srcProd); errSrc == nil {
+												log.Printf("[Config] Copying base prod DB to %s", mandantProdPath)
+												_ = copyFile(srcProd, mandantProdPath)
+											}
+										}
+										if _, errStat := os.Stat(mandantTestPath); os.IsNotExist(errStat) {
+											if _, errSrc := os.Stat(srcTest); errSrc == nil {
+												log.Printf("[Config] Copying base test DB to %s", mandantTestPath)
+												_ = copyFile(srcTest, mandantTestPath)
+											}
+										}
+									}
+								}
+							}
+
 							testKey := fmt.Sprintf("test_%d", cfg.Mandant)
 							systemKey := fmt.Sprintf("system_%d", cfg.Mandant)
 							autobackupKey := fmt.Sprintf("autobackup_%d", cfg.Mandant)
