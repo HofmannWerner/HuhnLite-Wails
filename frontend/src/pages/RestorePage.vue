@@ -319,6 +319,63 @@ async function runRestore() {
       PATH: target.path
     });
     
+    if (res.data.status === 'multiple_dbs') {
+      $q.loading.hide();
+      processing.value = false;
+
+      $q.dialog({
+        title: 'Datenbank auswählen',
+        message: 'Dieses Backup enthält mehrere Datenbankdateien. Bitte wählen Sie die wiederherzustellende Datenbank aus:',
+        options: {
+          type: 'radio',
+          model: res.data.files[0],
+          items: res.data.files.map((f: string) => ({ label: f, value: f }))
+        },
+        cancel: true,
+        persistent: true,
+        ok: {
+          label: 'Wiederherstellen',
+          color: 'negative',
+          unelevated: true
+        }
+      }).onOk(async (selectedDbFile) => {
+        processing.value = true;
+        $q.loading.show({
+          message: 'Datenbank wird wiederhergestellt. Bitte warten...',
+          boxClass: 'bg-grey-2 text-grey-9',
+          spinnerColor: 'negative'
+        });
+        try {
+          const finalRes = await api.post('/api/db/restore', {
+            PATH: target.path,
+            DB_FILENAME: selectedDbFile
+          });
+
+          $q.notify({
+            type: 'positive',
+            message: t('auto.restore_success') || 'Wiederherstellung erfolgreich',
+            caption: (t('auto.safety_backup_created') || 'Sicherheits-Backup erstellt') + ': ' + finalRes.data.safety,
+            timeout: 5000
+          });
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 2000);
+        } catch (finalErr: any) {
+          $q.notify({
+            color: 'negative',
+            message: (t('auto.restore_failed') || 'Restore fehlgeschlagen') + ': ' + (finalErr.response?.data?.error || finalErr.message),
+            timeout: 0,
+            actions: [{ label: 'OK', color: 'white' }]
+          });
+        } finally {
+          $q.loading.hide();
+          processing.value = false;
+        }
+      });
+      return;
+    }
+
     $q.notify({
       type: 'positive',
       message: t('auto.restore_success') || 'Wiederherstellung erfolgreich',

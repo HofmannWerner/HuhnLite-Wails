@@ -6334,7 +6334,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		var req struct {
-			Path string `json:"PATH"`
+			Path       string `json:"PATH"`
+			DBFilename string `json:"DB_FILENAME"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -6350,6 +6351,44 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
+		// ZIP check before closing connection
+		ext := strings.ToLower(filepath.Ext(req.Path))
+		var targetFile string
+		if ext == ".zip" {
+			dbFiles, zipErr := listDbFilesInZip(req.Path)
+			if zipErr != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "ZIP konnte nicht gelesen werden: " + zipErr.Error()})
+				return
+			}
+			if len(dbFiles) == 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Keine Datenbankdatei (.db) in der ZIP-Datei gefunden"})
+				return
+			}
+			if len(dbFiles) > 1 && req.DBFilename == "" {
+				c.JSON(http.StatusOK, gin.H{
+					"status": "multiple_dbs",
+					"files":  dbFiles,
+				})
+				return
+			}
+
+			targetFile = dbFiles[0]
+			if req.DBFilename != "" {
+				found := false
+				for _, df := range dbFiles {
+					if df == req.DBFilename {
+						targetFile = df
+						found = true
+						break
+					}
+				}
+				if !found {
+					c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Ausgewählte Datenbank %s existiert nicht in der ZIP", req.DBFilename)})
+					return
+				}
+			}
+		}
+
 		dbMutex.Lock()
 		defer dbMutex.Unlock()
 
@@ -6359,9 +6398,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 3. Datei überschreiben
-		ext := strings.ToLower(filepath.Ext(req.Path))
 		if ext == ".zip" {
-			err = decompressFromZip(req.Path, activePath)
+			err = decompressSpecificFromZip(req.Path, targetFile, activePath)
 		} else {
 			err = copyFile(req.Path, activePath)
 		}
@@ -10965,4 +11003,48 @@ func decompressFromZip(src, dst string) error {
 		}
 	}
 	return fmt.Errorf("no database file (.db) found in zip archive")
+}
+
+func listDbFilesInZip(src string) ([]string, error) {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	var dbFiles []string
+	for _, f := range r.File {
+		if strings.HasSuffix(strings.ToLower(f.Name), ".db") {
+			dbFiles = append(dbFiles, f.Name)
+		}
+	}
+	return dbFiles, nil
+}
+
+func decompressSpecificFromZip(src, filename, dst string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		if f.Name == filename {
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			defer rc.Close()
+
+			outFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer outFile.Close()
+
+			_, err = io.Copy(outFile, rc)
+			return err
+		}
+	}
+	return fmt.Errorf("file %s not found in zip archive", filename)
 }
