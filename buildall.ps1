@@ -71,6 +71,30 @@ if (Test-Path "HuhnLite_prod.db") {
     Write-Host "HuhnLite_prod.db kopiert." -ForegroundColor Gray
 }
 
+# Erstelle Mandanten-Verzeichnisse in build\bin und kopiere Standard-DBs hinein
+if (!(Test-Path "build\bin\mandant_1")) { New-Item -ItemType Directory -Path "build\bin\mandant_1" -Force }
+if (!(Test-Path "build\bin\mandant_2")) { New-Item -ItemType Directory -Path "build\bin\mandant_2" -Force }
+if (Test-Path "HuhnLite.db") {
+    Copy-Item "HuhnLite.db" "build\bin\mandant_1\HuhnLite.db" -Force
+    Copy-Item "HuhnLite.db" "build\bin\mandant_2\HuhnLite.db" -Force
+}
+if (Test-Path "HuhnLite_test.db") {
+    Copy-Item "HuhnLite_test.db" "build\bin\mandant_1\HuhnLite_test.db" -Force
+    Copy-Item "HuhnLite_test.db" "build\bin\mandant_2\HuhnLite_test.db" -Force
+}
+if (Test-Path "HuhnLite_prod.db") {
+    Copy-Item "HuhnLite_prod.db" "build\bin\mandant_1\HuhnLite_prod.db" -Force
+    Copy-Item "HuhnLite_prod.db" "build\bin\mandant_2\HuhnLite_prod.db" -Force
+}
+
+Get-ChildItem -Path . -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin" -Force
+Get-ChildItem -Path . -Filter "HuhnLite_*.pdf" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin" -Force
+
+if (Test-Path "pdfjs") {
+    if (!(Test-Path "build\bin\pdfjs")) { New-Item -ItemType Directory -Path "build\bin\pdfjs" -Force }
+    Copy-Item "pdfjs\*" "build\bin\pdfjs\" -Recurse -Force
+}
+
 if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
     Write-Host "Erstelle NSIS Installer für HuhnLite-Local..." -ForegroundColor Cyan
     Push-Location "build\windows\installer"
@@ -176,9 +200,14 @@ if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyCon
 
 Write-Host "Kopiere Hilfedateien, Bilder und SQL-Dateien in build\bin\..." -ForegroundColor Cyan
 if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-Copy-Item "HuhnLite-de.html" "build\bin\" -Force
-Copy-Item "HuhnLite-en.html" "build\bin\" -Force
-Copy-Item "HuhnLite-it.html" "build\bin\" -Force
+
+Get-ChildItem -Path . -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin\" -Force
+Get-ChildItem -Path . -Filter "HuhnLite_*.pdf" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin\" -Force
+
+if (Test-Path "pdfjs") {
+    if (!(Test-Path "build\bin\pdfjs")) { New-Item -ItemType Directory -Path "build\bin\pdfjs" -Force }
+    Copy-Item "pdfjs\*" "build\bin\pdfjs\" -Recurse -Force
+}
 
 if (!(Test-Path "build\bin\images")) { New-Item -ItemType Directory -Path "build\bin\images" -Force }
 Copy-Item "images\*" "build\bin\images\" -Recurse -Force

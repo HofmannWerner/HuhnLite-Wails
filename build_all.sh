@@ -58,16 +58,38 @@ ls -la build/bin || true
 # Kopiere die passende settings.json daneben
 cp settings.json build/bin/settings.json
 
+# Erstelle Mandanten-Verzeichnisse in build/bin und kopiere Standard-DBs hinein
+mkdir -p build/bin/mandant_1 build/bin/mandant_2
+[ -f HuhnLite.db ] && cp HuhnLite.db build/bin/mandant_1/HuhnLite.db && cp HuhnLite.db build/bin/mandant_2/HuhnLite.db
+[ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/mandant_1/HuhnLite_test.db && cp HuhnLite_test.db build/bin/mandant_2/HuhnLite_test.db
+[ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/mandant_1/HuhnLite_prod.db && cp HuhnLite_prod.db build/bin/mandant_2/HuhnLite_prod.db
+
 # Copy help files, images, settings and db into the macOS .app bundle if it exists
 if [ -d "build/bin/HuhnLite-Local.app" ]; then
     echo "📋 Copying help files, images and config into HuhnLite-Local.app..."
-    cp HuhnLite-de.html HuhnLite-en.html HuhnLite-it.html build/bin/HuhnLite-Local.app/Contents/Resources/
     mkdir -p build/bin/HuhnLite-Local.app/Contents/Resources/images
     cp -R images/* build/bin/HuhnLite-Local.app/Contents/Resources/images/
     cp settings.json build/bin/HuhnLite-Local.app/Contents/Resources/settings.json
     [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite.db
     [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite_test.db
     [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite_prod.db
+    
+    # Copy PDF help files to macOS bundle
+    for f in HuhnLite_*.PDF HuhnLite_*.pdf; do
+        [ -f "$f" ] && cp "$f" build/bin/HuhnLite-Local.app/Contents/Resources/
+    done
+
+    # Copy PDF.js to macOS bundle
+    if [ -d pdfjs ]; then
+        mkdir -p build/bin/HuhnLite-Local.app/Contents/Resources/pdfjs
+        cp -R pdfjs/* build/bin/HuhnLite-Local.app/Contents/Resources/pdfjs/
+    fi
+    
+    # Create mandant directories inside macOS bundle
+    mkdir -p build/bin/HuhnLite-Local.app/Contents/Resources/mandant_1 build/bin/HuhnLite-Local.app/Contents/Resources/mandant_2
+    [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_1/HuhnLite.db && cp HuhnLite.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_2/HuhnLite.db
+    [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_1/HuhnLite_test.db && cp HuhnLite_test.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_2/HuhnLite_test.db
+    [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_1/HuhnLite_prod.db && cp HuhnLite_prod.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_2/HuhnLite_prod.db
 fi
 
 # Sichern der HuhnLite-Local Build-Ergebnisse, da der nächste Wails-Build build/bin/ löscht
@@ -77,6 +99,12 @@ mkdir -p build/local_temp
 [ -f build/bin/HuhnLite.db ] && mv build/bin/HuhnLite.db build/local_temp/
 [ -f build/bin/HuhnLite_test.db ] && mv build/bin/HuhnLite_test.db build/local_temp/
 [ -f build/bin/HuhnLite_prod.db ] && mv build/bin/HuhnLite_prod.db build/local_temp/
+[ -d build/bin/mandant_1 ] && mv build/bin/mandant_1 build/local_temp/
+[ -d build/bin/mandant_2 ] && mv build/bin/mandant_2 build/local_temp/
+[ -d build/bin/pdfjs ] && mv build/bin/pdfjs build/local_temp/
+for f in build/bin/HuhnLite_*.PDF build/bin/HuhnLite_*.pdf; do
+    [ -f "$f" ] && mv "$f" build/local_temp/
+done
 
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-MariaDB (Netzwerk)..."
@@ -92,10 +120,20 @@ cp settings_mariadb.json build/bin/settings_mariadb.json
 # Copy help files, images and config into the macOS .app bundle if it exists
 if [ -d "build/bin/HuhnLite-MariaDB.app" ]; then
     echo "📋 Copying help files, images and config into HuhnLite-MariaDB.app..."
-    cp HuhnLite-de.html HuhnLite-en.html HuhnLite-it.html build/bin/HuhnLite-MariaDB.app/Contents/Resources/
     mkdir -p build/bin/HuhnLite-MariaDB.app/Contents/Resources/images
     cp -R images/* build/bin/HuhnLite-MariaDB.app/Contents/Resources/images/
     cp settings_mariadb.json build/bin/HuhnLite-MariaDB.app/Contents/Resources/settings_mariadb.json
+    
+    # Copy PDF help files to MariaDB macOS bundle
+    for f in HuhnLite_*.PDF HuhnLite_*.pdf; do
+        [ -f "$f" ] && cp "$f" build/bin/HuhnLite-MariaDB.app/Contents/Resources/
+    done
+
+    # Copy PDF.js to MariaDB macOS bundle
+    if [ -d pdfjs ]; then
+        mkdir -p build/bin/HuhnLite-MariaDB.app/Contents/Resources/pdfjs
+        cp -R pdfjs/* build/bin/HuhnLite-MariaDB.app/Contents/Resources/pdfjs/
+    fi
 fi
 
 # Zurückbewegen der HuhnLite-Local Build-Ergebnisse nach build/bin/
@@ -104,6 +142,12 @@ fi
 [ -f build/local_temp/HuhnLite.db ] && mv build/local_temp/HuhnLite.db build/bin/
 [ -f build/local_temp/HuhnLite_test.db ] && mv build/local_temp/HuhnLite_test.db build/bin/
 [ -f build/local_temp/HuhnLite_prod.db ] && mv build/local_temp/HuhnLite_prod.db build/bin/
+[ -d build/local_temp/mandant_1 ] && mv build/local_temp/mandant_1 build/bin/
+[ -d build/local_temp/mandant_2 ] && mv build/local_temp/mandant_2 build/bin/
+[ -d build/local_temp/pdfjs ] && mv build/local_temp/pdfjs build/bin/
+for f in build/local_temp/HuhnLite_*.PDF build/local_temp/HuhnLite_*.pdf; do
+    [ -f "$f" ] && mv "$f" build/bin/
+done
 rm -rf build/local_temp
 
 echo "------------------------------------------"
@@ -156,7 +200,13 @@ fi
 cp settings_server_mariadb.json build/bin/settings_server_mariadb.json
 
 echo "📋 Copying help files, images and SQL files to build/bin..."
-cp HuhnLite-de.html HuhnLite-en.html HuhnLite-it.html build/bin/
+for f in HuhnLite_*.PDF HuhnLite_*.pdf; do
+    [ -f "$f" ] && cp "$f" build/bin/
+done
+if [ -d pdfjs ]; then
+    mkdir -p build/bin/pdfjs
+    cp -R pdfjs/* build/bin/pdfjs/
+fi
 mkdir -p build/bin/images
 cp -R images/* build/bin/images/
 [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/

@@ -23,6 +23,16 @@ type Config struct {
 	BackupTimeStr      string `json:"backuptime"`    // e.g. "1200,20:00"
 	ConfigFilePath     string `json:"-"`
 }
+
+type safeWriter struct {
+	w io.Writer
+}
+
+func (sw *safeWriter) Write(p []byte) (n int, err error) {
+	n, _ = sw.w.Write(p)
+	return n, nil
+}
+
 func LoadConfig() Config {
 	cwd, _ := os.Getwd()
 	execPath, errExec := os.Executable()
@@ -70,16 +80,17 @@ func LoadConfig() Config {
 		logFileLocal, _ = os.OpenFile(localLogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	}
 
-	var multiWriter io.Writer
-	if logFile != nil && logFileLocal != nil {
-		multiWriter = io.MultiWriter(os.Stdout, logFile, logFileLocal)
-	} else if logFile != nil {
-		multiWriter = io.MultiWriter(os.Stdout, logFile)
-	} else if logFileLocal != nil {
-		multiWriter = io.MultiWriter(os.Stdout, logFileLocal)
-	} else {
-		multiWriter = os.Stdout
+	var writers []io.Writer
+	writers = append(writers, &safeWriter{w: os.Stdout})
+	
+	if logFile != nil {
+		writers = append(writers, logFile)
 	}
+	if logFileLocal != nil {
+		writers = append(writers, logFileLocal)
+	}
+	
+	var multiWriter io.Writer = io.MultiWriter(writers...)
 	log.SetOutput(multiWriter)
 	log.Printf("--- App gestartet (PID: %d) ---", os.Getpid())
 	if logPath != "" {

@@ -92,15 +92,23 @@ Section
     CreateDirectory "$INSTDIR\images"
     CreateDirectory "$INSTDIR\backups"
 
-    # Copy help HTML files (overwrite to ensure latest version)
-    File "..\..\..\HuhnLite-de.html"
-    File "..\..\..\HuhnLite-en.html"
-    File "..\..\..\HuhnLite-it.html"
 
     # Copy help images recursively
     SetOutPath "$INSTDIR\images"
     File /r "..\..\..\images\*"
-    SetOutPath $INSTDIR
+
+    # Copy pdfjs recursively if present
+    SetOutPath "$INSTDIR\pdfjs"
+    File /nonfatal /r "..\..\..\pdfjs\*"
+    SetOutPath "$INSTDIR"
+
+    # Copy help PDF files
+    File /nonfatal "..\..\bin\HuhnLite_de.pdf"
+    File /nonfatal "..\..\bin\HuhnLite_en.pdf"
+    File /nonfatal "..\..\bin\HuhnLite_it.pdf"
+    File /nonfatal "..\..\bin\HuhnLite_de.PDF"
+    File /nonfatal "..\..\bin\HuhnLite_en.PDF"
+    File /nonfatal "..\..\bin\HuhnLite_it.PDF"
 
     # Safely copy settings and database files if they do not exist
     IfFileExists "$INSTDIR\HuhnLite.db" db_exists
@@ -151,10 +159,15 @@ Section "uninstall"
     Delete "$INSTDIR\settings_mariadb.json"
     Delete "$INSTDIR\settings_server.json"
     Delete "$INSTDIR\settings_server_mariadb.json"
-    Delete "$INSTDIR\HuhnLite-de.html"
-    Delete "$INSTDIR\HuhnLite-en.html"
-    Delete "$INSTDIR\HuhnLite-it.html"
+
     Delete "$INSTDIR\images\*"
+    RMDir /r "$INSTDIR\pdfjs"
+    Delete "$INSTDIR\HuhnLite_de.pdf"
+    Delete "$INSTDIR\HuhnLite_en.pdf"
+    Delete "$INSTDIR\HuhnLite_it.pdf"
+    Delete "$INSTDIR\HuhnLite_de.PDF"
+    Delete "$INSTDIR\HuhnLite_en.PDF"
+    Delete "$INSTDIR\HuhnLite_it.PDF"
 
     # We do NOT delete HuhnLite.db or backups/images by default here
     # to protect user data from accidental uninstalls.

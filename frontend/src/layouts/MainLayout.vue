@@ -287,6 +287,18 @@
           <q-icon name="help_outline" />
           <div class="text-weight-bold">{{ t('layout.helpTitle') }}</div>
           <q-space />
+          <q-btn
+            flat
+            dense
+            color="white"
+            icon="open_in_new"
+            label="Im System-Viewer öffnen"
+            @click="openHelpNatively"
+            class="q-mr-md text-weight-medium"
+          >
+            <q-tooltip>Öffnet die PDF-Datei in Ihrem Standard-PDF-Programm</q-tooltip>
+          </q-btn>
+
           <q-btn dense flat icon="close" v-close-popup>
             <q-tooltip>{{ t('layout.close') }}</q-tooltip>
           </q-btn>
@@ -504,83 +516,42 @@ const handleLogout = () => {
   sessionStore.logout();
 };
 
-async function openHelp() {
-  helpDialogOpen.value = true;
+async function loadHelp() {
   helpLoading.value = true;
   helpUrl.value = '';
 
   const activeLang = sessionStore.selectedLanguage || 'de';
+  const pdfName = activeLang === 'de' ? 'HuhnLite_de.PDF' : `HuhnLite_${activeLang}.PDF`;
+  helpUrl.value = `/help/pdfjs/web/viewer.html?file=/help/${pdfName}#pagemode=bookmarks`;
 
-  if (window.go && window.go.main && window.go.main.App) {
-    try {
-      // Retrieve file content directly via Wails
-      const htmlContent = await window.go.main.App.GetHelpContent(activeLang);
+  helpLoading.value = false;
+}
 
-      // Inject <base> tag to resolve relative image paths against the static files server
-      const baseApiUrl = api.defaults.baseURL || 'http://localhost:8080';
-      const baseTag = `<base href="${baseApiUrl}/help/">`;
+async function openHelp() {
+  helpDialogOpen.value = true;
+  await loadHelp();
+}
 
-      let modifiedHtml = htmlContent;
-      if (htmlContent.includes('<head>')) {
-        modifiedHtml = htmlContent.replace('<head>', `<head>${baseTag}`);
-      } else if (htmlContent.includes('<HEAD>')) {
-        modifiedHtml = htmlContent.replace('<HEAD>', `<HEAD>${baseTag}`);
-      } else {
-        modifiedHtml = `${baseTag}${htmlContent}`;
-      }
-
-      // Replace anchor links to prevent them from navigating the iframe via the base URL
-      modifiedHtml = modifiedHtml.replace(/href="#([^"]+)"/g, 'href="javascript:void(0);" onclick="const el = document.getElementById(\'$1\'); if (el) el.scrollIntoView({behavior: \'smooth\'});"');
-
-      helpUrl.value = 'data:text/html;charset=utf-8,' + encodeURIComponent(modifiedHtml);
-    } catch (err) {
-      console.error('Error loading help content:', err);
-      // Fallback: Try to open natively
-      const errMsg = await window.go.main.App.OpenHelp(activeLang);
-      if (errMsg) {
-        $q.notify({
-          type: 'negative',
-          message: 'Hilfe konnte nicht geladen werden: ' + String(errMsg),
-          position: 'top',
-          timeout: 5000
-        });
-      }
-      // Close the in-app help dialog since it's blank or opened natively
+async function openHelpNatively() {
+  const activeLang = sessionStore.selectedLanguage || 'de';
+  if (window.go && window.go.main && window.go.main.App && window.go.main.App.OpenHelpFile) {
+    const errMsg = await window.go.main.App.OpenHelpFile(activeLang, true);
+    if (errMsg) {
+      $q.notify({
+        type: 'negative',
+        message: 'Hilfe konnte nicht geöffnet werden: ' + String(errMsg),
+        position: 'top',
+        timeout: 5000
+      });
+    } else {
+      // Close the dialog since it was successfully opened natively
       helpDialogOpen.value = false;
-    } finally {
-      helpLoading.value = false;
     }
   } else {
-    // Im Webbrowser: Versuche, das echte Hilfe-Dokument vom Server zu laden
+    // Web browser fallback
     const baseApiUrl = api.defaults.baseURL || window.location.origin;
-    const fileUrl = `${baseApiUrl}/help/HuhnLite-${activeLang}.html`;
-
-    try {
-      // Prüfen, ob die Hilfedatei auf dem Server existiert
-      await api.get(`/help/HuhnLite-${activeLang}.html`);
-      // Falls sie existiert, im Iframe laden
-      helpUrl.value = fileUrl;
-    } catch (err) {
-      console.warn('Help file not found on server, showing mockup:', err);
-      // Fallback: Lokaler Entwicklungs-Mockup
-      const mockHtml = `
-        <html>
-          <head>
-            <style>
-              body { font-family: sans-serif; padding: 20px; color: #333; line-height: 1.6; }
-              h1 { color: #027be3; }
-            </style>
-          </head>
-          <body>
-            <h1>Hilfe-Dokument (Entwicklungsmodus - ${activeLang})</h1>
-            <p>Die Wails-Laufzeitumgebung ist nicht verfügbar. Im Live-System wird hier das Handbuch geladen.</p>
-          </body>
-        </html>
-      `;
-      helpUrl.value = 'data:text/html;charset=utf-8,' + encodeURIComponent(mockHtml);
-    } finally {
-      helpLoading.value = false;
-    }
+    const pdfName = activeLang === 'de' ? 'HuhnLite_de.PDF' : `HuhnLite_${activeLang}.PDF`;
+    window.open(`${baseApiUrl}/help/${pdfName}`, '_blank');
   }
 }
 

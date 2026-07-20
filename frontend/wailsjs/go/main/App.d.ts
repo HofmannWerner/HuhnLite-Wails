@@ -4,13 +4,13 @@ import {context} from '../models';
 
 export function GetDBStatus():Promise<Record<string, string>>;
 
-export function GetHelpContent(arg1:string):Promise<string>;
-
 export function Greet(arg1:string):Promise<string>;
 
 export function IsTestDB():Promise<boolean>;
 
 export function OpenHelp(arg1:string):Promise<string>;
+
+export function OpenHelpFile(arg1:string,arg2:boolean):Promise<string>;
 
 export function Quit():Promise<void>;
 

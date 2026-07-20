@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"mime"
 
 	"crypto/aes"
 	"crypto/cipher"
@@ -32,6 +33,10 @@ import (
 	db "huhnlite-wails/backend/db/repo"
 	appconfig "huhnlite-wails/backend/config"
 )
+
+func init() {
+	_ = mime.AddExtensionType(".mjs", "application/javascript")
+}
 
 func toInt64(i interface{}) int64 {
 	if i == nil {
@@ -840,48 +845,52 @@ func getHelpDir(database *wailsdb.DB) string {
 	var pathsToCheck []string
 
 	for _, lang := range langs {
-		fileName := fmt.Sprintf("HuhnLite-%s.html", lang)
-
-		// 1. If SQLite, check its directory
-		if database != nil && database.Engine == "sqlite" && database.Config.DBConnectionString != "" {
-			dbDir := filepath.Dir(database.Config.DBConnectionString)
-			pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, fileName))
+		fileNames := []string{
+			fmt.Sprintf("HuhnLite_%s.PDF", lang),
+			fmt.Sprintf("HuhnLite_%s.pdf", lang),
 		}
-
-		// 2. Check executable directory
-		if execPath, err := os.Executable(); err == nil {
-			bundleDir := filepath.Dir(execPath)
-			if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
-				// Check Contents/Resources inside the .app bundle
-				resourcesDir := filepath.Join(filepath.Dir(bundleDir), "Resources")
-				pathsToCheck = append(pathsToCheck, filepath.Join(resourcesDir, fileName))
-
-				bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
+		for _, fileName := range fileNames {
+			// 1. If SQLite, check its directory
+			if database != nil && database.Engine == "sqlite" && database.Config.DBConnectionString != "" {
+				dbDir := filepath.Dir(database.Config.DBConnectionString)
+				pathsToCheck = append(pathsToCheck, filepath.Join(dbDir, fileName))
 			}
-			pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, fileName))
-		}
 
-		// 3. Check CWD
-		if cwd, err := os.Getwd(); err == nil {
-			pathsToCheck = append(pathsToCheck, filepath.Join(cwd, fileName))
-		}
+			// 2. Check executable directory
+			if execPath, err := os.Executable(); err == nil {
+				bundleDir := filepath.Dir(execPath)
+				if filepath.Base(bundleDir) == "MacOS" && filepath.Base(filepath.Dir(bundleDir)) == "Contents" {
+					// Check Contents/Resources inside the .app bundle
+					resourcesDir := filepath.Join(filepath.Dir(bundleDir), "Resources")
+					pathsToCheck = append(pathsToCheck, filepath.Join(resourcesDir, fileName))
 
-		// 4. Check AppDataDir
-		if configDir, err := os.UserConfigDir(); err == nil {
-			pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite", fileName))
-			pathsToCheck = append(pathsToCheck, filepath.Join(configDir, fileName))
-		}
+					bundleDir = filepath.Dir(filepath.Dir(filepath.Dir(bundleDir)))
+				}
+				pathsToCheck = append(pathsToCheck, filepath.Join(bundleDir, fileName))
+			}
 
-		// 5. Check LOCALAPPDATA
-		if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
-			pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite", fileName))
-			pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, fileName))
-		}
+			// 3. Check CWD
+			if cwd, err := os.Getwd(); err == nil {
+				pathsToCheck = append(pathsToCheck, filepath.Join(cwd, fileName))
+			}
 
-		// 6. Check APPDATA
-		if appData := os.Getenv("APPDATA"); appData != "" {
-			pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite", fileName))
-			pathsToCheck = append(pathsToCheck, filepath.Join(appData, fileName))
+			// 4. Check AppDataDir
+			if configDir, err := os.UserConfigDir(); err == nil {
+				pathsToCheck = append(pathsToCheck, filepath.Join(configDir, "HuhnLite", fileName))
+				pathsToCheck = append(pathsToCheck, filepath.Join(configDir, fileName))
+			}
+
+			// 5. Check LOCALAPPDATA
+			if localAppData := os.Getenv("LOCALAPPDATA"); localAppData != "" {
+				pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, "HuhnLite", fileName))
+				pathsToCheck = append(pathsToCheck, filepath.Join(localAppData, fileName))
+			}
+
+			// 6. Check APPDATA
+			if appData := os.Getenv("APPDATA"); appData != "" {
+				pathsToCheck = append(pathsToCheck, filepath.Join(appData, "HuhnLite", fileName))
+				pathsToCheck = append(pathsToCheck, filepath.Join(appData, fileName))
+			}
 		}
 	}
 
@@ -945,11 +954,45 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	}
 
 	// Serve help directory statically if found
-	if helpDir := getHelpDir(database); helpDir != "" {
+	helpDir := getHelpDir(database)
+	if helpDir != "" {
 		log.Printf("[API] Serving help files from: %s", helpDir)
 		r.Static("/help", helpDir)
 	} else {
 		log.Println("[API] Help directory not found, static /help route will not be served")
+	}
+
+	// Serve pdfjs separately if it's not present in helpDir but exists in executable/CWD
+	pdfjsPath := ""
+	if helpDir != "" {
+		if _, err := os.Stat(filepath.Join(helpDir, "pdfjs")); err == nil {
+			pdfjsPath = filepath.Join(helpDir, "pdfjs")
+		}
+	}
+	if pdfjsPath == "" {
+		// Fallback to executable or CWD
+		if execPath, err := os.Executable(); err == nil {
+			execDir := filepath.Dir(execPath)
+			if filepath.Base(execDir) == "MacOS" && filepath.Base(filepath.Dir(execDir)) == "Contents" {
+				execDir = filepath.Join(filepath.Dir(execDir), "Resources")
+			}
+			if _, err := os.Stat(filepath.Join(execDir, "pdfjs")); err == nil {
+				pdfjsPath = filepath.Join(execDir, "pdfjs")
+			}
+		}
+		if pdfjsPath == "" {
+			if cwd, err := os.Getwd(); err == nil {
+				if _, err := os.Stat(filepath.Join(cwd, "pdfjs")); err == nil {
+					pdfjsPath = filepath.Join(cwd, "pdfjs")
+				}
+			}
+		}
+		if pdfjsPath != "" {
+			log.Printf("[API] Serving pdfjs from fallback path: %s", pdfjsPath)
+			r.Static("/help/pdfjs", pdfjsPath)
+		} else {
+			log.Println("[API] pdfjs directory not found anywhere")
+		}
 	}
 
 	// Verhindert SQLite CGO Segfaults bei abgebrochenen HTTP-Requests (Axios unmount cancellation)

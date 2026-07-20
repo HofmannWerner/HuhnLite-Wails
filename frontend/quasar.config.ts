@@ -75,6 +75,10 @@ export default defineConfig((/* ctx */) => {
           target: 'http://localhost:8080',
           changeOrigin: true,
         },
+        '/help': {
+          target: 'http://localhost:34115',
+          changeOrigin: true,
+        },
       },
     },
 

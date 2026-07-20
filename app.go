@@ -218,11 +218,12 @@ func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
 
-func (a *App) getHelpFilePaths(lang string) []string {
-	if lang == "" {
-		lang = "de"
-	}
-	fileName := fmt.Sprintf("HuhnLite-%s.html", lang)
+// OpenHelp searches for HuhnLite_[lang].PDF and opens it natively
+func (a *App) OpenHelp(lang string) string {
+	return a.OpenHelpFile(lang, true)
+}
+
+func (a *App) getHelpFilePathsForFile(fileName string) []string {
 	var pathsToCheck []string
 
 	// 1. If SQLite, check its directory
@@ -270,60 +271,48 @@ func (a *App) getHelpFilePaths(lang string) []string {
 	return pathsToCheck
 }
 
-// GetHelpContent reads HuhnLite-[lang].html and returns its HTML content as a string
-func (a *App) GetHelpContent(lang string) (string, error) {
-	pathsToCheck := a.getHelpFilePaths(lang)
+// OpenHelpFile opens the specified help file (HTML or PDF) natively in the OS default handler
+func (a *App) OpenHelpFile(lang string, usePDF bool) string {
+	if lang == "" {
+		lang = "de"
+	}
+	
+	var fileNames []string
+	if usePDF {
+		fileNames = []string{
+			fmt.Sprintf("HuhnLite_%s.PDF", lang),
+			fmt.Sprintf("HuhnLite_%s.pdf", lang),
+			// fallback to German if different lang requested
+			"HuhnLite_de.PDF",
+			"HuhnLite_de.pdf",
+		}
+	} else {
+		fileNames = []string{
+			fmt.Sprintf("HuhnLite-%s.html", lang),
+			"HuhnLite-de.html",
+		}
+	}
 
 	var targetPath string
-	for _, p := range pathsToCheck {
-		log.Printf("[Help] Checking path: %s", p)
-		if _, err := os.Stat(p); err == nil {
-			targetPath = p
+	for _, fileName := range fileNames {
+		pathsToCheck := a.getHelpFilePathsForFile(fileName)
+		for _, p := range pathsToCheck {
+			log.Printf("[Help] Checking path for native open: %s", p)
+			if _, err := os.Stat(p); err == nil {
+				targetPath = p
+				break
+			}
+		}
+		if targetPath != "" {
 			break
 		}
 	}
 
-	// Fallback to German if not found and requested language is not German
-	if targetPath == "" && lang != "de" {
-		log.Printf("[Help] Help file HuhnLite-%s.html not found, falling back to German ('de')", lang)
-		return a.GetHelpContent("de")
-	}
-
 	if targetPath == "" {
-		return "", fmt.Errorf("Die Hilfedatei 'HuhnLite-%s.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab.", lang)
-	}
-
-	content, err := os.ReadFile(targetPath)
-	if err != nil {
-		return "", fmt.Errorf("Fehler beim Lesen der Hilfedatei: %v", err)
-	}
-
-	return string(content), nil
-}
-
-// OpenHelp searches for HuhnLite-[lang].html analogously to HuhnLite.db and opens it in the browser
-func (a *App) OpenHelp(lang string) string {
-	pathsToCheck := a.getHelpFilePaths(lang)
-
-	// Find first existing file
-	var targetPath string
-	for _, p := range pathsToCheck {
-		log.Printf("[Help] Checking path: %s", p)
-		if _, err := os.Stat(p); err == nil {
-			targetPath = p
-			break
+		if usePDF {
+			return fmt.Sprintf("Die PDF-Hilfedatei konnte nicht gefunden werden.")
 		}
-	}
-
-	// Fallback to German if not found and requested language is not German
-	if targetPath == "" && lang != "de" {
-		log.Printf("[Help] Help file HuhnLite-%s.html not found, falling back to German ('de')", lang)
-		return a.OpenHelp("de")
-	}
-
-	if targetPath == "" {
-		log.Printf("[Help] Help file HuhnLite-%s.html not found in any checked locations", lang)
-		return fmt.Sprintf("Die Hilfedatei 'HuhnLite-%s.html' konnte nicht gefunden werden. Bitte legen Sie diese im Programmverzeichnis oder neben der Datenbank ab.", lang)
+		return fmt.Sprintf("Die Hilfedatei konnte nicht gefunden werden.")
 	}
 
 	absPath, err := filepath.Abs(targetPath)
