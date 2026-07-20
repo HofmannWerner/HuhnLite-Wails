@@ -52,6 +52,22 @@ func (a *App) startup(ctx context.Context) {
 			log.Printf("Failed to start API server: %v", err)
 		}
 	}()
+
+	// Autobackup on start
+	if a.database != nil && a.database.Engine != "mysql" {
+		ab := a.database.Config.AutoBackup
+		if ab == 1 || ab == 3 {
+			log.Printf("[Autobackup] Performing startup backup...")
+			go func() {
+				_, err := api.PerformAutoBackup(a.database, "start")
+				if err != nil {
+					log.Printf("[Autobackup] Startup backup failed: %v", err)
+				} else {
+					log.Printf("[Autobackup] Startup backup completed successfully.")
+				}
+			}()
+		}
+	}
 }
 
 // SaveWindowState saves the current window dimensions to the database
@@ -118,6 +134,21 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 
 	log.Printf("[Wails] Saving window state for user: %s", username)
 	a.SaveWindowState(ctx, username)
+
+	// Autobackup on exit
+	if a.database != nil && a.database.Engine != "mysql" {
+		ab := a.database.Config.AutoBackup
+		if ab == 2 || ab == 3 {
+			log.Printf("[Autobackup] Performing exit backup...")
+			_, err := api.PerformAutoBackup(a.database, "exit")
+			if err != nil {
+				log.Printf("[Autobackup] Exit backup failed: %v", err)
+			} else {
+				log.Printf("[Autobackup] Exit backup completed successfully.")
+			}
+		}
+	}
+
 	return false // Don't prevent closing
 }
 

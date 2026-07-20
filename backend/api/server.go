@@ -1,6 +1,7 @@
 package api
 
 import (
+	"archive/zip"
 	"context"
 	"database/sql"
 	"encoding/base64"
@@ -930,7 +931,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	/* conn := database.SQL */
 	/* queries := database.Repo */
 	currentDBPath := database.Config.DBConnectionString
-	backupDir := filepath.Join(filepath.Dir(currentDBPath), "backups")
+	backupDir := filepath.Join(filepath.Dir(currentDBPath), "Backups")
 	_ = os.MkdirAll(backupDir, 0755)
 	MigrateDB(database)
 
@@ -969,6 +970,56 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
 	r.Use(cors.New(config))
+
+	// Background AutoBackup Timer based on "backuptime_<Mandant>" or "backuptime"
+	go func() {
+		lastBackupMin := -1
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if database.Engine == "mysql" {
+				continue
+			}
+
+			now := time.Now()
+			currentMin := now.Minute()
+			if currentMin == lastBackupMin {
+				continue
+			}
+
+			cfg := appconfig.LoadConfig()
+			if cfg.BackupTimeStr == "" {
+				continue
+			}
+
+			parts := strings.Split(cfg.BackupTimeStr, ",")
+			matches := false
+			currentHM1 := now.Format("1504")
+			currentHM2 := now.Format("15:04")
+
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p == currentHM1 || p == currentHM2 {
+					matches = true
+					break
+				}
+			}
+
+			if matches {
+				log.Printf("[SchedBackup] Current time %s matches backup time configuration (%s). Starting backup...", currentHM2, cfg.BackupTimeStr)
+				lastBackupMin = currentMin
+				go func() {
+					_, err := PerformAutoBackup(database, "sched")
+					if err != nil {
+						log.Printf("[SchedBackup] Scheduled backup failed: %v", err)
+					} else {
+						log.Printf("[SchedBackup] Scheduled backup completed successfully.")
+					}
+				}()
+			}
+		}
+	}()
 
 	// Disable caching to prevent frontend stale data issues
 	r.Use(func(c *gin.Context) {
@@ -5503,7 +5554,6 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	})
 
 	// Backup Endpunkt
-	// Backup Endpunkt mit Zeitstempel
 	r.POST("/api/backup", func(c *gin.Context) {
 		if database.Engine == "mysql" {
 			c.JSON(http.StatusOK, gin.H{
@@ -5513,29 +5563,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
-		activePath := database.ActiveConnStr
-		var activeBackupDir string
-		var timestamp string
-		var destPath string
-
-		dbFilename := filepath.Base(activePath)
-		ext := filepath.Ext(dbFilename)
-		baseName := strings.TrimSuffix(dbFilename, ext)
-
-		if database.Config.Mandant > 0 && database.Config.ConfigFilePath != "" {
-			settingsDir := filepath.Dir(database.Config.ConfigFilePath)
-			activeBackupDir = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", database.Config.Mandant), "Backups")
-			_ = os.MkdirAll(activeBackupDir, 0755)
-			timestamp = time.Now().Format("20060102") // YYYYMMDD
-			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s_%s%s", baseName, timestamp, ext))
-		} else {
-			activeBackupDir = filepath.Join(filepath.Dir(activePath), "backups")
-			_ = os.MkdirAll(activeBackupDir, 0755)
-			timestamp = time.Now().Format("0601021504")
-			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s%s%s", baseName, timestamp, ext))
-		}
-
-		err := copyFile(activePath, destPath)
+		destPath, err := PerformAutoBackup(database, "")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Backup fehlgeschlagen: " + err.Error()})
 			return
@@ -5568,10 +5596,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		type TenantInfo struct {
-			ID     int    `json:"id"`
-			Name   string `json:"name"`
-			System int    `json:"system"`
-			Test   int    `json:"test"`
+			ID         int    `json:"id"`
+			Name       string `json:"name"`
+			System     int    `json:"system"`
+			Test       int    `json:"test"`
+			AutoBackup int    `json:"autobackup"`
+			BackupTime string `json:"backuptime"`
 		}
 
 		var tenants []TenantInfo
@@ -5596,11 +5626,27 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					}
 				}
 
+				autobackup := 0
+				if abVal, ok := configMap[fmt.Sprintf("autobackup_%d", id)]; ok {
+					if f, ok := abVal.(float64); ok {
+						autobackup = int(f)
+					}
+				}
+
+				backuptime := ""
+				if btVal, ok := configMap[fmt.Sprintf("backuptime_%d", id)]; ok {
+					if s, ok := btVal.(string); ok {
+						backuptime = s
+					}
+				}
+
 				tenants = append(tenants, TenantInfo{
-					ID:     id,
-					Name:   name,
-					System: system,
-					Test:   test,
+					ID:         id,
+					Name:       name,
+					System:     system,
+					Test:       test,
+					AutoBackup: autobackup,
+					BackupTime: backuptime,
 				})
 			}
 		}
@@ -5743,6 +5789,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		configMap[fmt.Sprintf("mandant_%d", n)] = req.Name
 		configMap[fmt.Sprintf("system_%d", n)] = 0
 		configMap[fmt.Sprintf("test_%d", n)] = 0
+		configMap[fmt.Sprintf("autobackup_%d", n)] = 1 // default to On Start
+		configMap[fmt.Sprintf("backuptime_%d", n)] = ""
 		configMap["mandant"] = n
 		configMap["test"] = 0
 
@@ -5761,10 +5809,12 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.POST("/api/tenants/update", func(c *gin.Context) {
 		var req struct {
-			ID     int    `json:"id"`
-			Name   string `json:"name"`
-			System int    `json:"system"`
-			Test   int    `json:"test"`
+			ID         int    `json:"id"`
+			Name       string `json:"name"`
+			System     int    `json:"system"`
+			Test       int    `json:"test"`
+			AutoBackup int    `json:"autobackup"`
+			BackupTime string `json:"backuptime"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -5798,6 +5848,8 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		configMap[tenantKey] = req.Name
 		configMap[fmt.Sprintf("system_%d", req.ID)] = req.System
 		configMap[fmt.Sprintf("test_%d", req.ID)] = req.Test
+		configMap[fmt.Sprintf("autobackup_%d", req.ID)] = req.AutoBackup
+		configMap[fmt.Sprintf("backuptime_%d", req.ID)] = req.BackupTime
 
 		if err := saveSettingsMap(p, configMap); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
@@ -5818,26 +5870,293 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		c.JSON(http.StatusOK, gin.H{"status": "success"})
 	})
 
+	r.POST("/api/tenants/export", func(c *gin.Context) {
+		var req struct {
+			ID int `json:"id"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		p := database.Config.ConfigFilePath
+		if p == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Konfigurationsdatei-Pfad nicht gefunden"})
+			return
+		}
+
+		data, err := os.ReadFile(p)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(data, &configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		settingsDir := filepath.Dir(p)
+		tenantDirName := fmt.Sprintf("mandant_%d", req.ID)
+		tenantDir := filepath.Join(settingsDir, tenantDirName)
+		if _, err := os.Stat(tenantDir); os.IsNotExist(err) {
+			altTenantDirName := fmt.Sprintf("Mandant_%d", req.ID)
+			altTenantDir := filepath.Join(settingsDir, altTenantDirName)
+			if _, errAlt := os.Stat(altTenantDir); errAlt == nil {
+				tenantDir = altTenantDir
+				tenantDirName = altTenantDirName
+			}
+		}
+
+		isTest := false
+		if val, ok := configMap[fmt.Sprintf("test_%d", req.ID)]; ok {
+			if f, ok := val.(float64); ok && f == 1 {
+				isTest = true
+			} else if s, ok := val.(string); ok && (s == "1" || strings.ToLower(s) == "true") {
+				isTest = true
+			} else if b, ok := val.(bool); ok && b {
+				isTest = true
+			}
+		}
+
+		var dbFilename string
+		if isTest {
+			dbFilename = "HuhnLite_test.db"
+		} else {
+			dbFilename = "HuhnLite_prod.db"
+		}
+
+		dbPath := filepath.Join(tenantDir, dbFilename)
+		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Datenbankdatei für Mandant %d nicht gefunden: %s", req.ID, dbPath)})
+			return
+		}
+
+		tenantDB, err := sql.Open("sqlite", dbPath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Öffnen der Mandanten-Datenbank: " + err.Error()})
+			return
+		}
+		defer tenantDB.Close()
+
+		if err := tenantDB.Ping(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Mandanten-Datenbank antwortet nicht: " + err.Error()})
+			return
+		}
+
+		type HerdeExport struct {
+			Mandantnummer             int64    `json:"Mandantnummer"`
+			Herdennummer              int64    `json:"Herdennummer"`
+			Bezeichnung               string   `json:"Bezeichnung"`
+			MaxBuchungsdatum          *string  `json:"MaxBuchungsdatum"`
+			Tierbestand               int64    `json:"Tierbestand"`
+			Klassenerfassen           int64    `json:"KLASSENERFASSEN"`
+			Klasseaerfassen           int64    `json:"KLASSEAERFASSEN"`
+			Klasseaerrechnen          int64    `json:"KLASSEAERRECHNEN"`
+			Klasseavermitteln         int64    `json:"KLASSEAVERMITTELN"`
+			Beivermittelndatumaktuell int64    `json:"BEIVERMITTELNDATUMAKTUELL"`
+			Erfasseschmutzei          int64    `json:"ERFASSESCHMUTZEI"`
+			Erfasseknickei            int64    `json:"ERFASSEKNICKEI"`
+			Erfassebruchei            int64    `json:"ERFASSEBRUCHEI"`
+			Erfassevollei             int64    `json:"ERFASSEVOLLEI"`
+			Massvollei                int64    `json:"MASSVOLLEI"`
+			Kontrollwiegung           float64  `json:"KONTROLLWIEGUNG"`
+			Anzahlkontrollw           int64    `json:"ANZAHLKONTROLLW"`
+			Verpackungkg              float64  `json:"VERPACKUNGKG"`
+			Erfassevolleikg           int64    `json:"ERFASSEVOLLEIKG"`
+		}
+
+		rows, err := tenantDB.QueryContext(c, `
+			SELECT
+				h.herdennummer,
+				h.bezeichnung,
+				(SELECT MAX(b.buchungsdatum) FROM BUCHUNG b WHERE b.id_herden = h.id) as max_buchungsdatum,
+				COALESCE((SELECT b.tierbestand FROM BUCHUNG b WHERE b.id_herden = h.id ORDER BY b.buchungsdatum DESC, b.id DESC LIMIT 1), h.anfangsbestand) as tierbestand,
+				COALESCE(fp.klassenerfassen, fp_fallback.klassenerfassen, 0) as klassenerfassen,
+				COALESCE(fp.klasseaerfassen, fp_fallback.klasseaerfassen, 0) as klasseaerfassen,
+				COALESCE(fp.klasseaerrechnen, fp_fallback.klasseaerrechnen, 0) as klasseaerrechnen,
+				COALESCE(fp.klasseavermitteln, fp_fallback.klasseavermitteln, 0) as klasseavermitteln,
+				COALESCE(fp.beivermittelndatumaktuell, fp_fallback.beivermittelndatumaktuell, 0) as beivermittelndatumaktuell,
+				COALESCE(fp.erfasseschmutzei, fp_fallback.erfasseschmutzei, 0) as erfasseschmutzei,
+				COALESCE(fp.erfasseknickei, fp_fallback.erfasseknickei, 0) as erfasseknickei,
+				COALESCE(fp.erfassebruchei, fp_fallback.erfassebruchei, 0) as erfassebruchei,
+				COALESCE(fp.erfassevollei, fp_fallback.erfassevollei, 0) as erfassevollei,
+				COALESCE(fp.massvollei, fp_fallback.massvollei, 0) as massvollei,
+				COALESCE(fp.kontrollwiegung, fp_fallback.kontrollwiegung, 0) as kontrollwiegung,
+				COALESCE(fp.anzahlkontrollw, fp_fallback.anzahlkontrollw, 0) as anzahlkontrollw,
+				COALESCE(fp.verpackungkg, fp_fallback.verpackungkg, 0.0) as verpackungkg,
+				COALESCE(fp.erfassevolleikg, fp_fallback.erfassevolleikg, 0) as erfassevolleikg
+			FROM HERDEN h
+			LEFT JOIN FIRMENPARAMETER fp ON fp.id_herden = h.id
+			LEFT JOIN FIRMENPARAMETER fp_fallback ON fp_fallback.id_herden = -1
+			WHERE h.aktiv = 1
+		`)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Abfragen der Herden: " + err.Error()})
+			return
+		}
+		defer rows.Close()
+
+		var herdenExport []HerdeExport
+		for rows.Next() {
+			var h HerdeExport
+			h.Mandantnummer = int64(req.ID)
+			var maxDate sql.NullString
+			err := rows.Scan(
+				&h.Herdennummer,
+				&h.Bezeichnung,
+				&maxDate,
+				&h.Tierbestand,
+				&h.Klassenerfassen,
+				&h.Klasseaerfassen,
+				&h.Klasseaerrechnen,
+				&h.Klasseavermitteln,
+				&h.Beivermittelndatumaktuell,
+				&h.Erfasseschmutzei,
+				&h.Erfasseknickei,
+				&h.Erfassebruchei,
+				&h.Erfassevollei,
+				&h.Massvollei,
+				&h.Kontrollwiegung,
+				&h.Anzahlkontrollw,
+				&h.Verpackungkg,
+				&h.Erfassevolleikg,
+			)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Lesen der Herden-Daten: " + err.Error()})
+				return
+			}
+			if maxDate.Valid {
+				h.MaxBuchungsdatum = &maxDate.String
+			} else {
+				h.MaxBuchungsdatum = nil
+			}
+			herdenExport = append(herdenExport, h)
+		}
+
+		type VerlustgrundExport struct {
+			Mandantnummer int64  `json:"Mandantnummer"`
+			ID            int64  `json:"ID"`
+			KZ            string `json:"KZ"`
+			Betreff       string `json:"Betreff"`
+		}
+
+		rowsV, err := tenantDB.QueryContext(c, `
+			SELECT
+				t.id,
+				COALESCE(t.kz, ''),
+				COALESCE(u.betreff, '')
+			FROM TEXTE t
+			LEFT JOIN UEBERSETZUNGEN u ON u.id_texte = t.id AND u.sprache_kz = 'de'
+			WHERE t.text_typ_kz = 'V'
+		`)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Abfragen der Verlustgründe: " + err.Error()})
+			return
+		}
+		defer rowsV.Close()
+
+		var verlustgruendeExport []VerlustgrundExport
+		for rowsV.Next() {
+			var v VerlustgrundExport
+			v.Mandantnummer = int64(req.ID)
+			err := rowsV.Scan(&v.ID, &v.KZ, &v.Betreff)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Lesen der Verlustgründe: " + err.Error()})
+				return
+			}
+			verlustgruendeExport = append(verlustgruendeExport, v)
+		}
+
+		exchangeDir := filepath.Join(tenantDir, "DatenAustausch")
+		if err := os.MkdirAll(exchangeDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Erstellen des Verzeichnisses DatenAustausch: " + err.Error()})
+			return
+		}
+
+		herdenJson, err := json.MarshalIndent(herdenExport, "", "  ")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Formatieren der Herden-Daten: " + err.Error()})
+			return
+		}
+
+		verlustJson, err := json.MarshalIndent(verlustgruendeExport, "", "  ")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Formatieren der Verlustgrund-Daten: " + err.Error()})
+			return
+		}
+
+		herdenFile := filepath.Join(exchangeDir, "Herden.json")
+		if err := os.WriteFile(herdenFile, herdenJson, 0644); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Schreiben von Herden.json: " + err.Error()})
+			return
+		}
+
+		verlustFile := filepath.Join(exchangeDir, "Verlustgrund.json")
+		if err := os.WriteFile(verlustFile, verlustJson, 0644); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Schreiben von Verlustgrund.json: " + err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":       "success",
+			"message":      fmt.Sprintf("Export für Mandant %d erfolgreich abgeschlossen.", req.ID),
+			"herden_path":  filepath.ToSlash(herdenFile),
+			"verlust_path": filepath.ToSlash(verlustFile),
+		})
+	})
+
 	// DB Management Endpunkte
+	type BackupFileInfo struct {
+		Name string    `json:"name"`
+		Path string    `json:"path"`
+		Size int64     `json:"size"`
+		Time time.Time `json:"time"`
+		Type string    `json:"type"` // "test" or "prod"
+	}
+
 	r.GET("/api/db/list", func(c *gin.Context) {
-		var files []string
+		var files []BackupFileInfo
 		activePath := database.ActiveConnStr
 		var dirs []string
 		if database.Config.Mandant > 0 {
-			dirs = []string{filepath.Join(filepath.Dir(activePath), "Backups")}
+			dirs = []string{
+				filepath.Join(filepath.Dir(activePath), "Backups"),
+				filepath.Join(filepath.Dir(activePath), "backups"),
+			}
 		} else {
-			activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
-			dirs = []string{filepath.Dir(activePath), activeBackupDir}
+			dirs = []string{
+				filepath.Dir(activePath),
+				filepath.Join(filepath.Dir(activePath), "Backups"),
+				filepath.Join(filepath.Dir(activePath), "backups"),
+			}
 		}
 
 		seen := make(map[string]bool)
 		for _, dir := range dirs {
-			matches, _ := filepath.Glob(filepath.Join(dir, "*.db"))
+			matchesDB, _ := filepath.Glob(filepath.Join(dir, "*.db"))
+			matchesZIP, _ := filepath.Glob(filepath.Join(dir, "*.zip"))
+			matches := append(matchesDB, matchesZIP...)
 			for _, m := range matches {
 				p := filepath.ToSlash(m)
-				if !seen[p] {
-					files = append(files, p)
-					seen[p] = true
+				key := strings.ToLower(p)
+				if !seen[key] {
+					info, err := os.Stat(p)
+					if err == nil {
+						dbType := "prod"
+						if strings.Contains(strings.ToLower(info.Name()), "test") {
+							dbType = "test"
+						}
+						files = append(files, BackupFileInfo{
+							Name: info.Name(),
+							Path: p,
+							Size: info.Size(),
+							Time: info.ModTime(),
+							Type: dbType,
+						})
+					}
+					seen[key] = true
 				}
 			}
 		}
@@ -5846,6 +6165,113 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			"files":   files,
 			"current": activePath,
 		})
+	})
+
+	r.POST("/api/db/delete", func(c *gin.Context) {
+		var req struct {
+			Paths []string `json:"paths"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		for _, p := range req.Paths {
+			ext := strings.ToLower(filepath.Ext(p))
+			if ext != ".db" && ext != ".zip" {
+				continue
+			}
+			_ = os.Remove(p)
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+	})
+
+	r.POST("/api/db/compress", func(c *gin.Context) {
+		var req struct {
+			Paths []string `json:"paths"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		if len(req.Paths) == 0 {
+			c.JSON(http.StatusOK, gin.H{"status": "compressed", "count": 0})
+			return
+		}
+
+		// Filter to keep only .db files (ignore .zip files)
+		var dbPaths []string
+		for _, p := range req.Paths {
+			ext := strings.ToLower(filepath.Ext(p))
+			if ext == ".db" {
+				dbPaths = append(dbPaths, p)
+			}
+		}
+
+		if len(dbPaths) == 0 {
+			c.JSON(http.StatusOK, gin.H{"status": "compressed", "count": 0})
+			return
+		}
+
+		var zipPath string
+		if len(dbPaths) == 1 {
+			zipPath = dbPaths[0] + ".zip"
+		} else {
+			dir := filepath.Dir(dbPaths[0])
+			timestamp := time.Now().Format("200601021504")
+			zipPath = filepath.Join(dir, fmt.Sprintf("Backups_%s.zip", timestamp))
+		}
+
+		zipFile, err := os.Create(zipPath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create zip: " + err.Error()})
+			return
+		}
+		defer zipFile.Close()
+
+		archive := zip.NewWriter(zipFile)
+		defer archive.Close()
+
+		compressedCount := 0
+		for _, p := range dbPaths {
+			fileToZip, err := os.Open(p)
+			if err != nil {
+				continue
+			}
+
+			info, err := fileToZip.Stat()
+			if err != nil {
+				fileToZip.Close()
+				continue
+			}
+
+			header, err := zip.FileInfoHeader(info)
+			if err != nil {
+				fileToZip.Close()
+				continue
+			}
+
+			header.Name = filepath.Base(p)
+			header.Method = zip.Deflate
+
+			writer, err := archive.CreateHeader(header)
+			if err != nil {
+				fileToZip.Close()
+				continue
+			}
+
+			_, err = io.Copy(writer, fileToZip)
+			fileToZip.Close()
+
+			if err == nil {
+				_ = os.Remove(p)
+				compressedCount++
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "compressed", "count": compressedCount})
 	})
 
 	r.POST("/api/db/switch", func(c *gin.Context) {
@@ -5858,32 +6284,24 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 1. Sicherheits-Backup der aktuellen DB
-		activePath := database.ActiveConnStr
-		var activeBackupDir string
-		if database.Config.Mandant > 0 {
-			activeBackupDir = filepath.Join(filepath.Dir(activePath), "Backups")
-		} else {
-			activeBackupDir = filepath.Join(filepath.Dir(activePath), "backups")
-		}
-		_ = os.MkdirAll(activeBackupDir, 0755)
-		timestamp := time.Now().Format("0601021504")
-		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBackup_before_switch_%s.db", timestamp))
-
-		err := copyFile(activePath, safetyBackup)
+		safetyBackup, err := PerformAutoBackup(database, "SafetyBackup_before_switch")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Sicherheits-Backup fehlgeschlagen: " + err.Error()})
 			return
 		}
 
 		// 2. Verbindung wechseln
+		dbMutex.Lock()
 		newConn, err := sql.Open("sqlite", req.Path)
 		if err != nil {
+			dbMutex.Unlock()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Neue DB konnte nicht geöffnet werden: " + err.Error()})
 			return
 		}
 
 		// Teste Verbindung
 		if err = newConn.Ping(); err != nil {
+			dbMutex.Unlock()
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Neue DB antwortet nicht: " + err.Error()})
 			return
 		}
@@ -5897,6 +6315,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		database.Repo = db.New(database.SQL)
 		database.ActiveConnStr = req.Path
 		currentDBPath = req.Path
+		dbMutex.Unlock()
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":        "switched",
@@ -5924,24 +6343,15 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 1. Sicherheits-Backup der aktuellen DB
 		activePath := database.ActiveConnStr
-		var activeBackupDir string
-		if database.Config.Mandant > 0 {
-			activeBackupDir = filepath.Join(filepath.Dir(activePath), "Backups")
-		} else {
-			activeBackupDir = filepath.Join(filepath.Dir(activePath), "backups")
-		}
-		_ = os.MkdirAll(activeBackupDir, 0755)
-		timestamp := time.Now().Format("0601021504")
-		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBeforeRestore_%s.db", timestamp))
-
-		dbMutex.Lock()
-		defer dbMutex.Unlock()
-
-		err := copyFile(activePath, safetyBackup)
+		
+		safetyBackup, err := PerformAutoBackup(database, "SafetyBeforeRestore")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Sicherheits-Backup vor Restore fehlgeschlagen: " + err.Error()})
 			return
 		}
+
+		dbMutex.Lock()
+		defer dbMutex.Unlock()
 
 		// 2. Verbindung schließen
 		if database.SQL != nil {
@@ -5949,7 +6359,13 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		}
 
 		// 3. Datei überschreiben
-		err = copyFile(req.Path, activePath)
+		ext := strings.ToLower(filepath.Ext(req.Path))
+		if ext == ".zip" {
+			err = decompressFromZip(req.Path, activePath)
+		} else {
+			err = copyFile(req.Path, activePath)
+		}
+
 		if err != nil {
 			// Versuche alte Verbindung wieder zu öffnen
 			database.SQL, _ = sql.Open("sqlite", activePath)
@@ -6008,7 +6424,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 		// 3. Sicherheits-Backup der aktuellen DB
 		activePath := database.ActiveConnStr
-		activeBackupDir := filepath.Join(filepath.Dir(activePath), "backups")
+		activeBackupDir := filepath.Join(filepath.Dir(activePath), "Backups")
 		_ = os.MkdirAll(activeBackupDir, 0755)
 		timestamp := time.Now().Format("0601021504")
 		safetyBackup := filepath.Join(activeBackupDir, fmt.Sprintf("SafetyBackup_before_manual_switch_%s.db", timestamp))
@@ -10439,4 +10855,114 @@ func syncDataFromSQLite(database *wailsdb.DB) {
 			_, _ = database.SQL.Exec(fmt.Sprintf("ALTER TABLE %s AUTO_INCREMENT = %d", table, maxId+1))
 		}
 	}
+}
+
+func PerformAutoBackup(database *wailsdb.DB, trigger string) (string, error) {
+	if database == nil || database.Engine == "mysql" {
+		return "", nil
+	}
+	dbMutex.Lock()
+	defer dbMutex.Unlock()
+
+	activePath := database.ActiveConnStr
+	if activePath == "" {
+		return "", fmt.Errorf("active connection string is empty")
+	}
+
+	dbFilename := filepath.Base(activePath)
+	ext := filepath.Ext(dbFilename)
+	baseName := strings.TrimSuffix(dbFilename, ext)
+
+	activeBackupDir := filepath.Join(filepath.Dir(activePath), "Backups")
+	_ = os.MkdirAll(activeBackupDir, 0755)
+
+	var timestamp string
+	var destPath string
+	if database.Config.Mandant > 0 {
+		timestamp = time.Now().Format("200601021504") // YYYYMMDDhhmm
+		if trigger != "" {
+			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s_%s_%s%s", baseName, timestamp, trigger, ext))
+		} else {
+			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s_%s%s", baseName, timestamp, ext))
+		}
+	} else {
+		timestamp = time.Now().Format("0601021504")
+		if trigger != "" {
+			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s_%s_%s%s", baseName, timestamp, trigger, ext))
+		} else {
+			destPath = filepath.Join(activeBackupDir, fmt.Sprintf("%s%s%s", baseName, timestamp, ext))
+		}
+	}
+
+	err := copyFile(activePath, destPath)
+	if err != nil {
+		return "", err
+	}
+	return destPath, nil
+}
+
+func compressToZip(src, dst string) error {
+	zipFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer zipFile.Close()
+
+	archive := zip.NewWriter(zipFile)
+	defer archive.Close()
+
+	fileToZip, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer fileToZip.Close()
+
+	info, err := fileToZip.Stat()
+	if err != nil {
+		return err
+	}
+
+	header, err := zip.FileInfoHeader(info)
+	if err != nil {
+		return err
+	}
+
+	header.Name = filepath.Base(src)
+	header.Method = zip.Deflate
+
+	writer, err := archive.CreateHeader(header)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(writer, fileToZip)
+	return err
+}
+
+func decompressFromZip(src, dst string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		if strings.HasSuffix(strings.ToLower(f.Name), ".db") {
+			rc, err := f.Open()
+			if err != nil {
+				return err
+			}
+			defer rc.Close()
+
+			outFile, err := os.OpenFile(dst, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+				return err
+			}
+			defer outFile.Close()
+
+			_, err = io.Copy(outFile, rc)
+			return err
+		}
+	}
+	return fmt.Errorf("no database file (.db) found in zip archive")
 }

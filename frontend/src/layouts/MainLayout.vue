@@ -225,29 +225,20 @@
             <q-item-section>{{ t('menu.wartung') }}</q-item-section>
           </q-item>
 
-          <q-item v-if="session.permissions.backup_erstellen" clickable v-ripple @click="runBackup"
-                  :disable="backupLoading">
-            <q-item-section avatar>
-              <q-icon v-if="!backupLoading" name="backup"/>
-              <q-spinner v-else color="primary" size="2em"/>
-            </q-item-section>
-            <q-item-section>{{ t('menu.backup') }}</q-item-section>
-          </q-item>
-
-            <q-item v-if="session.can('system_verwaltung')" clickable v-ripple to="/showtv"
-                  :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
-            <q-item-section avatar>
-              <q-icon name="visibility"/>
-            </q-item-section>
-            <q-item-section>{{ t('menu.anzeige') }}</q-item-section>
-          </q-item>
-
           <q-item v-if="session.can('system_verwaltung')" clickable v-ripple to="/restore"
                   :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
             <q-item-section avatar>
               <q-icon name="settings_backup_restore"/>
             </q-item-section>
-            <q-item-section>{{ t('menu.restore') }}</q-item-section>
+            <q-item-section>{{ t('menu.sicherungsverwaltung') }}</q-item-section>
+          </q-item>
+
+          <q-item v-if="session.can('system_verwaltung')" clickable v-ripple to="/showtv"
+                  :active-class="$q.dark.isActive ? 'text-primary bg-grey-9' : 'text-primary bg-blue-1'">
+            <q-item-section avatar>
+              <q-icon name="visibility"/>
+            </q-item-section>
+            <q-item-section>{{ t('menu.anzeige') }}</q-item-section>
           </q-item>
 
           <q-item v-if="session.can('system_verwaltung')" clickable v-ripple to="/mandanten"

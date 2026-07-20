@@ -66,8 +66,11 @@
                   class="q-ml-sm"
                   @click="editTenant(props.row)"
                 >
-                  <q-tooltip>Name ändern</q-tooltip>
+                  <q-tooltip>Mandant bearbeiten</q-tooltip>
                 </q-btn>
+              </div>
+              <div class="text-caption text-grey-7">
+                Auto-Backup: {{ getAutoBackupLabel(props.row.autobackup) }}<span v-if="props.row.backuptime"> (um {{ props.row.backuptime }})</span>
               </div>
             </q-td>
           </template>
@@ -92,6 +95,20 @@
                 :false-value="0"
                 color="red"
                 @update:model-value="updateTenant(props.row)"
+              />
+            </q-td>
+          </template>
+
+          <template v-slot:body-cell-actions="props">
+            <q-td :props="props" class="text-center">
+              <q-btn
+                color="blue-8"
+                size="sm"
+                icon="cloud_upload"
+                label="Export an PWA"
+                @click="exportToPWA(props.row.id)"
+                :loading="exportingId === props.row.id"
+                unelevated
               />
             </q-td>
           </template>
@@ -141,7 +158,7 @@
     <q-dialog v-model="showEditDialog" persistent>
       <q-card style="min-width: 400px;" class="q-pa-sm">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6 text-weight-bold">Mandantenname bearbeiten</div>
+          <div class="text-h6 text-weight-bold">Mandant bearbeiten</div>
           <q-space />
           <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
@@ -154,6 +171,23 @@
             autofocus
             @keyup.enter="saveTenantName"
             :rules="[val => !!val || 'Name ist erforderlich']"
+          />
+          <q-select
+            v-model="editTenantAutoBackup"
+            label="Automatisches Backup"
+            outlined
+            emit-value
+            map-options
+            :options="autoBackupOptions"
+            class="q-mt-md"
+          />
+          <q-input
+            v-model="editTenantBackupTime"
+            label="Backup Uhrzeiten (z.B. 12:00, 20:00)"
+            placeholder="Kommasepariert z.B. 1200, 20:00"
+            outlined
+            class="q-mt-md"
+            hint="Mehrere Zeiten mit Komma trennen (z.B. 12:00, 20:00)"
           />
         </q-card-section>
 
@@ -186,6 +220,8 @@ interface Tenant {
   name: string;
   system: number;
   test: number;
+  autobackup: number;
+  backuptime: string;
 }
 
 const tenants = ref<Tenant[]>([]);
@@ -193,6 +229,7 @@ const activeMandant = ref<number | null>(null);
 const loading = ref(false);
 const creating = ref(false);
 const switchingId = ref<number | null>(null);
+const exportingId = ref<number | null>(null);
 
 const showCreateDialog = ref(false);
 const newTenantName = ref('');
@@ -202,13 +239,32 @@ const editTenantId = ref<number | null>(null);
 const editTenantName = ref('');
 const editTenantSystem = ref(0);
 const editTenantTest = ref(0);
+const editTenantAutoBackup = ref(0);
+const editTenantBackupTime = ref('');
+
+const autoBackupOptions = [
+  { label: 'Deaktiviert (kein Backup)', value: 0 },
+  { label: 'Beim Starten der Anwendung', value: 1 },
+  { label: 'Beim Beenden der Anwendung', value: 2 },
+  { label: 'Sowohl beim Starten als auch Beenden', value: 3 }
+];
+
+function getAutoBackupLabel(val: number) {
+  switch (val) {
+    case 1: return 'Beim Start';
+    case 2: return 'Beim Ende';
+    case 3: return 'Start & Ende';
+    default: return 'Deaktiviert';
+  }
+}
 
 const columns = [
   { name: 'id', label: 'ID', field: 'id', align: 'left' as const, sortable: true, style: 'width: 50px' },
   { name: 'name', label: 'Mandanten-Name', field: 'name', align: 'left' as const, sortable: true },
   { name: 'system', label: 'Systemverwaltung', field: 'system', align: 'center' as const },
   { name: 'test', label: 'Test-Modus (Test-DB)', field: 'test', align: 'center' as const },
-  { name: 'active', label: 'Status / Aktion', field: 'id', align: 'center' as const }
+  { name: 'active', label: 'Status / Aktion', field: 'id', align: 'center' as const },
+  { name: 'actions', label: 'PWA-Export', field: 'id', align: 'center' as const }
 ];
 
 async function loadTenants() {
@@ -279,6 +335,8 @@ function editTenant(tenant: Tenant) {
   editTenantName.value = tenant.name;
   editTenantSystem.value = tenant.system;
   editTenantTest.value = tenant.test;
+  editTenantAutoBackup.value = tenant.autobackup || 0;
+  editTenantBackupTime.value = tenant.backuptime || '';
   showEditDialog.value = true;
 }
 
@@ -289,7 +347,9 @@ async function saveTenantName() {
       id: editTenantId.value,
       name: editTenantName.value.trim(),
       system: editTenantSystem.value,
-      test: editTenantTest.value
+      test: editTenantTest.value,
+      autobackup: editTenantAutoBackup.value,
+      backuptime: editTenantBackupTime.value.trim()
     });
     $q.notify({
       type: 'positive',
@@ -338,6 +398,29 @@ async function updateTenant(tenant: Tenant) {
       message: 'Fehler beim Aktualisieren: ' + (err.response?.data?.error || err.message)
     });
     loadTenants();
+  }
+}
+
+async function exportToPWA(id: number) {
+  exportingId.value = id;
+  try {
+    const res = await api.post('/api/tenants/export', { id });
+    $q.notify({
+      type: 'positive',
+      message: 'Export erfolgreich!',
+      caption: res.data.message || 'Dateien wurden in DatenAustausch erstellt.',
+      timeout: 5000,
+      actions: [{ label: 'OK', color: 'white' }]
+    });
+  } catch (err: any) {
+    $q.notify({
+      type: 'negative',
+      message: 'Fehler beim Exportieren: ' + (err.response?.data?.error || err.message),
+      timeout: 0,
+      actions: [{ label: 'OK', color: 'white' }]
+    });
+  } finally {
+    exportingId.value = null;
   }
 }
 

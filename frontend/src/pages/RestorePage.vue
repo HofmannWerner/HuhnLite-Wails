@@ -2,116 +2,188 @@
   <q-page padding>
     <div class="row items-center q-mb-lg">
       <div class="col">
-        <h1 class="text-h4 q-my-none">{{ t('auto.datenbank_wiederherstellung_restore') }}</h1>
-        <div class="text-subtitle1 text-grey-7">{{ t('auto.waehlen_sie_eine_backup_datei_aus_um_den') }}</div>
+        <h1 class="text-h4 q-my-none">{{ t('auto.sicherungsverwaltung_title') }}</h1>
+        <div class="text-subtitle1 text-grey-7">{{ t('auto.sicherungsverwaltung_subtitle') }}</div>
+      </div>
+      <div class="col-auto">
+        <q-btn color="primary" icon="refresh" :label="t('auto.liste_aktualisieren')" @click="loadBackups" :loading="loading" unelevated />
       </div>
     </div>
 
-    <div class="row q-col-gutter-md">
-      <div class="col-12 col-md-8">
-        <q-card flat bordered class="rounded-borders">
-          <q-card-section class="bg-warning text-black row items-center">
-            <q-icon name="warning" size="md" class="q-mr-md" />
-            <div class="text-h6 text-weight-bold">{{ t('auto.achtung_ueberschreiben_von_daten') }}</div>
-          </q-card-section>
-          
-          <q-card-section>
-            <p>
-              {{ t('auto.beim_wiederherstellen_wird_die_aktuelle_') }} <strong>{{ t('auto.vollstaendig_durch_das_ausgewaehlte_back') }}</strong>{{ t('auto.nicht_gespeicherte_aenderungen_gehen_ver') }}
-            </p>
-          </q-card-section>
-
-          <q-separator />
-
-          <q-card-section v-if="loading" class="text-center q-pa-xl">
-            <q-spinner color="primary" size="3em" />
-            <div class="q-mt-md">{{ t('auto.lade_verfuegbare_backups') }}</div>
-          </q-card-section>
-
-          <q-list v-else-if="backups.length > 0" separator>
-            <q-item-label header>{{ t('auto.verfuegbare_backup_dateien') }}</q-item-label>
-            <q-item v-for="file in backups" :key="file.path" clickable @click="selectedFile = file" :active="selectedFile?.path === file.path" active-class="bg-blue-1 text-primary">
-              <q-item-section avatar>
-                <q-icon name="storage" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-weight-bold">{{ file.name }}</q-item-label>
-                <q-item-label caption>{{ file.path }}</q-item-label>
-              </q-item-section>
-              <q-item-section side v-if="selectedFile?.path === file.path">
-                <q-icon name="check_circle" color="primary" />
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <q-card-section v-else class="text-center q-pa-xl text-grey-7">
-            <q-icon name="folder_off" size="3em" />
-            <div class="q-mt-md">{{ t('auto.keine_backup_dateien_gefunden') }}</div>
-          </q-card-section>
-
-          <q-separator />
-
-          <q-card-actions align="right" class="q-pa-md">
-            <q-btn flat :label="t('form.cancel')" color="grey-7" to="/" :disable="processing" />
-            <q-btn flat :label="t('auto.liste_aktualisieren')" icon="refresh" @click="loadBackups" :disable="processing" />
-            <q-btn color="negative" :label="t('auto.wiederherstellen')" icon="settings_backup_restore" @click="confirmRestore" :disable="!selectedFile || processing" :loading="processing" unelevated />
-          </q-card-actions>
-        </q-card>
-      </div>
-
-      <div class="col-12 col-md-4">
-        <q-card flat bordered class="rounded-borders">
-          <q-card-section class="bg-primary text-white">
-            <div class="text-h6">{{ t('auto.informationen') }}</div>
-          </q-card-section>
-          <q-card-section>
-            <div class="text-subtitle2 q-mb-xs">{{ t('auto.aktive_datenbank') }}</div>
-            <div class="text-caption text-grey-8 word-break-all">{{ currentDB }}</div>
-            
-            <q-separator class="q-my-md" />
-            
-            <div class="text-subtitle2 q-mb-xs">{{ t('auto.hinweis') }}</div>
-            <div class="text-caption">
-              {{ t('auto.backups_befinden_sich_normalerweise_im_u') }} <code>{{ t('auto.backups') }}</code> {{ t('auto.des_datenbank_verzeichnisses_sollte_eine') }}
+    <!-- Active DB Info Card -->
+    <div class="row q-col-gutter-md q-mb-lg">
+      <div class="col-12">
+        <q-card flat bordered class="bg-blue-grey-1 text-blue-grey-10">
+          <q-card-section class="row items-center justify-between q-py-sm">
+            <div class="row items-center col">
+              <q-icon name="info" size="sm" class="q-mr-sm text-primary" />
+              <div class="text-subtitle2 font-weight-bold">
+                {{ t('auto.aktive_datenbank') }} <code class="bg-white q-px-sm q-py-xs rounded word-break-all">{{ currentDB }}</code>
+              </div>
+            </div>
+            <div class="col-auto">
+              <q-btn
+                color="secondary"
+                icon="backup"
+                :label="t('menu.backup') || 'Backup erstellen'"
+                :loading="backingUp"
+                @click="runManualBackup"
+                unelevated
+              />
             </div>
           </q-card-section>
         </q-card>
       </div>
     </div>
+
+    <!-- Actions Toolbar -->
+    <div class="row q-gutter-sm q-mb-md items-center">
+      <q-btn
+        color="negative"
+        icon="delete"
+        :label="t('auto.delete_selected')"
+        :disable="selected.length === 0 || processing"
+        @click="confirmDelete"
+        unelevated
+      />
+      <q-btn
+        color="orange-9"
+        icon="zip"
+        :label="t('auto.compress_selected')"
+        :disable="!canCompress || processing"
+        @click="confirmCompress"
+        unelevated
+      />
+      <q-btn
+        color="primary"
+        icon="settings_backup_restore"
+        :label="t('auto.restore_selected')"
+        :disable="selected.length !== 1 || processing"
+        @click="confirmRestore"
+        unelevated
+      />
+      <q-space />
+      <div class="text-caption text-grey-8" v-if="selected.length > 0">
+        {{ selected.length }} {{ selected.length === 1 ? 'Element ausgewählt' : 'Elemente ausgewählt' }}
+      </div>
+    </div>
+
+    <!-- Grid Table -->
+    <q-card flat bordered class="rounded-borders">
+      <q-table
+        :rows="backups"
+        :columns="columns"
+        row-key="path"
+        selection="multiple"
+        v-model:selected="selected"
+        :loading="loading"
+        flat
+        bordered
+        :pagination="{ rowsPerPage: 15 }"
+        no-data-label="Keine Sicherungen gefunden"
+      >
+        <!-- Type Column Custom Slot -->
+        <template v-slot:body-cell-type="props">
+          <q-td :props="props">
+            <q-badge :color="props.value === 'test' ? 'negative' : 'positive'" class="text-weight-bold">
+              {{ props.value === 'test' ? t('auto.test_badge') : t('auto.prod_badge') }}
+            </q-badge>
+          </q-td>
+        </template>
+
+        <!-- Format Size slot -->
+        <template v-slot:body-cell-size="props">
+          <q-td :props="props">
+            {{ formatBytes(props.value) }}
+          </q-td>
+        </template>
+
+        <!-- Format Date slot -->
+        <template v-slot:body-cell-time="props">
+          <q-td :props="props">
+            {{ formatDate(props.value) }}
+          </q-td>
+        </template>
+      </q-table>
+    </q-card>
   </q-page>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { api } from '../boot/api';
 
 const { t } = useI18n();
 const $q = useQuasar();
+
+interface BackupFile {
+  name: string;
+  path: string;
+  size: number;
+  time: string;
+  type: string;
+}
+
 const loading = ref(false);
 const processing = ref(false);
-const backups = ref<{ name: string, path: string }[]>([]);
-const selectedFile = ref<{ name: string, path: string } | null>(null);
+const backingUp = ref(false);
+const backups = ref<BackupFile[]>([]);
+const selected = ref<BackupFile[]>([]);
 const currentDB = ref('');
+
+async function runManualBackup() {
+  backingUp.value = true;
+  $q.loading.show({
+    message: 'Datenbanksicherung wird erstellt...',
+    boxClass: 'bg-grey-2 text-grey-9',
+    spinnerColor: 'primary'
+  });
+  try {
+    const res = await api.post('/api/backup');
+    $q.notify({
+      type: 'positive',
+      message: t('auto.backup_success') || 'Sicherung erfolgreich erstellt',
+      caption: res.data.filename,
+      timeout: 4000
+    });
+    loadBackups();
+  } catch (err: any) {
+    $q.notify({
+      color: 'negative',
+      message: 'Sicherung fehlgeschlagen: ' + (err.response?.data?.error || err.message)
+    });
+  } finally {
+    $q.loading.hide();
+    backingUp.value = false;
+  }
+}
+
+const columns = [
+  { name: 'name', align: 'left', label: t('auto.file_name'), field: 'name', sortable: true },
+  { name: 'type', align: 'center', label: t('auto.db_type'), field: 'type', sortable: true },
+  { name: 'size', align: 'right', label: t('auto.file_size'), field: 'size', sortable: true },
+  { name: 'time', align: 'left', label: t('auto.file_date'), field: 'time', sortable: true },
+  { name: 'path', align: 'left', label: t('auto.file_path'), field: 'path', sortable: true }
+];
+
+const canCompress = computed(() => {
+  return selected.value.length > 0 && selected.value.some(f => !f.name.endsWith('.zip'));
+});
 
 async function loadBackups() {
   loading.value = true;
+  selected.value = [];
   try {
     const res = await api.get('/api/db/list');
     currentDB.value = res.data.current;
     
-    // Wir zeigen nur Dateien an, die nicht die aktuelle DB sind und vorzugsweise aus dem Backup-Ordner kommen
-    // Oder wir zeigen einfach alle an, die .db im Namen haben
-    const files = res.data.files as string[];
-    backups.value = files
-      .filter(p => p !== currentDB.value)
-      .map(p => ({
-        name: p.split('/').pop() || p,
-        path: p
-      }))
-      .sort((a, b) => b.name.localeCompare(a.name));
-      
+    // Grid displays all backups
+    backups.value = res.data.files || [];
+    
+    // Sort descending by date
+    backups.value.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   } catch (err: any) {
     $q.notify({
       color: 'negative',
@@ -122,17 +194,108 @@ async function loadBackups() {
   }
 }
 
-function confirmRestore() {
-  if (!selectedFile.value) return;
+function confirmDelete() {
+  if (selected.value.length === 0) return;
   
   $q.dialog({
-    title: t('auto.confirm_restore_title'),
-    message: t('auto.confirm_restore_msg', { filename: selectedFile.value.name, current: currentDB.value }),
+    title: t('auto.confirm_delete_title'),
+    message: t('auto.confirm_delete_msg', { count: selected.value.length }),
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: t('form.delete') || 'Löschen',
+      color: 'negative',
+      unelevated: true
+    }
+  }).onOk(() => {
+    runDelete();
+  });
+}
+
+async function runDelete() {
+  processing.value = true;
+  $q.loading.show({
+    message: 'Dateien werden gelöscht...',
+    boxClass: 'bg-grey-2 text-grey-9',
+    spinnerColor: 'negative'
+  });
+  try {
+    await api.post('/api/db/delete', {
+      paths: selected.value.map(f => f.path)
+    });
+    $q.notify({
+      type: 'positive',
+      message: t('auto.delete_success')
+    });
+    loadBackups();
+  } catch (err: any) {
+    $q.notify({
+      color: 'negative',
+      message: 'Löschen fehlgeschlagen: ' + (err.response?.data?.error || err.message)
+    });
+  } finally {
+    $q.loading.hide();
+    processing.value = false;
+  }
+}
+
+function confirmCompress() {
+  if (selected.value.length === 0) return;
+  
+  $q.dialog({
+    title: t('auto.confirm_compress_title'),
+    message: t('auto.confirm_compress_msg', { count: selected.value.filter(f => !f.name.endsWith('.zip')).length }),
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: t('auto.compress_selected') || 'Komprimieren',
+      color: 'warning',
+      unelevated: true
+    }
+  }).onOk(() => {
+    runCompress();
+  });
+}
+
+async function runCompress() {
+  processing.value = true;
+  $q.loading.show({
+    message: 'Dateien werden komprimiert...',
+    boxClass: 'bg-grey-2 text-grey-9',
+    spinnerColor: 'warning'
+  });
+  try {
+    await api.post('/api/db/compress', {
+      paths: selected.value.filter(f => !f.name.endsWith('.zip')).map(f => f.path)
+    });
+    $q.notify({
+      type: 'positive',
+      message: t('auto.compress_success')
+    });
+    loadBackups();
+  } catch (err: any) {
+    $q.notify({
+      color: 'negative',
+      message: 'Komprimierung fehlgeschlagen: ' + (err.response?.data?.error || err.message)
+    });
+  } finally {
+    $q.loading.hide();
+    processing.value = false;
+  }
+}
+
+function confirmRestore() {
+  if (selected.value.length !== 1) return;
+  
+  const target = selected.value[0];
+  $q.dialog({
+    title: t('auto.confirm_restore_title') || 'Restore bestätigen',
+    message: t('auto.confirm_restore_msg', { filename: target.name, current: currentDB.value }),
     html: true,
     cancel: true,
     persistent: true,
     ok: {
-      label: t('auto.yes_restore'),
+      label: t('auto.yes_restore') || 'Ja, Wiederherstellen',
       color: 'negative',
       unelevated: true
     }
@@ -142,35 +305,63 @@ function confirmRestore() {
 }
 
 async function runRestore() {
-  if (!selectedFile.value) return;
+  if (selected.value.length !== 1) return;
   
+  const target = selected.value[0];
   processing.value = true;
+  $q.loading.show({
+    message: 'Datenbank wird wiederhergestellt. Bitte warten...',
+    boxClass: 'bg-grey-2 text-grey-9',
+    spinnerColor: 'negative'
+  });
   try {
     const res = await api.post('/api/db/restore', {
-      PATH: selectedFile.value.path
+      PATH: target.path
     });
     
     $q.notify({
       type: 'positive',
-      message: t('auto.restore_success'),
-      caption: t('auto.safety_backup_created') + ': ' + res.data.safety,
+      message: t('auto.restore_success') || 'Wiederherstellung erfolgreich',
+      caption: (t('auto.safety_backup_created') || 'Sicherheits-Backup erstellt') + ': ' + res.data.safety,
       timeout: 5000
     });
     
     setTimeout(() => {
       window.location.reload();
     }, 2000);
-    
   } catch (err: any) {
     $q.notify({
       color: 'negative',
-      message: t('auto.restore_failed') + ': ' + (err.response?.data?.error || err.message),
+      message: (t('auto.restore_failed') || 'Restore fehlgeschlagen') + ': ' + (err.response?.data?.error || err.message),
       timeout: 0,
       actions: [{ label: 'OK', color: 'white' }]
     });
   } finally {
+    $q.loading.hide();
     processing.value = false;
   }
+}
+
+function formatBytes(bytes: number, decimals = 2) {
+  if (!bytes) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 }
 
 onMounted(() => {
@@ -181,8 +372,5 @@ onMounted(() => {
 <style scoped>
 .rounded-borders {
   border-radius: 8px;
-}
-.word-break-all {
-  word-break: break-all;
 }
 </style>

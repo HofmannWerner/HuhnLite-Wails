@@ -311,16 +311,16 @@
             <div class="row q-col-gutter-sm">
               <div class="col-12">
                 <div class="row q-col-gutter-sm">
-                  <div class="col-auto" style="width: 140px" v-for="size in (['KL6', 'XL', 'LARGE', 'MEDIUM', 'SMALL'] as const)" :key="size">
+                  <div class="col-auto" style="width: 140px" v-for="size in (['XL', 'LARGE', 'MEDIUM', 'SMALL'] as const)" :key="size">
                     <q-input
                       v-model.number="(form as any)[size]"
                       type="number"
-                      :label="size === 'kl6' ? 'JUMBO' : size.toUpperCase()"
+                      :label="size.toUpperCase()"
                       filled
                       stack-label
                       dense
                       :bg-color="$q.dark.isActive ? 'grey-9' : undefined"
-                      :readonly="!getParamBool(size === 'kl6' ? 'jumbos' : size === 'xl' ? 'chargexl' : size === 'large' ? 'chargelarge' : size === 'medium' ? 'chargemedium' : 'chargesmall') && !getParamBool('klassenerfassen')"
+                      :readonly="!getParamBool(size === 'xl' ? 'chargexl' : size === 'large' ? 'chargelarge' : size === 'medium' ? 'chargemedium' : 'chargesmall') && !getParamBool('klassenerfassen')"
                       :rules="[validateEggs]"
                       hide-bottom-space
                     />
@@ -948,7 +948,7 @@ const v_small = computed(() => (Number(form.SMALL) || 0) - (Number(usedStock.SMA
 const v_vollei = computed(() => (Number(form.VOLLEI) || 0) - (Number(usedStock.VOLLEIKG) || 0) - (Number(eilagerForm.VOLLEIKG) || 0));
 
 const hasValidationError = computed(() => {
-  return v_jumbos.value < 0 || v_xl.value < 0 || v_large.value < 0 || v_medium.value < 0 || v_small.value < 0 || v_vollei.value < 0;
+  return v_xl.value < 0 || v_large.value < 0 || v_medium.value < 0 || v_small.value < 0 || v_vollei.value < 0;
 });
 
 const vStock = reactive({
@@ -1089,11 +1089,11 @@ const calculatedAlterswoche = computed(() => {
 });
 
 const computedKlasseA = computed(() => {
-  return (Number(form.KL6) || 0) + (Number(form.XL) || 0) + (Number(form.LARGE) || 0) + (Number(form.MEDIUM) || 0) + (Number(form.SMALL) || 0);
+  return (Number(form.XL) || 0) + (Number(form.LARGE) || 0) + (Number(form.MEDIUM) || 0) + (Number(form.SMALL) || 0);
 });
 
 const totalEggs = computed(() => {
-  const kA = Math.max(extractInt(form.KLASSEA), extractInt(form.KL6) + extractInt(form.XL) + extractInt(form.LARGE) + extractInt(form.MEDIUM) + extractInt(form.SMALL));
+  const kA = Math.max(extractInt(form.KLASSEA), extractInt(form.XL) + extractInt(form.LARGE) + extractInt(form.MEDIUM) + extractInt(form.SMALL));
   return kA + extractInt(form.SCHMUTZ) + extractInt(form.KNICKEIER) + extractInt(form.BRUCHEIER);
 });
 
@@ -1468,7 +1468,7 @@ async function triggerLagerBuchung(pseudo = false) {
     KZ_LAGER: 'E'
   });
 
-  eilagerForm.JUMBOS = Number(form.KL6) - usedStock.JUMBOS;
+  eilagerForm.JUMBOS = 0;
   eilagerForm.XL = Number(form.XL) - usedStock.XL;
   eilagerForm.LARGE = Number(form.LARGE) - usedStock.LARGE;
   eilagerForm.MEDIUM = Number(form.MEDIUM) - usedStock.MEDIUM;

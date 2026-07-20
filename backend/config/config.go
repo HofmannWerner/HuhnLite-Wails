@@ -19,6 +19,8 @@ type Config struct {
 	Test               int    `json:"test"`
 	Port               int    `json:"port"`          // HTTP Port for server mode or standalone Gin server
 	System             int    `json:"system"`        // 1 = Erlaube Bearbeiten von System-Einträgen
+	AutoBackup         int    `json:"autobackup"`    // 0 = kein backup, 1 = Beim Start, 2 = Beim Programmende, 3 = Start & Ende
+	BackupTimeStr      string `json:"backuptime"`    // e.g. "1200,20:00"
 	ConfigFilePath     string `json:"-"`
 }
 func LoadConfig() Config {
@@ -164,6 +166,7 @@ func LoadConfig() Config {
 		Test:               0,
 		Port:               8080,
 		System:             0,
+		AutoBackup:         -1,
 	}
 
 	// Name der Einstellungsdatei basierend auf dem Programm-Namen bestimmen
@@ -244,6 +247,7 @@ func LoadConfig() Config {
 
 							testKey := fmt.Sprintf("test_%d", cfg.Mandant)
 							systemKey := fmt.Sprintf("system_%d", cfg.Mandant)
+							autobackupKey := fmt.Sprintf("autobackup_%d", cfg.Mandant)
 
 							if tVal, ok := rawMap[testKey]; ok {
 								if f, ok := tVal.(float64); ok {
@@ -284,6 +288,26 @@ func LoadConfig() Config {
 							} else {
 								cfg.System = 0
 							}
+
+							if abVal, ok := rawMap[autobackupKey]; ok {
+								if f, ok := abVal.(float64); ok {
+									cfg.AutoBackup = int(f)
+								} else if s, ok := abVal.(string); ok {
+									var temp int
+									if _, err := fmt.Sscanf(s, "%d", &temp); err == nil {
+										cfg.AutoBackup = temp
+									}
+								}
+							} else {
+								cfg.AutoBackup = -1
+							}
+
+							backuptimeKey := fmt.Sprintf("backuptime_%d", cfg.Mandant)
+							if btVal, ok := rawMap[backuptimeKey]; ok {
+								if s, ok := btVal.(string); ok {
+									cfg.BackupTimeStr = s
+								}
+							}
 						} else {
 							// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
 							if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
@@ -299,6 +323,25 @@ func LoadConfig() Config {
 									cfg.DBConnectionTest = filepath.Base(cfg.DBConnectionTest)
 								}
 								cfg.DBConnectionTest = filepath.Join(filepath.Dir(p), cfg.DBConnectionTest)
+							}
+
+							if abVal, ok := rawMap["autobackup"]; ok {
+								if f, ok := abVal.(float64); ok {
+									cfg.AutoBackup = int(f)
+								} else if s, ok := abVal.(string); ok {
+									var temp int
+									if _, err := fmt.Sscanf(s, "%d", &temp); err == nil {
+										cfg.AutoBackup = temp
+									}
+								}
+							} else {
+								cfg.AutoBackup = -1
+							}
+
+							if btVal, ok := rawMap["backuptime"]; ok {
+								if s, ok := btVal.(string); ok {
+									cfg.BackupTimeStr = s
+								}
 							}
 						}
 						return cfg
