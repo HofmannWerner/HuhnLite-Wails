@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"embed"
 	"fmt"
 	"io"
@@ -189,6 +190,12 @@ func (h *HelpAssetHandler) ServeHTTP(res http.ResponseWriter, req *http.Request)
 		return
 	}
 
+	// Remove /help prefix to get file path relative to helpDir
+	relPath := strings.TrimPrefix(path, "/help")
+	relPath = strings.TrimPrefix(relPath, "/")
+
+	isPdfjs := strings.Contains(relPath, "pdfjs")
+
 	// Get resolved help directory
 	helpDir := ""
 	langs := []string{"de", "en", "it"}
@@ -239,54 +246,83 @@ func (h *HelpAssetHandler) ServeHTTP(res http.ResponseWriter, req *http.Request)
 
 	log.Printf("[HelpAssetHandler] Resolved helpDir: %s", helpDir)
 
-	if helpDir == "" {
-		log.Printf("[HelpAssetHandler] Help directory not found")
+	// If it is a pdfjs request, we try to serve it
+	if isPdfjs {
+		// Try from disk if helpDir is found
+		if helpDir != "" {
+			var baseDir string
+			var filePath string
+			
+			fallbackPdfjs := ""
+			if execPath, err := os.Executable(); err == nil {
+				execDir := filepath.Dir(execPath)
+				if filepath.Base(execDir) == "MacOS" && filepath.Base(filepath.Dir(execDir)) == "Contents" {
+					execDir = filepath.Join(filepath.Dir(execDir), "Resources")
+				}
+				if _, err := os.Stat(filepath.Join(execDir, "pdfjs")); err == nil {
+					fallbackPdfjs = execDir
+				}
+			}
+			if fallbackPdfjs == "" {
+				if cwd, err := os.Getwd(); err == nil {
+					if _, err := os.Stat(filepath.Join(cwd, "pdfjs")); err == nil {
+						fallbackPdfjs = cwd
+					}
+				}
+			}
+			if fallbackPdfjs != "" {
+				baseDir = fallbackPdfjs
+				filePath = filepath.Join(fallbackPdfjs, relPath)
+			} else {
+				baseDir = helpDir
+				filePath = filepath.Join(helpDir, relPath)
+			}
+
+			cleanPath := filepath.Clean(filePath)
+			// Secure path traversal
+			cleanPathLower := strings.ToLower(cleanPath)
+			baseDirLower := strings.ToLower(baseDir)
+			if strings.HasPrefix(cleanPathLower, baseDirLower) {
+				if _, err := os.Stat(cleanPath); err == nil {
+					http.ServeFile(res, req, cleanPath)
+					return
+				}
+			}
+		}
+
+		// Fallback to serve pdfjs from embedded assets
+		log.Printf("[HelpAssetHandler] pdfjs file not on disk or helpDir empty, serving from embedded assets: %s", relPath)
+		embedPath := filepath.ToSlash(relPath)
+		file, err := assets.Open(embedPath)
+		if err == nil {
+			defer file.Close()
+			stat, err := file.Stat()
+			if err == nil {
+				data, err := io.ReadAll(file)
+				if err == nil {
+					// Use http.ServeContent with bytes.NewReader (implements io.ReadSeeker)
+					http.ServeContent(res, req, stat.Name(), stat.ModTime(), bytes.NewReader(data))
+					return
+				}
+			}
+		}
+		log.Printf("[HelpAssetHandler] Failed to serve %s from embedded assets", relPath)
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	// Remove /help prefix to get file path relative to helpDir
-	relPath := strings.TrimPrefix(path, "/help")
-	relPath = strings.TrimPrefix(relPath, "/")
-	
-	var baseDir string
-	var filePath string
-
-	// If requesting pdfjs, prioritize the executable directory/CWD
-	if strings.Contains(relPath, "pdfjs") {
-		fallbackPdfjs := ""
-		if execPath, err := os.Executable(); err == nil {
-			execDir := filepath.Dir(execPath)
-			if filepath.Base(execDir) == "MacOS" && filepath.Base(filepath.Dir(execDir)) == "Contents" {
-				execDir = filepath.Join(filepath.Dir(execDir), "Resources")
-			}
-			if _, err := os.Stat(filepath.Join(execDir, "pdfjs")); err == nil {
-				fallbackPdfjs = execDir
-			}
-		}
-		if fallbackPdfjs == "" {
-			if cwd, err := os.Getwd(); err == nil {
-				if _, err := os.Stat(filepath.Join(cwd, "pdfjs")); err == nil {
-					fallbackPdfjs = cwd
-				}
-			}
-		}
-		if fallbackPdfjs != "" {
-			baseDir = fallbackPdfjs
-			filePath = filepath.Join(fallbackPdfjs, relPath)
-			log.Printf("[HelpAssetHandler] PDF.js request, using fallback path: %s (baseDir: %s)", filePath, baseDir)
-		}
+	// For standard help files (non-pdfjs, like HuhnLite_de.pdf)
+	if helpDir == "" {
+		log.Printf("[HelpAssetHandler] Help directory not found on disk")
+		res.WriteHeader(http.StatusNotFound)
+		return
 	}
 
-	if filePath == "" {
-		baseDir = helpDir
-		filePath = filepath.Join(helpDir, relPath)
-		log.Printf("[HelpAssetHandler] Standard request, using path: %s (baseDir: %s)", filePath, baseDir)
-	}
-
+	baseDir := helpDir
+	filePath := filepath.Join(helpDir, relPath)
 	cleanPath := filepath.Clean(filePath)
 
-	// Secure path against traversal attacks (case-insensitive to support Windows drive letter casing)
+	// Secure path against traversal attacks
 	cleanPathLower := strings.ToLower(cleanPath)
 	baseDirLower := strings.ToLower(baseDir)
 	if !strings.HasPrefix(cleanPathLower, baseDirLower) {
@@ -295,31 +331,5 @@ func (h *HelpAssetHandler) ServeHTTP(res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	// Check if file exists on disk
-	if _, err := os.Stat(cleanPath); os.IsNotExist(err) {
-		// If it's a pdfjs file and doesn't exist on disk, try serving it from embedded assets
-		if strings.Contains(relPath, "pdfjs/") || strings.HasPrefix(relPath, "pdfjs") {
-			log.Printf("[HelpAssetHandler] File not on disk, attempting to serve from embedded assets: %s", relPath)
-			embedPath := filepath.ToSlash(relPath)
-			
-			// Try to read from embed.FS
-			file, err := assets.Open(embedPath)
-			if err == nil {
-				defer file.Close()
-				stat, err := file.Stat()
-				if err == nil {
-					// Use http.ServeContent which supports Range and MIME types automatically!
-					if rs, ok := file.(io.ReadSeeker); ok {
-						http.ServeContent(res, req, stat.Name(), stat.ModTime(), rs)
-						return
-					}
-				}
-			}
-			log.Printf("[HelpAssetHandler] Failed to serve %s from embedded assets", relPath)
-		}
-	}
-
-	// Serve file using http.ServeFile to ensure correct MIME types and Range header support
-	// Provide the clean, resolved path
 	http.ServeFile(res, req, cleanPath)
 }
