@@ -331,5 +331,22 @@ func (h *HelpAssetHandler) ServeHTTP(res http.ResponseWriter, req *http.Request)
 		return
 	}
 
-	http.ServeFile(res, req, cleanPath)
+	actualPath := cleanPath
+	if _, err := os.Stat(actualPath); os.IsNotExist(err) {
+		ext := filepath.Ext(cleanPath)
+		var altPath string
+		if ext == ".PDF" {
+			altPath = cleanPath[:len(cleanPath)-len(ext)] + ".pdf"
+		} else if ext == ".pdf" {
+			altPath = cleanPath[:len(cleanPath)-len(ext)] + ".PDF"
+		}
+		if altPath != "" {
+			if _, err := os.Stat(altPath); err == nil {
+				log.Printf("[HelpAssetHandler] Fallback extension match: %s -> %s", cleanPath, altPath)
+				actualPath = altPath
+			}
+		}
+	}
+
+	http.ServeFile(res, req, actualPath)
 }

@@ -521,7 +521,7 @@ async function loadHelp() {
   helpUrl.value = '';
 
   const activeLang = sessionStore.selectedLanguage || 'de';
-  const pdfName = activeLang === 'de' ? 'HuhnLite_de.PDF' : `HuhnLite_${activeLang}.PDF`;
+  const pdfName = activeLang === 'de' ? 'HuhnLite_de.pdf' : `HuhnLite_${activeLang}.pdf`;
   helpUrl.value = `/help/pdfjs/web/viewer.html?file=/help/${pdfName}#pagemode=bookmarks`;
 
   helpLoading.value = false;
@@ -550,7 +550,7 @@ async function openHelpNatively() {
   } else {
     // Web browser fallback
     const baseApiUrl = api.defaults.baseURL || window.location.origin;
-    const pdfName = activeLang === 'de' ? 'HuhnLite_de.PDF' : `HuhnLite_${activeLang}.PDF`;
+    const pdfName = activeLang === 'de' ? 'HuhnLite_de.pdf' : `HuhnLite_${activeLang}.pdf`;
     window.open(`${baseApiUrl}/help/${pdfName}`, '_blank');
   }
 }
