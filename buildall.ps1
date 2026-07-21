@@ -42,6 +42,11 @@ if (Test-Path "wails.json") {
     exit
 }
 
+# Pre-build backup of PDFs if they exist in build\bin\
+if (!(Test-Path "build\local_temp")) { New-Item -ItemType Directory -Path "build\local_temp" -Force }
+Get-ChildItem -Path "build\bin" -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\local_temp" -Force
+Get-ChildItem -Path "build\bin" -Filter "HuhnLite_*.pdf" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\local_temp" -Force
+
 Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "Baue HuhnLite-Local (SQLite)..."
 Set-WailsName "HuhnLite-Local"
@@ -89,6 +94,10 @@ if (Test-Path "HuhnLite_prod.db") {
 
 Get-ChildItem -Path . -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin" -Force
 Get-ChildItem -Path . -Filter "HuhnLite_*.pdf" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin" -Force
+if (Test-Path "build\local_temp") {
+    Get-ChildItem -Path "build\local_temp" -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin" -Force
+    Get-ChildItem -Path "build\local_temp" -Filter "HuhnLite_*.pdf" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin" -Force
+}
 
 if (Test-Path "pdfjs") {
     if (!(Test-Path "build\bin\pdfjs")) { New-Item -ItemType Directory -Path "build\bin\pdfjs" -Force }
@@ -198,19 +207,20 @@ if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyCon
     Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Server-MariaDB." -ForegroundColor Yellow
 }
 
-Write-Host "Kopiere Hilfedateien, Bilder und SQL-Dateien in build\bin\..." -ForegroundColor Cyan
+Write-Host "Kopiere Hilfedateien und SQL-Dateien in build\bin\..." -ForegroundColor Cyan
 if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
 
 Get-ChildItem -Path . -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin\" -Force
 Get-ChildItem -Path . -Filter "HuhnLite_*.pdf" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin\" -Force
+if (Test-Path "build\local_temp") {
+    Get-ChildItem -Path "build\local_temp" -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin\" -Force
+    Get-ChildItem -Path "build\local_temp" -Filter "HuhnLite_*.pdf" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin\" -Force
+}
 
 if (Test-Path "pdfjs") {
     if (!(Test-Path "build\bin\pdfjs")) { New-Item -ItemType Directory -Path "build\bin\pdfjs" -Force }
     Copy-Item "pdfjs\*" "build\bin\pdfjs\" -Recurse -Force
 }
-
-if (!(Test-Path "build\bin\images")) { New-Item -ItemType Directory -Path "build\bin\images" -Force }
-Copy-Item "images\*" "build\bin\images\" -Recurse -Force
 
 if (Test-Path "HuhnLite.db") { Copy-Item "HuhnLite.db" "build\bin\" -Force }
 if (Test-Path "HuhnLite_test.db") { Copy-Item "HuhnLite_test.db" "build\bin\" -Force }
@@ -218,6 +228,8 @@ if (Test-Path "HuhnLite_prod.db") { Copy-Item "HuhnLite_prod.db" "build\bin\" -F
 
 # Original-Zustand wiederherstellen
 Set-WailsName $origName
+
+if (Test-Path "build\local_temp") { Remove-Item -Path "build\local_temp" -Recurse -Force }
 
 Write-Host "------------------------------------------" -ForegroundColor Green
 Write-Host "Fertig! Die Dateien wurden in build\bin\ bereitgestellt."

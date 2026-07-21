@@ -89,13 +89,7 @@ Section
     !insertmacro wails.files
 
     # Create user folders
-    CreateDirectory "$INSTDIR\images"
     CreateDirectory "$INSTDIR\backups"
-
-
-    # Copy help images recursively
-    SetOutPath "$INSTDIR\images"
-    File /r "..\..\..\images\*"
 
     # Copy pdfjs recursively if present
     SetOutPath "$INSTDIR\pdfjs"
@@ -160,7 +154,7 @@ Section "uninstall"
     Delete "$INSTDIR\settings_server.json"
     Delete "$INSTDIR\settings_server_mariadb.json"
 
-    Delete "$INSTDIR\images\*"
+
     RMDir /r "$INSTDIR\pdfjs"
     Delete "$INSTDIR\HuhnLite_de.pdf"
     Delete "$INSTDIR\HuhnLite_en.pdf"
@@ -169,10 +163,9 @@ Section "uninstall"
     Delete "$INSTDIR\HuhnLite_en.PDF"
     Delete "$INSTDIR\HuhnLite_it.PDF"
 
-    # We do NOT delete HuhnLite.db or backups/images by default here
+    # We do NOT delete HuhnLite.db or backups by default here
     # to protect user data from accidental uninstalls.
     # We only remove directories if they are completely empty.
-    RMDir "$INSTDIR\images"
     RMDir "$INSTDIR\backups"
     RMDir "$INSTDIR"
 

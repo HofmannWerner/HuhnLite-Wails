@@ -47,6 +47,12 @@ else
     ORIG_NAME=$(grep '"name":' wails.json | head -n 1 | cut -d'"' -f4 | tr -d '\n\r ')
 fi
 
+# Pre-build backup of PDFs if they exist in build/bin/
+mkdir -p build/local_temp
+for f in build/bin/HuhnLite_*.PDF build/bin/HuhnLite_*.pdf; do
+    [ -f "$f" ] && cp "$f" build/local_temp/
+done
+
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-Local (SQLite)..."
 set_wails_name "HuhnLite-Local"
@@ -64,18 +70,16 @@ mkdir -p build/bin/mandant_1 build/bin/mandant_2
 [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/mandant_1/HuhnLite_test.db && cp HuhnLite_test.db build/bin/mandant_2/HuhnLite_test.db
 [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/mandant_1/HuhnLite_prod.db && cp HuhnLite_prod.db build/bin/mandant_2/HuhnLite_prod.db
 
-# Copy help files, images, settings and db into the macOS .app bundle if it exists
+# Copy help files, settings and db into the macOS .app bundle if it exists
 if [ -d "build/bin/HuhnLite-Local.app" ]; then
-    echo "📋 Copying help files, images and config into HuhnLite-Local.app..."
-    mkdir -p build/bin/HuhnLite-Local.app/Contents/Resources/images
-    cp -R images/* build/bin/HuhnLite-Local.app/Contents/Resources/images/
+    echo "📋 Copying help files and config into HuhnLite-Local.app..."
     cp settings.json build/bin/HuhnLite-Local.app/Contents/Resources/settings.json
     [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite.db
     [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite_test.db
     [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite_prod.db
     
-    # Copy PDF help files to macOS bundle
-    for f in HuhnLite_*.PDF HuhnLite_*.pdf; do
+    # Copy PDF help files to macOS bundle (from root or local_temp backup)
+    for f in HuhnLite_*.PDF HuhnLite_*.pdf build/local_temp/HuhnLite_*.PDF build/local_temp/HuhnLite_*.pdf; do
         [ -f "$f" ] && cp "$f" build/bin/HuhnLite-Local.app/Contents/Resources/
     done
 
@@ -117,15 +121,13 @@ ls -la build/bin || true
 # Kopiere die passende settings_mariadb.json daneben
 cp settings_mariadb.json build/bin/settings_mariadb.json
 
-# Copy help files, images and config into the macOS .app bundle if it exists
+# Copy help files and config into the macOS .app bundle if it exists
 if [ -d "build/bin/HuhnLite-MariaDB.app" ]; then
-    echo "📋 Copying help files, images and config into HuhnLite-MariaDB.app..."
-    mkdir -p build/bin/HuhnLite-MariaDB.app/Contents/Resources/images
-    cp -R images/* build/bin/HuhnLite-MariaDB.app/Contents/Resources/images/
+    echo "📋 Copying help files and config into HuhnLite-MariaDB.app..."
     cp settings_mariadb.json build/bin/HuhnLite-MariaDB.app/Contents/Resources/settings_mariadb.json
     
-    # Copy PDF help files to MariaDB macOS bundle
-    for f in HuhnLite_*.PDF HuhnLite_*.pdf; do
+    # Copy PDF help files to MariaDB macOS bundle (from root or local_temp backup)
+    for f in HuhnLite_*.PDF HuhnLite_*.pdf build/local_temp/HuhnLite_*.PDF build/local_temp/HuhnLite_*.pdf; do
         [ -f "$f" ] && cp "$f" build/bin/HuhnLite-MariaDB.app/Contents/Resources/
     done
 
@@ -199,22 +201,23 @@ fi
 
 cp settings_server_mariadb.json build/bin/settings_server_mariadb.json
 
-echo "📋 Copying help files, images and SQL files to build/bin..."
-for f in HuhnLite_*.PDF HuhnLite_*.pdf; do
+echo "📋 Copying help files and SQL files to build/bin..."
+for f in HuhnLite_*.PDF HuhnLite_*.pdf build/local_temp/HuhnLite_*.PDF build/local_temp/HuhnLite_*.pdf; do
     [ -f "$f" ] && cp "$f" build/bin/
 done
 if [ -d pdfjs ]; then
     mkdir -p build/bin/pdfjs
     cp -R pdfjs/* build/bin/pdfjs/
 fi
-mkdir -p build/bin/images
-cp -R images/* build/bin/images/
 [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/
 [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/
 [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/
 
 # Original-Zustand wiederherstellen
 set_wails_name "$ORIG_NAME"
+
+# Temp-Verzeichnis aufräumen
+rm -rf build/local_temp
 
 echo "------------------------------------------"
 echo "✅ Fertig! Die Dateien wurden in build/bin/ bereitgestellt."
