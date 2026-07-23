@@ -92,7 +92,7 @@ func main() {
 		if cfg.Port > 0 {
 			port = cfg.Port
 		}
-		log.Printf("Starting HuhnLite Server on port %d", port)
+		log.Printf("Starting HuhnLite Server on port %d (Mandant: %d, Engine: %s, DB: %s)", port, cfg.Mandant, cfg.DBEngine, cfg.DBConnectionString)
 		if err := http.ListenAndServe(fmt.Sprintf(":%d", port), engine); err != nil {
 			log.Fatalf("Server failed to start: %v", err)
 		}

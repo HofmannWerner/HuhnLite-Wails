@@ -43,6 +43,21 @@
 
         <q-btn round dense :icon="sessionStore.darkMode ? 'dark_mode' : 'light_mode'" @click="sessionStore.setDarkMode(!sessionStore.darkMode)" aria-label="Toggle Dark Mode" unelevated />
 
+        <!-- Broadcast Message Button (Server Mode) -->
+        <q-btn
+          v-if="isServerMode"
+          round
+          dense
+          flat
+          icon="campaign"
+          color="warning"
+          class="q-ml-sm"
+          @click="showBroadcastSendModal = true"
+        >
+          <q-tooltip>Rundnachricht an alle aktiven Benutzer senden</q-tooltip>
+        </q-btn>
+
+
         <q-btn flat round dense class="q-ml-sm" aria-label="Language">
           <q-avatar size="24px" square>
             <img :src="flags[sessionStore.selectedLanguage as 'de' | 'en' | 'it']" style="border: 1px solid rgba(255,255,255,0.2); object-fit: cover;" />
@@ -317,12 +332,108 @@
         </q-card-section>
       </q-card>
     </q-dialog>
+
+    <!-- Send Broadcast Dialog -->
+    <q-dialog v-model="showBroadcastSendModal" persistent>
+      <q-card style="min-width: 450px;" class="q-pa-sm">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6 text-weight-bold row items-center">
+            <q-icon name="campaign" color="warning" class="q-mr-sm" size="md" />
+            Rundnachricht an alle aktiven User
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pt-md">
+          <div class="text-subtitle2 q-mb-xs">Meldungstyp:</div>
+          <div class="row q-gutter-sm q-mb-md">
+            <q-btn
+              :color="broadcastType === 'info' ? 'primary' : 'grey-4'"
+              :text-color="broadcastType === 'info' ? 'white' : 'black'"
+              icon="info"
+              label="Information"
+              @click="broadcastType = 'info'"
+              unelevated
+            />
+            <q-btn
+              :color="broadcastType === 'warning' ? 'negative' : 'grey-4'"
+              :text-color="broadcastType === 'warning' ? 'white' : 'black'"
+              icon="warning"
+              label="Warnung"
+              @click="broadcastType = 'warning'"
+              unelevated
+            />
+          </div>
+
+          <q-input
+            v-model="broadcastText"
+            type="textarea"
+            rows="3"
+            label="Ihre Nachricht an alle angemeldeten Benutzer"
+            placeholder="z.B. Wartungsarbeiten am Server beginnen in 10 Minuten..."
+            outlined
+            autofocus
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Abbrechen" color="grey-7" v-close-popup />
+          <q-btn
+            label="Nachricht senden"
+            :color="broadcastType === 'warning' ? 'negative' : 'primary'"
+            icon="send"
+            @click="sendBroadcastMessage"
+            :loading="sendingBroadcast"
+            :disabled="!broadcastText.trim()"
+            unelevated
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Received Broadcast Popup Dialog -->
+    <q-dialog v-model="showReceivedBroadcastModal" persistent>
+      <q-card style="min-width: 450px;" class="q-pa-sm shadow-10">
+        <q-card-section
+          :class="receivedBroadcast?.type === 'warning' ? 'bg-negative text-white' : 'bg-primary text-white'"
+          class="row items-center"
+        >
+          <q-icon
+            :name="receivedBroadcast?.type === 'warning' ? 'warning' : 'info'"
+            size="md"
+            class="q-mr-sm"
+          />
+          <div class="text-h6 text-weight-bold">
+            {{ receivedBroadcast?.type === 'warning' ? 'Wichtige Warnung' : 'System-Information' }}
+          </div>
+        </q-card-section>
+
+        <q-card-section class="q-pt-lg q-pb-md">
+          <div class="text-body1 text-weight-bold q-mb-sm" style="white-space: pre-wrap;">
+            {{ receivedBroadcast?.message }}
+          </div>
+          <div class="text-caption text-grey-7 q-mt-md">
+            Absender: {{ receivedBroadcast?.sender || 'System' }} <span v-if="receivedBroadcast?.timestamp">| {{ formatBroadcastTime(receivedBroadcast?.timestamp) }}</span>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn
+            label="Verstanden / Schließen"
+            :color="receivedBroadcast?.type === 'warning' ? 'negative' : 'primary'"
+            v-close-popup
+            unelevated
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-layout>
 </template>
 
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useQuasar, date } from 'quasar';
 import { api } from 'src/boot/api';
@@ -358,6 +469,61 @@ const helpUrl = ref('');
 
 const isTestDb = ref(false);
 const activeTenantName = ref('');
+
+interface BroadcastMsg {
+  id: string;
+  type: string;
+  message: string;
+  sender: string;
+  timestamp: string;
+}
+
+const isServerMode = ref(false);
+const showBroadcastSendModal = ref(false);
+const broadcastType = ref<'info' | 'warning'>('info');
+const broadcastText = ref('');
+const sendingBroadcast = ref(false);
+
+const showReceivedBroadcastModal = ref(false);
+const receivedBroadcast = ref<BroadcastMsg | null>(null);
+const acknowledgedBroadcastId = ref<string>('');
+
+function formatBroadcastTime(ts?: string) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  } catch {
+    return ts;
+  }
+}
+
+async function sendBroadcastMessage() {
+  if (!broadcastText.value.trim()) return;
+  sendingBroadcast.value = true;
+  try {
+    const senderName = sessionStore.klarname || sessionStore.username || 'Administrator';
+    await api.post('/api/system/broadcast', {
+      type: broadcastType.value,
+      message: broadcastText.value.trim(),
+      sender: senderName
+    });
+    $q.notify({
+      type: 'positive',
+      message: 'Rundnachricht erfolgreich an alle aktiven Benutzer gesendet.'
+    });
+    showBroadcastSendModal.value = false;
+    broadcastText.value = '';
+  } catch (err: any) {
+    $q.notify({
+      type: 'negative',
+      message: 'Fehler beim Senden: ' + (err.response?.data?.error || err.message)
+    });
+  } finally {
+    sendingBroadcast.value = false;
+  }
+}
+
 
 async function fetchActiveTenant() {
   try {
@@ -464,8 +630,16 @@ async function shutdownServer() {
         await window.go.main.App.SaveWindowState(sessionStore.username || 'default');
       }
 
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+      }
+
       // Backend informieren (für Logs etc.)
-      await api.post('/api/system/shutdown');
+      try {
+        await api.post('/api/system/shutdown');
+      } catch (e) {
+        // Safe fallback if server endpoint responds slowly or missing
+      }
       
       $q.notify({
         type: 'warning',
@@ -474,20 +648,24 @@ async function shutdownServer() {
         timeout: 1000
       });
 
-      // Sauber über Wails beenden
+      // Sauber über Wails beenden oder zur Port 8080 verzweigen im Browser
       if (window.go && window.go.main && window.go.main.App) {
         setTimeout(() => {
           window.go.main.App.Quit();
         }, 500);
       } else {
-        window.close();
+        const protocol = window.location.protocol || 'http:';
+        const hostname = window.location.hostname || 'localhost';
+        window.location.href = `${protocol}//${hostname}:8080/`;
       }
     } catch (err) {
       console.error('Shutdown error:', err);
       if (window.go && window.go.main && window.go.main.App) {
         window.go.main.App.Quit();
       } else {
-        window.close();
+        const protocol = window.location.protocol || 'http:';
+        const hostname = window.location.hostname || 'localhost';
+        window.location.href = `${protocol}//${hostname}:8080/`;
       }
     }
   });
@@ -555,8 +733,35 @@ async function openHelpNatively() {
   }
 }
 
+let heartbeatTimer: any = null;
+
 onMounted(async () => {
   console.log('MainLayout: Starte Initialisierung...');
+
+  // Start periodic heartbeat so server tracks active browser sessions and checks for broadcast popups
+  const checkHeartbeat = async () => {
+    try {
+      const res = await api.get('/api/system/heartbeat');
+      if (res.data) {
+        if (res.data.mode === 'server') {
+          isServerMode.value = true;
+        }
+        if (res.data.broadcast && res.data.broadcast.id) {
+          const b: BroadcastMsg = res.data.broadcast;
+          if (b.id !== acknowledgedBroadcastId.value) {
+            acknowledgedBroadcastId.value = b.id;
+            receivedBroadcast.value = b;
+            showReceivedBroadcastModal.value = true;
+          }
+        }
+      }
+    } catch (e) {}
+  };
+
+  checkHeartbeat();
+  heartbeatTimer = setInterval(checkHeartbeat, 5000);
+
+
   await checkTestDbStatus();
   await fetchActiveTenant();
   
@@ -585,6 +790,12 @@ onMounted(async () => {
   if (!success) {
     console.warn('MainLayout: Konnte Auth-Status nicht laden, nutze Default.');
     sessionStore.setAdminSession();
+  }
+});
+
+onUnmounted(() => {
+  if (heartbeatTimer) {
+    clearInterval(heartbeatTimer);
   }
 });
 
@@ -691,6 +902,10 @@ watch(() => sessionStore.isLoggedIn, (newVal) => {
   }
 });
 
+onMounted(() => {
+  fetchActiveTenant();
+  checkTestDbStatus();
+});
 </script>
 
 <style scoped>

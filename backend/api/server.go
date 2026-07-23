@@ -935,8 +935,127 @@ func reloadAndApplyConfig(database *wailsdb.DB) error {
 	return nil
 }
 
+var (
+	activeClientsMutex sync.Mutex
+	activeClients      = make(map[string]time.Time)
+	serverHadClients   bool
+	isShuttingDown     bool
+
+	broadcastMutex   sync.RWMutex
+	currentBroadcast *BroadcastMessage
+)
+
+type BroadcastMessage struct {
+	ID        string    `json:"id"`
+	Type      string    `json:"type"` // "info" | "warning"
+	Message   string    `json:"message"`
+	Sender    string    `json:"sender"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+
+func getClientID(c *gin.Context) string {
+	cid := c.GetHeader("X-Client-ID")
+	if cid != "" {
+		return c.ClientIP() + ":" + cid
+	}
+	return c.ClientIP()
+}
+
+func registerClientActivity(c *gin.Context) {
+	id := getClientID(c)
+	activeClientsMutex.Lock()
+	defer activeClientsMutex.Unlock()
+	serverHadClients = true
+	activeClients[id] = time.Now()
+}
+
+func unregisterClient(c *gin.Context) {
+	id := getClientID(c)
+	activeClientsMutex.Lock()
+	defer activeClientsMutex.Unlock()
+	delete(activeClients, id)
+}
+
+func parseWaitTimeDuration(waitTimeStr string) time.Duration {
+	waitTimeStr = strings.TrimSpace(waitTimeStr)
+	if waitTimeStr == "" {
+		return 45 * time.Second
+	}
+
+	var hours, minutes int
+	if _, err := fmt.Sscanf(waitTimeStr, "%d:%d", &hours, &minutes); err == nil {
+		totalSec := (hours * 3600) + (minutes * 60)
+		if totalSec > 0 {
+			return time.Duration(totalSec) * time.Second
+		}
+	}
+
+	var plainSec int
+	if _, err := fmt.Sscanf(waitTimeStr, "%d", &plainSec); err == nil && plainSec > 0 {
+		return time.Duration(plainSec) * time.Second
+	}
+
+	return 45 * time.Second
+}
+
+func checkAutoShutdown() {
+	activeClientsMutex.Lock()
+	if !serverHadClients || isShuttingDown {
+		activeClientsMutex.Unlock()
+		return
+	}
+
+	cfg := appconfig.LoadConfig()
+	timeout := parseWaitTimeDuration(cfg.WaitTimeStr)
+
+	now := time.Now()
+	activeCount := 0
+	for id, lastSeen := range activeClients {
+		if now.Sub(lastSeen) <= timeout {
+			activeCount++
+		} else {
+			delete(activeClients, id)
+		}
+	}
+	activeClientsMutex.Unlock()
+
+	if activeCount == 0 {
+		activeClientsMutex.Lock()
+		isShuttingDown = true
+		activeClientsMutex.Unlock()
+
+		log.Printf("[Server] Letzter aktiver Benutzer hat die Anwendung beendet (0 aktive Clients in %v Timeout). Beende Server-Prozess...", timeout)
+		go func() {
+			time.Sleep(500 * time.Millisecond)
+			os.Exit(0)
+		}()
+	}
+}
+
+func getOtherActiveClientsCount(callerID string) int {
+	activeClientsMutex.Lock()
+	defer activeClientsMutex.Unlock()
+
+	cfg := appconfig.LoadConfig()
+	timeout := parseWaitTimeDuration(cfg.WaitTimeStr)
+	now := time.Now()
+
+	count := 0
+	for id, lastSeen := range activeClients {
+		if now.Sub(lastSeen) <= timeout {
+			if id != callerID {
+				count++
+			}
+		} else {
+			delete(activeClients, id)
+		}
+	}
+	return count
+}
+
+
 func StartServer(database *wailsdb.DB) *gin.Engine {
-	log.Printf("[DEBUG] StartServer called with engine: %s", database.Engine)
 	/* conn := database.SQL */
 	/* queries := database.Repo */
 	currentDBPath := database.Config.DBConnectionString
@@ -1014,13 +1133,88 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 	config.AllowAllOrigins = true
 	r.Use(cors.New(config))
 
-	// Background AutoBackup Timer based on "backuptime_<Mandant>" or "backuptime"
+	// Tracking von aktiven Server-Clients & Auto-Shutdown
+	r.Use(func(c *gin.Context) {
+		path := c.Request.URL.Path
+		if !strings.HasPrefix(path, "/help") && !strings.HasPrefix(path, "/assets") {
+			registerClientActivity(c)
+		}
+		c.Next()
+	})
+
+	r.GET("/api/system/heartbeat", func(c *gin.Context) {
+		registerClientActivity(c)
+
+		broadcastMutex.RLock()
+		var b *BroadcastMessage
+		if currentBroadcast != nil {
+			if time.Since(currentBroadcast.Timestamp) < 15*time.Minute {
+				b = currentBroadcast
+			}
+		}
+		broadcastMutex.RUnlock()
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"mode":      database.Config.Mode,
+			"broadcast": b,
+		})
+	})
+
+	r.POST("/api/system/broadcast", func(c *gin.Context) {
+		var req struct {
+			Type    string `json:"type"`
+			Message string `json:"message"`
+			Sender  string `json:"sender"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil || strings.TrimSpace(req.Message) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Nachricht darf nicht leer sein"})
+			return
+		}
+
+		msgType := strings.ToLower(strings.TrimSpace(req.Type))
+		if msgType != "warning" && msgType != "warnung" {
+			msgType = "info"
+		} else {
+			msgType = "warning"
+		}
+
+		sender := strings.TrimSpace(req.Sender)
+		if sender == "" {
+			sender = "System"
+		}
+
+		broadcastMutex.Lock()
+		currentBroadcast = &BroadcastMessage{
+			ID:        fmt.Sprintf("%d", time.Now().UnixNano()),
+			Type:      msgType,
+			Message:   strings.TrimSpace(req.Message),
+			Sender:    sender,
+			Timestamp: time.Time{},
+		}
+		currentBroadcast.Timestamp = time.Now()
+		broadcastMutex.Unlock()
+
+		log.Printf("[Broadcast] %s von %s gesendet: %s", strings.ToUpper(msgType), sender, req.Message)
+		c.JSON(http.StatusOK, gin.H{"status": "success", "broadcast": currentBroadcast})
+	})
+
+	r.POST("/api/system/shutdown", func(c *gin.Context) {
+		log.Printf("[API] Client Beenden/Shutdown aufgerufen von %s (ID: %s)", c.ClientIP(), getClientID(c))
+		unregisterClient(c)
+		checkAutoShutdown()
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Shutdown acknowledged"})
+	})
+
+	// Background AutoBackup Timer & Client-Heartbeat Check
 	go func() {
 		lastBackupMin := -1
-		ticker := time.NewTicker(30 * time.Second)
+		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
 
 		for range ticker.C {
+			checkAutoShutdown()
+
 			if database.Engine == "mysql" {
 				continue
 			}
@@ -1094,11 +1288,6 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			"auth_enabled": authEnabled,
 			"system_edit_enabled": cfg.System == 1,
 		})
-	})
-
-	r.POST("/api/system/shutdown", func(c *gin.Context) {
-		log.Println("[API] Shutdown-Anfrage erhalten")
-		c.JSON(http.StatusOK, gin.H{"message": "Server-Shutdown wird vorbereitet..."})
 	})
 
 	// System-Settings APIs
@@ -5617,25 +5806,22 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	// Tenant management APIs
 	r.GET("/api/tenants", func(c *gin.Context) {
-		p := database.Config.ConfigFilePath
-		if p == "" {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration file path not found"})
-			return
-		}
-		data, err := os.ReadFile(p)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
 		var configMap map[string]interface{}
-		if err := json.Unmarshal(data, &configMap); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
+		p := database.Config.ConfigFilePath
+		if p != "" {
+			if data, err := os.ReadFile(p); err == nil {
+				_ = json.Unmarshal(data, &configMap)
+			}
+		}
+		if configMap == nil {
+			configMap = make(map[string]interface{})
 		}
 
-		activeMandant := 0
-		if m, ok := configMap["mandant"].(float64); ok {
-			activeMandant = int(m)
+		activeMandant := database.Config.Mandant
+		if activeMandant == 0 {
+			if m, ok := configMap["mandant"].(float64); ok {
+				activeMandant = int(m)
+			}
 		}
 
 		type TenantInfo struct {
@@ -5692,6 +5878,29 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 					BackupTime: backuptime,
 				})
 			}
+		}
+
+		// Check if activeMandant is missing from the list (e.g. if "mandant" key was removed from settings.json or not explicitly listed)
+		foundActive := false
+		for _, t := range tenants {
+			if t.ID == activeMandant {
+				foundActive = true
+				break
+			}
+		}
+		if !foundActive && activeMandant > 0 {
+			name := fmt.Sprintf("Mandant %d", activeMandant)
+			if nameVal, ok := configMap[fmt.Sprintf("mandant_%d", activeMandant)].(string); ok && nameVal != "" {
+				name = nameVal
+			}
+			tenants = append(tenants, TenantInfo{
+				ID:         activeMandant,
+				Name:       name,
+				System:     database.Config.System,
+				Test:       database.Config.Test,
+				AutoBackup: database.Config.AutoBackup,
+				BackupTime: database.Config.BackupTimeStr,
+			})
 		}
 
 		sort.Slice(tenants, func(i, j int) bool {
@@ -5834,20 +6043,30 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		configMap[fmt.Sprintf("test_%d", n)] = 0
 		configMap[fmt.Sprintf("autobackup_%d", n)] = 1 // default to On Start
 		configMap[fmt.Sprintf("backuptime_%d", n)] = ""
-		configMap["mandant"] = n
-		configMap["test"] = 0
 
-		if err := saveSettingsMap(p, configMap); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
-			return
+		if database.Config.Mode != "server" {
+			configMap["mandant"] = n
+			configMap["test"] = 0
+
+			if err := saveSettingsMap(p, configMap); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+				return
+			}
+
+			if err := reloadAndApplyConfig(database); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to switch to new tenant: " + err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"status": "success", "active_mandant": n, "switched": true})
+		} else {
+			if err := saveSettingsMap(p, configMap); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{"status": "success", "active_mandant": database.Config.Mandant, "switched": false})
 		}
-
-		if err := reloadAndApplyConfig(database); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to switch to new tenant: " + err.Error()})
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"status": "success", "active_mandant": n})
 	})
 
 	r.POST("/api/tenants/update", func(c *gin.Context) {
@@ -5888,21 +6107,44 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 			return
 		}
 
+		currentTest := 0
+		if val, ok := configMap[fmt.Sprintf("test_%d", req.ID)]; ok {
+			if f, ok := val.(float64); ok {
+				currentTest = int(f)
+			} else if i, ok := val.(int); ok {
+				currentTest = i
+			}
+		}
+
+		if database.Config.Mode == "server" && req.Test != currentTest {
+			callerID := getClientID(c)
+			if getOtherActiveClientsCount(callerID) > 0 {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Das Umschalten zwischen Test- und Produktionsmodus ist in der Serverversion nur möglich, wenn außer Ihnen kein anderer Benutzer angemeldet ist.",
+				})
+				return
+			}
+		}
+
 		configMap[tenantKey] = req.Name
 		configMap[fmt.Sprintf("system_%d", req.ID)] = req.System
 		configMap[fmt.Sprintf("test_%d", req.ID)] = req.Test
 		configMap[fmt.Sprintf("autobackup_%d", req.ID)] = req.AutoBackup
 		configMap[fmt.Sprintf("backuptime_%d", req.ID)] = req.BackupTime
 
+		activeMandant := 0
+		if m, ok := configMap["mandant"].(float64); ok {
+			activeMandant = int(m)
+		}
+		if activeMandant == req.ID {
+			configMap["test"] = req.Test
+		}
+
 		if err := saveSettingsMap(p, configMap); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
 			return
 		}
 
-		activeMandant := 0
-		if m, ok := configMap["mandant"].(float64); ok {
-			activeMandant = int(m)
-		}
 		if activeMandant == req.ID {
 			if err := reloadAndApplyConfig(database); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to apply config updates: " + err.Error()})

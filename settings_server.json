@@ -15,5 +15,6 @@
   "backuptime_2": "",
   "test": 0,
   "test_1": 1,
-  "test_2": 0
+  "test_2": 0,
+  "waittime": "00:01"
 }

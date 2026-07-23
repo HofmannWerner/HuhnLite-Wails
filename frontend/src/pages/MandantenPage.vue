@@ -309,17 +309,26 @@ async function createTenant() {
   if (!newTenantName.value.trim()) return;
   creating.value = true;
   try {
-    await api.post('/api/tenants/create', { name: newTenantName.value.trim() });
-    $q.notify({
-      type: 'positive',
-      message: 'Mandant erfolgreich angelegt & umgeschaltet.',
-      caption: 'Die Anwendung wird neu geladen...'
-    });
+    const res = await api.post('/api/tenants/create', { name: newTenantName.value.trim() });
     showCreateDialog.value = false;
     newTenantName.value = '';
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    
+    if (res.data.switched) {
+      $q.notify({
+        type: 'positive',
+        message: 'Mandant erfolgreich angelegt & umgeschaltet.',
+        caption: 'Die Anwendung wird neu geladen...'
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } else {
+      $q.notify({
+        type: 'positive',
+        message: 'Mandant erfolgreich angelegt.'
+      });
+      loadTenants();
+    }
   } catch (err: any) {
     $q.notify({
       type: 'negative',

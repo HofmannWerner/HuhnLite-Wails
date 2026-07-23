@@ -22,6 +22,9 @@ if (typeof window !== 'undefined' && window.location) {
   }
 }
 
+const clientId = Math.random().toString(36).substring(2, 11);
+export const getClientId = () => clientId;
+
 const api = axios.create({ baseURL });
 
 export default boot(async ({app}) => {
@@ -29,13 +32,17 @@ export default boot(async ({app}) => {
   const {useSessionStore} = await import('../stores/session');
   const sessionStore = useSessionStore();
 
-  // Add an interceptor to include the language in every request
+  // Add an interceptor to include language and client ID in every request
   api.interceptors.request.use((config) => {
     // Add language as a query parameter 'lang'
     if (config.params === undefined) {
       config.params = {};
     }
     config.params.lang = localStorage.getItem('selectedLanguage') || sessionStore.selectedLanguage || 'de';
+
+    if (config.headers) {
+      config.headers['X-Client-ID'] = clientId;
+    }
 
     return config;
   });

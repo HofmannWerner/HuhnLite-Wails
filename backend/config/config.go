@@ -21,6 +21,7 @@ type Config struct {
 	System             int    `json:"system"`        // 1 = Erlaube Bearbeiten von System-Einträgen
 	AutoBackup         int    `json:"autobackup"`    // 0 = kein backup, 1 = Beim Start, 2 = Beim Programmende, 3 = Start & Ende
 	BackupTimeStr      string `json:"backuptime"`    // e.g. "1200,20:00"
+	WaitTimeStr        string `json:"waittime"`      // e.g. "00:01" (hh:mm)
 	ConfigFilePath     string `json:"-"`
 }
 
@@ -104,7 +105,7 @@ func LoadConfig() Config {
 	isProgramFiles := false
 	if bundleDir != "" {
 		lowerBundleDir := strings.ToLower(bundleDir)
-		if strings.Contains(lowerBundleDir, "program files") || strings.Contains(lowerBundleDir, "programmdateien") || strings.Contains(lowerBundleDir, "/applications") {
+		if strings.Contains(lowerBundleDir, "program files") || strings.Contains(lowerBundleDir, "programmdateien") || strings.Contains(lowerBundleDir, "programme") || strings.Contains(lowerBundleDir, "/applications") {
 			isProgramFiles = true
 		}
 	}
@@ -168,6 +169,9 @@ func LoadConfig() Config {
 	}
 	fmt.Printf("Selected Default DB: %s\n", defaultDB)
 
+	// Parse CLI arguments early so CLI Mandant/Port overrides are known upfront
+	ov := parseCLIArgs(os.Args[1:])
+
 	// Default configuration
 	cfg := Config{
 		Mode:               "standalone",
@@ -181,32 +185,28 @@ func LoadConfig() Config {
 	}
 
 	// Name der Einstellungsdatei basierend auf dem Programm-Namen bestimmen
-	// 1. Priorität: settings.json (Standard/SQLite)
-	// 2. Fallback: settings_mariadb.json (falls MariaDB-Modus erkannt)
 	configFiles := []string{"settings.json"}
 
 	if execPath != "" {
 		fullPath := strings.ToLower(execPath)
 		log.Printf("ExecPath: %s", execPath)
 		if strings.Contains(fullPath, "server") && strings.Contains(fullPath, "mariadb") {
-			// Prioritize Server-MariaDB settings if the binary name suggests it
 			configFiles = []string{"settings_server_mariadb.json", "settings.json"}
 			log.Printf("Server-MariaDB-Modus erkannt, priorisiere settings_server_mariadb.json")
 		} else if strings.Contains(fullPath, "mariadb") {
-			// Prioritize MariaDB settings if the binary name suggests it
 			configFiles = []string{"settings_mariadb.json", "settings.json"}
 			log.Printf("MariaDB-Modus erkannt, priorisiere settings_mariadb.json")
 		} else if strings.Contains(fullPath, "server") {
-			// Prioritize Server settings if the binary name suggests it
 			configFiles = []string{"settings_server.json", "settings.json"}
 			log.Printf("Server-Modus erkannt, priorisiere settings_server.json")
 		}
 	}
 
+	var loaded bool
+	var rawMap map[string]interface{}
 	for _, configName := range configFiles {
 		var paths []string
 		if isProgramFiles && appDataDir != "" {
-			// Prioritize AppData settings when running from Program Files (since Program Files is read-only)
 			paths = []string{
 				filepath.Join(appDataDir, configName),
 				filepath.Join(cwd, configName),
@@ -224,7 +224,6 @@ func LoadConfig() Config {
 				paths = append(paths, filepath.Join(bundleDir, configName))
 			}
 		}
-		// If running in macOS bundle, check Contents/Resources
 		if errExec == nil && filepath.Base(filepath.Dir(execPath)) == "MacOS" && filepath.Base(filepath.Dir(filepath.Dir(execPath))) == "Contents" {
 			resourcesDir := filepath.Join(filepath.Dir(filepath.Dir(execPath)), "Resources")
 			paths = append(paths, filepath.Join(resourcesDir, configName))
@@ -236,11 +235,16 @@ func LoadConfig() Config {
 				defer file.Close()
 				data, errRead := io.ReadAll(file)
 				if errRead == nil {
-					var rawMap map[string]interface{}
 					if errDec := json.Unmarshal(data, &cfg); errDec == nil {
 						cfg.ConfigFilePath = p
 						log.Printf("Konfiguration aus %s geladen (Engine: %s)", p, cfg.DBEngine)
 						_ = json.Unmarshal(data, &rawMap)
+
+						// Apply CLI Mandant override immediately if provided, otherwise use config file mandant
+						if ov.Mandant != nil {
+							cfg.Mandant = *ov.Mandant
+							log.Printf("[CLI] Overriding file Mandant with CLI Mandant: %d", cfg.Mandant)
+						}
 
 						if cfg.Mandant > 0 {
 							prodBase := "HuhnLite_prod.db"
@@ -253,35 +257,30 @@ func LoadConfig() Config {
 							}
 
 							settingsDir := filepath.Dir(p)
+							if isProgramFiles && appDataDir != "" {
+								settingsDir = appDataDir
+							}
 							cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
 							cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
 
-							// Ensure mandant directories exist and copy default databases if missing
 							if cfg.DBEngine == "sqlite" {
-								mandantsToPrepare := []int{1, 2}
-								if cfg.Mandant > 2 {
-									mandantsToPrepare = append(mandantsToPrepare, cfg.Mandant)
-								}
-								for _, m := range mandantsToPrepare {
-									mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", m))
-									if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
-										mandantProdPath := filepath.Join(mandantDir, prodBase)
-										mandantTestPath := filepath.Join(mandantDir, testBase)
-										
-										srcProd := filepath.Join(settingsDir, prodBase)
-										srcTest := filepath.Join(settingsDir, testBase)
-										
-										if _, errStat := os.Stat(mandantProdPath); os.IsNotExist(errStat) {
-											if _, errSrc := os.Stat(srcProd); errSrc == nil {
-												log.Printf("[Config] Copying base prod DB to %s", mandantProdPath)
-												_ = copyFile(srcProd, mandantProdPath)
-											}
+								mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
+								if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
+									mandantProdPath := filepath.Join(mandantDir, prodBase)
+									mandantTestPath := filepath.Join(mandantDir, testBase)
+									srcProd := filepath.Join(settingsDir, prodBase)
+									srcTest := filepath.Join(settingsDir, testBase)
+
+									if _, errStat := os.Stat(mandantProdPath); os.IsNotExist(errStat) {
+										if _, errSrc := os.Stat(srcProd); errSrc == nil {
+											log.Printf("[Config] Copying base prod DB to %s", mandantProdPath)
+											_ = copyFile(srcProd, mandantProdPath)
 										}
-										if _, errStat := os.Stat(mandantTestPath); os.IsNotExist(errStat) {
-											if _, errSrc := os.Stat(srcTest); errSrc == nil {
-												log.Printf("[Config] Copying base test DB to %s", mandantTestPath)
-												_ = copyFile(srcTest, mandantTestPath)
-											}
+									}
+									if _, errStat := os.Stat(mandantTestPath); os.IsNotExist(errStat) {
+										if _, errSrc := os.Stat(srcTest); errSrc == nil {
+											log.Printf("[Config] Copying base test DB to %s", mandantTestPath)
+											_ = copyFile(srcTest, mandantTestPath)
 										}
 									}
 								}
@@ -386,13 +385,156 @@ func LoadConfig() Config {
 								}
 							}
 						}
-						return cfg
+						loaded = true
+						break
 					}
 				}
 			}
 		}
+		if loaded {
+			break
+		}
 	}
-	log.Printf("Warnung: settings.json nicht gefunden, verwende Defaults (DB: %s)", cfg.DBConnectionString)
+	if !loaded {
+		log.Printf("Warnung: settings.json nicht gefunden, verwende Defaults (DB: %s)", cfg.DBConnectionString)
+	}
+
+	// Command Line Parameter auswerten (z.B. Port=8081, mandant=1)
+	ov = parseCLIArgs(os.Args[1:])
+	if ov.Port != nil {
+		cfg.Port = *ov.Port
+		log.Printf("[CLI] Overriding Port: %d", cfg.Port)
+	}
+	if ov.Mode != nil {
+		cfg.Mode = *ov.Mode
+		log.Printf("[CLI] Overriding Mode: %s", cfg.Mode)
+	}
+	if ov.DBEngine != nil {
+		cfg.DBEngine = *ov.DBEngine
+		log.Printf("[CLI] Overriding DBEngine: %s", cfg.DBEngine)
+	}
+	if ov.Test != nil {
+		cfg.Test = *ov.Test
+		log.Printf("[CLI] Overriding Test: %d", cfg.Test)
+	}
+	if ov.Mandant != nil {
+		cfg.Mandant = *ov.Mandant
+		log.Printf("[CLI] Overriding Mandant: %d", cfg.Mandant)
+	}
+	if ov.WaitTimeStr != nil {
+		cfg.WaitTimeStr = *ov.WaitTimeStr
+		log.Printf("[CLI] Overriding WaitTime: %s", cfg.WaitTimeStr)
+	}
+
+	if ov.Mandant != nil {
+		settingsDir := filepath.Dir(cfg.ConfigFilePath)
+		if isProgramFiles && appDataDir != "" {
+			settingsDir = appDataDir
+		} else if cfg.ConfigFilePath == "" {
+			if bundleDir != "" && !isProgramFiles {
+				settingsDir = bundleDir
+			} else {
+				settingsDir = cwd
+			}
+		}
+
+		prodBase := "HuhnLite_prod.db"
+		testBase := "HuhnLite_test.db"
+
+		cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
+		cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
+
+		if cfg.DBEngine == "sqlite" {
+			mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
+			if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
+				mandantProdPath := filepath.Join(mandantDir, prodBase)
+				mandantTestPath := filepath.Join(mandantDir, testBase)
+				srcProd := filepath.Join(settingsDir, prodBase)
+				srcTest := filepath.Join(settingsDir, testBase)
+
+				if _, errStat := os.Stat(mandantProdPath); os.IsNotExist(errStat) {
+					if _, errSrc := os.Stat(srcProd); errSrc == nil {
+						log.Printf("[Config] Copying base prod DB to %s", mandantProdPath)
+						_ = copyFile(srcProd, mandantProdPath)
+					}
+				}
+				if _, errStat := os.Stat(mandantTestPath); os.IsNotExist(errStat) {
+					if _, errSrc := os.Stat(srcTest); errSrc == nil {
+						log.Printf("[Config] Copying base test DB to %s", mandantTestPath)
+						_ = copyFile(srcTest, mandantTestPath)
+					}
+				}
+			}
+		}
+
+		// Update mandant-specific settings from rawMap if CLI changed mandant
+		if loaded && rawMap != nil {
+			testKey := fmt.Sprintf("test_%d", cfg.Mandant)
+			systemKey := fmt.Sprintf("system_%d", cfg.Mandant)
+			autobackupKey := fmt.Sprintf("autobackup_%d", cfg.Mandant)
+			backuptimeKey := fmt.Sprintf("backuptime_%d", cfg.Mandant)
+
+			if tVal, ok := rawMap[testKey]; ok {
+				if f, ok := tVal.(float64); ok {
+					cfg.Test = int(f)
+				} else if s, ok := tVal.(string); ok {
+					if s == "1" || strings.ToLower(s) == "true" {
+						cfg.Test = 1
+					} else {
+						cfg.Test = 0
+					}
+				} else if b, ok := tVal.(bool); ok {
+					if b {
+						cfg.Test = 1
+					} else {
+						cfg.Test = 0
+					}
+				}
+			} else if ov.Test == nil {
+				cfg.Test = 0
+			}
+
+			if sVal, ok := rawMap[systemKey]; ok {
+				if f, ok := sVal.(float64); ok {
+					cfg.System = int(f)
+				} else if s, ok := sVal.(string); ok {
+					if s == "1" || strings.ToLower(s) == "true" {
+						cfg.System = 1
+					} else {
+						cfg.System = 0
+					}
+				} else if b, ok := sVal.(bool); ok {
+					if b {
+						cfg.System = 1
+					} else {
+						cfg.System = 0
+					}
+				}
+			} else {
+				cfg.System = 0
+			}
+
+			if abVal, ok := rawMap[autobackupKey]; ok {
+				if f, ok := abVal.(float64); ok {
+					cfg.AutoBackup = int(f)
+				} else if s, ok := abVal.(string); ok {
+					var temp int
+					if _, err := fmt.Sscanf(s, "%d", &temp); err == nil {
+						cfg.AutoBackup = temp
+					}
+				}
+			} else {
+				cfg.AutoBackup = -1
+			}
+
+			if btVal, ok := rawMap[backuptimeKey]; ok {
+				if s, ok := btVal.(string); ok {
+					cfg.BackupTimeStr = s
+				}
+			}
+		}
+	}
+
 	return cfg
 }
 
@@ -521,5 +663,105 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return destFile.Sync()
+}
+
+type cliOverrides struct {
+	Port        *int
+	Mandant     *int
+	Mode        *string
+	DBEngine    *string
+	Test        *int
+	WaitTimeStr *string
+}
+
+func parseCLIArgs(args []string) cliOverrides {
+	var ov cliOverrides
+	log.Printf("[CLI] Raw command line args received (%d): %v", len(args), args)
+
+	for i := 0; i < len(args); i++ {
+		raw := strings.TrimSpace(args[i])
+		raw = strings.TrimRight(raw, ",;")
+
+		// Check if argument is a pure number (e.g. positional mandant argument: "3" or "2")
+		var numVal int
+		if _, err := fmt.Sscanf(raw, "%d", &numVal); err == nil && numVal >= 0 && !strings.HasPrefix(raw, "-") && !strings.HasPrefix(raw, "/") {
+			// If we get a pure number argument and mandant isn't set yet, treat as Mandant
+			if ov.Mandant == nil && numVal > 0 && numVal < 1000 {
+				mVal := numVal
+				ov.Mandant = &mVal
+				log.Printf("[CLI] Parsed positional numeric arg as Mandant: %d", mVal)
+				continue
+			} else if ov.Port == nil && numVal >= 1000 {
+				pVal := numVal
+				ov.Port = &pVal
+				log.Printf("[CLI] Parsed positional numeric arg as Port: %d", pVal)
+				continue
+			}
+		}
+
+		trimmed := strings.TrimLeft(raw, "-/")
+		if trimmed == "" {
+			continue
+		}
+
+		if !strings.Contains(trimmed, "=") && strings.Contains(trimmed, ":") {
+			trimmed = strings.Replace(trimmed, ":", "=", 1)
+		}
+
+		var key, valStr string
+		if strings.Contains(trimmed, "=") {
+			parts := strings.SplitN(trimmed, "=", 2)
+			key = strings.ToLower(strings.TrimSpace(parts[0]))
+			valStr = strings.TrimRight(strings.TrimSpace(parts[1]), ",;")
+		} else {
+			key = strings.ToLower(strings.TrimSpace(trimmed))
+			if i+1 < len(args) {
+				nextRaw := strings.TrimRight(strings.TrimSpace(args[i+1]), ",;")
+				if !strings.HasPrefix(nextRaw, "-") && !strings.HasPrefix(nextRaw, "/") && !strings.Contains(nextRaw, "=") {
+					valStr = nextRaw
+					i++
+				}
+			}
+		}
+
+		if key == "" {
+			continue
+		}
+
+		switch key {
+		case "port", "p":
+			var pVal int
+			if _, err := fmt.Sscanf(valStr, "%d", &pVal); err == nil && pVal > 0 {
+				ov.Port = &pVal
+			}
+		case "mandant", "m", "mandantennummer":
+			var mVal int
+			if _, err := fmt.Sscanf(valStr, "%d", &mVal); err == nil && mVal >= 0 {
+				ov.Mandant = &mVal
+			}
+		case "mode":
+			s := strings.ToLower(valStr)
+			ov.Mode = &s
+		case "engine", "db_engine", "dbengine":
+			s := strings.ToLower(valStr)
+			ov.DBEngine = &s
+		case "test":
+			var tVal int
+			if valStr == "1" || strings.ToLower(valStr) == "true" {
+				tVal = 1
+				ov.Test = &tVal
+			} else if valStr == "0" || strings.ToLower(valStr) == "false" {
+				tVal = 0
+				ov.Test = &tVal
+			} else if _, err := fmt.Sscanf(valStr, "%d", &tVal); err == nil {
+				ov.Test = &tVal
+			}
+		case "waittime", "wait_time", "wait":
+			s := strings.TrimSpace(valStr)
+			ov.WaitTimeStr = &s
+		}
+	}
+
+	return ov
 }
 

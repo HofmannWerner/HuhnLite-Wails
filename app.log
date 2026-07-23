@@ -1,0 +1,29 @@
+2026/07/22 17:43:31 --- App gestartet (PID: 14312) ---
+2026/07/22 17:43:31 Log-Datei AppData: C:\Users\hofma\AppData\Roaming\HuhnLite\app.log
+2026/07/22 17:43:31 Log-Datei Lokal: C:\Users\hofma\GolandProjects\HuhnLite-Wails\app.log
+2026/07/22 17:43:31 ExecPath: C:\Users\hofma\GolandProjects\HuhnLite-Wails\huhnlite-wails.exe
+2026/07/22 17:43:31 Konfiguration aus C:\Users\hofma\GolandProjects\HuhnLite-Wails\settings.json geladen (Engine: sqlite)
+2026/07/22 17:43:31 [CLI] Overriding Port: 8082
+2026/07/22 17:43:31 [CLI] Overriding Mandant: 2
+2026/07/22 17:43:31 Connecting to database (Attempt 1/3): C:\Users\hofma\GolandProjects\HuhnLite-Wails\mandant_2\HuhnLite_prod.db
+2026/07/22 17:43:31 [DB] Adding missing column ZEITSTEMPEL to HERDEN (sqlite)...
+2026/07/22 17:43:31 [DB] Successfully added ZEITSTEMPEL to HERDEN
+2026/07/22 17:43:31 [DB] Successfully cleaned up any float FUTTERKTAG values in SQLite
+2026/07/22 17:43:31 Successfully connected to sqlite database at C:\Users\hofma\GolandProjects\HuhnLite-Wails\mandant_2\HuhnLite_prod.db
+2026/07/22 17:43:31 Restoring window size: 1534x1205
+2026/07/22 17:48:23 --- App gestartet (PID: 20156) ---
+2026/07/22 17:48:23 Log-Datei AppData: C:\Users\hofma\AppData\Roaming\HuhnLite\app.log
+2026/07/22 17:48:23 Log-Datei Lokal: C:\Users\hofma\GolandProjects\HuhnLite-Wails\app.log
+2026/07/22 17:48:23 ExecPath: C:\Users\hofma\GolandProjects\HuhnLite-Wails\huhnlite-wails.exe
+2026/07/22 17:48:23 Konfiguration aus C:\Users\hofma\GolandProjects\HuhnLite-Wails\settings.json geladen (Engine: sqlite)
+2026/07/22 17:48:23 [CLI] Raw command line args received (2): [mandant=3 port=8083]
+2026/07/22 17:48:23 [CLI] Overriding Port: 8083
+2026/07/22 17:48:23 [CLI] Overriding Mandant: 3
+2026/07/22 17:48:23 [Config] Copying base prod DB to C:\Users\hofma\GolandProjects\HuhnLite-Wails\mandant_3\HuhnLite_prod.db
+2026/07/22 17:48:23 [Config] Copying base test DB to C:\Users\hofma\GolandProjects\HuhnLite-Wails\mandant_3\HuhnLite_test.db
+2026/07/22 17:48:23 Connecting to database (Attempt 1/3): C:\Users\hofma\GolandProjects\HuhnLite-Wails\mandant_3\HuhnLite_prod.db
+2026/07/22 17:48:23 [DB] Adding missing column ZEITSTEMPEL to HERDEN (sqlite)...
+2026/07/22 17:48:23 [DB] Successfully added ZEITSTEMPEL to HERDEN
+2026/07/22 17:48:23 [DB] Successfully cleaned up any float FUTTERKTAG values in SQLite
+2026/07/22 17:48:23 Successfully connected to sqlite database at C:\Users\hofma\GolandProjects\HuhnLite-Wails\mandant_3\HuhnLite_prod.db
+2026/07/22 17:48:23 Restoring window size: 1534x1205
