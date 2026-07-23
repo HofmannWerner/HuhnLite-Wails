@@ -24,7 +24,7 @@ PLATFORM=$1
 WAILS=~/go/bin/wails
 
 # Build Argumente aufbauen
-BUILD_ARGS=("build")
+BUILD_ARGS=("build" "-v" "2")
 if [ -n "$PLATFORM" ]; then
     BUILD_ARGS+=("-platform" "$PLATFORM")
 fi
