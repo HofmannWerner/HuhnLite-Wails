@@ -1,3 +1,15 @@
+
+# Eventuell generierte Build-Ordner
 build/bin
 node_modules
 frontend/dist
+# Ausführbare Binärdateien nicht in Git speichern
+*.exe
+*.dll
+*.exe.manifest
+
+# SQLite Temporärdateien & Logfiles ignorieren
+*.db-wal
+*.db-shm
+*.log
+panic_log.txt
