@@ -9,6 +9,9 @@ jobs:
   build:
     name: Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    env:
+      QUASAR_TELEMETRY: false
+      CI: true
     strategy:
       matrix:
         os: [ ubuntu-22.04, windows-latest, macos-latest ]

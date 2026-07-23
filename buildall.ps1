@@ -19,7 +19,7 @@ if (!(Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {
     }
 }
 
-$buildArgs = @("build")
+$buildArgs = @("build", "-v", "2")
 if ($Platform) {
     $buildArgs += "-platform"
     $buildArgs += $Platform
