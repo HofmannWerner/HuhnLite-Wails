@@ -1,6 +1,7 @@
 import { boot } from 'quasar/wrappers';
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
+import { GetAPIPort } from '../../wailsjs/go/main/App';
 
 declare module '@vue/runtime-core' {
   interface ComponentCustomProperties {
@@ -28,6 +29,23 @@ export const getClientId = () => clientId;
 const api = axios.create({ baseURL });
 
 export default boot(async ({app}) => {
+  // Query actual bound API port from Go backend if running inside Wails
+  if (typeof window !== 'undefined' && window.location) {
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    if (protocol === 'wails:' || host === 'wails.localhost') {
+      try {
+        const port = await GetAPIPort();
+        if (port && port > 0) {
+          api.defaults.baseURL = `http://localhost:${port}`;
+          console.log(`[API Boot] Dynamically resolved API port: ${port}`);
+        }
+      } catch (e) {
+        console.warn('[API Boot] Could not resolve API port from Wails:', e);
+      }
+    }
+  }
+
   // Lazy import to avoid circular dependency with store
   const {useSessionStore} = await import('../stores/session');
   const sessionStore = useSessionStore();

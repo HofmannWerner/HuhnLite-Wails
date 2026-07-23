@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -22,6 +23,7 @@ type App struct {
 	ctx             context.Context
 	database        *db.DB
 	ConnectionError string
+	apiPort         int
 }
 
 // NewApp creates a new App application struct
@@ -35,23 +37,66 @@ func NewApp(database *db.DB) *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	fmt.Printf("[Wails] Entering app.startup. Is database nil? %v\n", a.database == nil)
+	file, _ := os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if file != nil {
+		file.WriteString("Entering app.startup\n")
+		file.Close()
+	}
 
-	// Start the API server in a separate goroutine
-	go func() {
-		if a.database == nil {
-			log.Printf("Skipping API server startup: database is nil")
-			return
-		}
+	// Start the API server synchronously binding the port to prevent frontend race conditions
+	if a.database != nil {
 		engine := api.StartServer(a.database)
+		file, _ = os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if file != nil {
+			file.WriteString(fmt.Sprintf("After StartServer, engine is %v\n", engine != nil))
+			file.Close()
+		}
+		
 		port := 8080 // Default port
 		if a.database.Config.Port > 0 {
 			port = a.database.Config.Port
 		}
-		log.Printf("Starting API server on port %d", port)
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", port), engine); err != nil {
-			log.Printf("Failed to start API server: %v", err)
+		
+		var listener net.Listener
+		var err error
+		for attempt := 0; attempt < 20; attempt++ {
+			tryPort := port + attempt
+			log.Printf("Attempting to start API server on port %d", tryPort)
+			listener, err = net.Listen("tcp", fmt.Sprintf(":%d", tryPort))
+			
+			file, _ = os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+			if file != nil {
+				file.WriteString(fmt.Sprintf("net.Listen attempt port %d err=%v\n", tryPort, err))
+				file.Close()
+			}
+			
+			if err == nil {
+				a.database.Config.Port = tryPort
+				a.apiPort = tryPort
+				log.Printf("Successfully bound API server to port %d", tryPort)
+				break
+			}
+			log.Printf("Port %d in use (%v), trying next port...", tryPort, err)
 		}
-	}()
+
+		if listener != nil {
+			go func() {
+				file, _ = os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+				if file != nil {
+					file.WriteString(fmt.Sprintf("Starting http.Serve on port %d\n", a.apiPort))
+					file.Close()
+				}
+				if err := http.Serve(listener, engine); err != nil {
+					log.Printf("API server stopped: %v", err)
+				}
+			}()
+		} else {
+			log.Printf("Failed to bind API server on any port after 20 attempts")
+		}
+	} else {
+		log.Printf("Skipping API server startup: database is nil")
+	}
 
 	// Autobackup on start
 	if a.database != nil && a.database.Engine != "mysql" {
@@ -173,6 +218,25 @@ func (a *App) IsTestDB() bool {
 		return false
 	}
 	return a.database.IsTestMode
+}
+
+// GetAPIPort returns the actual port the HTTP API server is bound to
+func (a *App) GetAPIPort() int {
+	if a.apiPort > 0 {
+		return a.apiPort
+	}
+	if a.database != nil && a.database.Config.Port > 0 {
+		return a.database.Config.Port
+	}
+	return 8080
+}
+
+// GetLauncherPort returns the port of the HuhnLite-Select launcher
+func (a *App) GetLauncherPort() int {
+	if a.database != nil && a.database.Config.LauncherPort > 0 {
+		return a.database.Config.LauncherPort
+	}
+	return 8080
 }
 
 // ToggleTestDB toggles between the production and test database

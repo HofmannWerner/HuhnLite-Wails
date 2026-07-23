@@ -22,6 +22,7 @@ type Config struct {
 	AutoBackup         int    `json:"autobackup"`    // 0 = kein backup, 1 = Beim Start, 2 = Beim Programmende, 3 = Start & Ende
 	BackupTimeStr      string `json:"backuptime"`    // e.g. "1200,20:00"
 	WaitTimeStr        string `json:"waittime"`      // e.g. "00:01" (hh:mm)
+	LauncherPort       int    `json:"launcher_port"`
 	ConfigFilePath     string `json:"-"`
 }
 
@@ -180,6 +181,7 @@ func LoadConfig() Config {
 		DBConnectionTest:   "",
 		Test:               0,
 		Port:               8080,
+		LauncherPort:       8080,
 		System:             0,
 		AutoBackup:         -1,
 	}
@@ -424,6 +426,10 @@ func LoadConfig() Config {
 	if ov.WaitTimeStr != nil {
 		cfg.WaitTimeStr = *ov.WaitTimeStr
 		log.Printf("[CLI] Overriding WaitTime: %s", cfg.WaitTimeStr)
+	}
+	if ov.LauncherPort != nil {
+		cfg.LauncherPort = *ov.LauncherPort
+		log.Printf("[CLI] Overriding LauncherPort: %d", cfg.LauncherPort)
 	}
 
 	if ov.Mandant != nil {
@@ -670,8 +676,9 @@ type cliOverrides struct {
 	Mandant     *int
 	Mode        *string
 	DBEngine    *string
-	Test        *int
-	WaitTimeStr *string
+	Test         *int
+	WaitTimeStr  *string
+	LauncherPort *int
 }
 
 func parseCLIArgs(args []string) cliOverrides {
@@ -759,6 +766,11 @@ func parseCLIArgs(args []string) cliOverrides {
 		case "waittime", "wait_time", "wait":
 			s := strings.TrimSpace(valStr)
 			ov.WaitTimeStr = &s
+		case "launcher-port", "launcherport", "lport":
+			var lpVal int
+			if _, err := fmt.Sscanf(valStr, "%d", &lpVal); err == nil && lpVal > 0 {
+				ov.LauncherPort = &lpVal
+			}
 		}
 	}
 

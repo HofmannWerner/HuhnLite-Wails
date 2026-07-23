@@ -650,13 +650,33 @@ async function shutdownServer() {
 
       // Sauber über Wails beenden oder zur Port 8080 verzweigen im Browser
       if (window.go && window.go.main && window.go.main.App) {
-        setTimeout(() => {
+        setTimeout(async () => {
+          let launcherPort = 8080;
+          try {
+            const lportStr = await window.go.main.App.GetLauncherPort();
+            launcherPort = parseInt(lportStr) || 8080;
+          } catch (e) {
+            console.error('Failed to fetch launcher port via Wails:', e);
+          }
           window.go.main.App.Quit();
         }, 500);
       } else {
         const protocol = window.location.protocol || 'http:';
         const hostname = window.location.hostname || 'localhost';
-        window.location.href = `${protocol}//${hostname}:8080/`;
+        let launcherPort = 8080;
+        try {
+          // Use dynamic API endpoint from boot/api (axios) if available, or direct fetch
+          const res = await fetch(`${protocol}//${hostname}:${window.location.port}/api/launcher-port`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.port) {
+              launcherPort = data.port;
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch launcher port:', e);
+        }
+        window.location.href = `${protocol}//${hostname}:${launcherPort}/`;
       }
     } catch (err) {
       console.error('Shutdown error:', err);

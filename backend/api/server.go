@@ -1000,13 +1000,17 @@ func parseWaitTimeDuration(waitTimeStr string) time.Duration {
 }
 
 func checkAutoShutdown() {
+	cfg := appconfig.LoadConfig()
+	if cfg.Mode != "server" {
+		return
+	}
+
 	activeClientsMutex.Lock()
 	if !serverHadClients || isShuttingDown {
 		activeClientsMutex.Unlock()
 		return
 	}
 
-	cfg := appconfig.LoadConfig()
 	timeout := parseWaitTimeDuration(cfg.WaitTimeStr)
 
 	now := time.Now()
@@ -1131,6 +1135,7 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization", "X-Client-ID"}
 	r.Use(cors.New(config))
 
 	// Tracking von aktiven Server-Clients & Auto-Shutdown
@@ -3456,6 +3461,14 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 
 	r.DELETE("/api/verkauf/:id", func(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Verkauf kann nur über die zugehörige Lagerbuchung gelöscht werden."})
+	})
+
+	r.GET("/api/launcher-port", func(c *gin.Context) {
+		port := 8080
+		if database != nil && database.Config.LauncherPort > 0 {
+			port = database.Config.LauncherPort
+		}
+		c.JSON(http.StatusOK, gin.H{"port": port})
 	})
 
 	r.GET("/api/health", func(c *gin.Context) {

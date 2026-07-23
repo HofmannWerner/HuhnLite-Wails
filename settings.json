@@ -5,7 +5,7 @@
   "mandant": 1,
   "mandant_1": "Otto Dotter",
   "mandant_2": "Gustav Hahn",
-  "mode": "standalone",
+  "mode": "server",
   "port": 8080,
   "system_1": 1,
   "system_2": 1,
