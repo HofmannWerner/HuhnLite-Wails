@@ -46,7 +46,8 @@ func (a *App) startup(ctx context.Context) {
 
 	// Start the API server synchronously binding the port to prevent frontend race conditions
 	if a.database != nil {
-		engine := api.StartServer(a.database)
+		helpHandler := &HelpAssetHandler{database: a.database}
+		engine := api.StartServer(a.database, helpHandler)
 		file, _ = os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if file != nil {
 			file.WriteString(fmt.Sprintf("After StartServer, engine is %v\n", engine != nil))

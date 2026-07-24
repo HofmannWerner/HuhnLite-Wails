@@ -26,6 +26,9 @@ import (
 
 //go:embed all:frontend/dist
 //go:embed all:pdfjs
+//go:embed HuhnLite_de.pdf
+//go:embed HuhnLite_en.pdf
+//go:embed HuhnLite_it.pdf
 var assets embed.FS
 
 func init() {
@@ -62,7 +65,8 @@ func main() {
 			log.Fatalf("Failed to connect to database: %v", err)
 		}
 
-		engine := api.StartServer(database)
+		helpHandler := &HelpAssetHandler{database: database}
+		engine := api.StartServer(database, helpHandler)
 
 		// Serve static frontend files from embed.FS
 		subFS, err := fs.Sub(assets, "frontend/dist/spa")
@@ -248,12 +252,16 @@ func (h *HelpAssetHandler) ServeHTTP(res http.ResponseWriter, req *http.Request)
 
 	// If it is a pdfjs request, we try to serve it
 	if isPdfjs {
-		// Try from disk if helpDir is found
+		var baseDir string
+		var filePath string
+
+		fallbackPdfjs := ""
 		if helpDir != "" {
-			var baseDir string
-			var filePath string
-			
-			fallbackPdfjs := ""
+			if _, err := os.Stat(filepath.Join(helpDir, "pdfjs")); err == nil {
+				fallbackPdfjs = helpDir
+			}
+		}
+		if fallbackPdfjs == "" {
 			if execPath, err := os.Executable(); err == nil {
 				execDir := filepath.Dir(execPath)
 				if filepath.Base(execDir) == "MacOS" && filepath.Base(filepath.Dir(execDir)) == "Contents" {
@@ -263,21 +271,18 @@ func (h *HelpAssetHandler) ServeHTTP(res http.ResponseWriter, req *http.Request)
 					fallbackPdfjs = execDir
 				}
 			}
-			if fallbackPdfjs == "" {
-				if cwd, err := os.Getwd(); err == nil {
-					if _, err := os.Stat(filepath.Join(cwd, "pdfjs")); err == nil {
-						fallbackPdfjs = cwd
-					}
+		}
+		if fallbackPdfjs == "" {
+			if cwd, err := os.Getwd(); err == nil {
+				if _, err := os.Stat(filepath.Join(cwd, "pdfjs")); err == nil {
+					fallbackPdfjs = cwd
 				}
 			}
-			if fallbackPdfjs != "" {
-				baseDir = fallbackPdfjs
-				filePath = filepath.Join(fallbackPdfjs, relPath)
-			} else {
-				baseDir = helpDir
-				filePath = filepath.Join(helpDir, relPath)
-			}
+		}
 
+		if fallbackPdfjs != "" {
+			baseDir = fallbackPdfjs
+			filePath = filepath.Join(fallbackPdfjs, relPath)
 			cleanPath := filepath.Clean(filePath)
 			// Secure path traversal
 			cleanPathLower := strings.ToLower(cleanPath)
@@ -312,41 +317,55 @@ func (h *HelpAssetHandler) ServeHTTP(res http.ResponseWriter, req *http.Request)
 	}
 
 	// For standard help files (non-pdfjs, like HuhnLite_de.pdf)
-	if helpDir == "" {
-		log.Printf("[HelpAssetHandler] Help directory not found on disk")
-		res.WriteHeader(http.StatusNotFound)
-		return
-	}
+	if helpDir != "" {
+		baseDir := helpDir
+		filePath := filepath.Join(helpDir, relPath)
+		cleanPath := filepath.Clean(filePath)
 
-	baseDir := helpDir
-	filePath := filepath.Join(helpDir, relPath)
-	cleanPath := filepath.Clean(filePath)
+		// Secure path against traversal attacks
+		cleanPathLower := strings.ToLower(cleanPath)
+		baseDirLower := strings.ToLower(baseDir)
+		if strings.HasPrefix(cleanPathLower, baseDirLower) {
+			actualPath := cleanPath
+			if _, err := os.Stat(actualPath); os.IsNotExist(err) {
+				ext := filepath.Ext(cleanPath)
+				var altPath string
+				if ext == ".PDF" {
+					altPath = cleanPath[:len(cleanPath)-len(ext)] + ".pdf"
+				} else if ext == ".pdf" {
+					altPath = cleanPath[:len(cleanPath)-len(ext)] + ".PDF"
+				}
+				if altPath != "" {
+					if _, err := os.Stat(altPath); err == nil {
+						log.Printf("[HelpAssetHandler] Fallback extension match: %s -> %s", cleanPath, altPath)
+						actualPath = altPath
+					}
+				}
+			}
 
-	// Secure path against traversal attacks
-	cleanPathLower := strings.ToLower(cleanPath)
-	baseDirLower := strings.ToLower(baseDir)
-	if !strings.HasPrefix(cleanPathLower, baseDirLower) {
-		log.Printf("[HelpAssetHandler] Path traversal blocked: %s is not inside baseDir %s", cleanPath, baseDir)
-		res.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	actualPath := cleanPath
-	if _, err := os.Stat(actualPath); os.IsNotExist(err) {
-		ext := filepath.Ext(cleanPath)
-		var altPath string
-		if ext == ".PDF" {
-			altPath = cleanPath[:len(cleanPath)-len(ext)] + ".pdf"
-		} else if ext == ".pdf" {
-			altPath = cleanPath[:len(cleanPath)-len(ext)] + ".PDF"
-		}
-		if altPath != "" {
-			if _, err := os.Stat(altPath); err == nil {
-				log.Printf("[HelpAssetHandler] Fallback extension match: %s -> %s", cleanPath, altPath)
-				actualPath = altPath
+			if _, err := os.Stat(actualPath); err == nil {
+				http.ServeFile(res, req, actualPath)
+				return
 			}
 		}
 	}
 
-	http.ServeFile(res, req, actualPath)
+	// Fallback to serve PDF from embedded assets
+	log.Printf("[HelpAssetHandler] Help file not on disk or helpDir empty, trying embedded assets: %s", relPath)
+	embedPath := filepath.ToSlash(relPath)
+	file, err := assets.Open(embedPath)
+	if err == nil {
+		defer file.Close()
+		stat, err := file.Stat()
+		if err == nil {
+			data, err := io.ReadAll(file)
+			if err == nil {
+				http.ServeContent(res, req, stat.Name(), stat.ModTime(), bytes.NewReader(data))
+				return
+			}
+		}
+	}
+
+	log.Printf("[HelpAssetHandler] Help file %s not found on disk or embedded assets", relPath)
+	res.WriteHeader(http.StatusNotFound)
 }

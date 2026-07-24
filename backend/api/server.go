@@ -1059,7 +1059,7 @@ func getOtherActiveClientsCount(callerID string) int {
 }
 
 
-func StartServer(database *wailsdb.DB) *gin.Engine {
+func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine {
 	/* conn := database.SQL */
 	/* queries := database.Repo */
 	currentDBPath := database.Config.DBConnectionString
@@ -1076,45 +1076,53 @@ func StartServer(database *wailsdb.DB) *gin.Engine {
 		r.Use(gin.Logger())
 	}
 
-	// Serve help directory statically if found
-	helpDir := getHelpDir(database)
-	if helpDir != "" {
-		log.Printf("[API] Serving help files from: %s", helpDir)
-		r.Static("/help", helpDir)
+	// Serve help directory using passed helpHandler or fallback to static dir
+	if len(helpHandler) > 0 && helpHandler[0] != nil {
+		log.Println("[API] Serving help routes via custom HelpAssetHandler")
+		h := gin.WrapH(helpHandler[0])
+		r.Any("/help/*filepath", h)
+		r.Any("/help", h)
 	} else {
-		log.Println("[API] Help directory not found, static /help route will not be served")
-	}
-
-	// Serve pdfjs separately if it's not present in helpDir but exists in executable/CWD
-	pdfjsPath := ""
-	if helpDir != "" {
-		if _, err := os.Stat(filepath.Join(helpDir, "pdfjs")); err == nil {
-			pdfjsPath = filepath.Join(helpDir, "pdfjs")
+		// Serve help directory statically if found
+		helpDir := getHelpDir(database)
+		if helpDir != "" {
+			log.Printf("[API] Serving help files from: %s", helpDir)
+			r.Static("/help", helpDir)
+		} else {
+			log.Println("[API] Help directory not found, static /help route will not be served")
 		}
-	}
-	if pdfjsPath == "" {
-		// Fallback to executable or CWD
-		if execPath, err := os.Executable(); err == nil {
-			execDir := filepath.Dir(execPath)
-			if filepath.Base(execDir) == "MacOS" && filepath.Base(filepath.Dir(execDir)) == "Contents" {
-				execDir = filepath.Join(filepath.Dir(execDir), "Resources")
-			}
-			if _, err := os.Stat(filepath.Join(execDir, "pdfjs")); err == nil {
-				pdfjsPath = filepath.Join(execDir, "pdfjs")
+
+		// Serve pdfjs separately if it's not present in helpDir but exists in executable/CWD
+		pdfjsPath := ""
+		if helpDir != "" {
+			if _, err := os.Stat(filepath.Join(helpDir, "pdfjs")); err == nil {
+				pdfjsPath = filepath.Join(helpDir, "pdfjs")
 			}
 		}
 		if pdfjsPath == "" {
-			if cwd, err := os.Getwd(); err == nil {
-				if _, err := os.Stat(filepath.Join(cwd, "pdfjs")); err == nil {
-					pdfjsPath = filepath.Join(cwd, "pdfjs")
+			// Fallback to executable or CWD
+			if execPath, err := os.Executable(); err == nil {
+				execDir := filepath.Dir(execPath)
+				if filepath.Base(execDir) == "MacOS" && filepath.Base(filepath.Dir(execDir)) == "Contents" {
+					execDir = filepath.Join(filepath.Dir(execDir), "Resources")
+				}
+				if _, err := os.Stat(filepath.Join(execDir, "pdfjs")); err == nil {
+					pdfjsPath = filepath.Join(execDir, "pdfjs")
 				}
 			}
-		}
-		if pdfjsPath != "" {
-			log.Printf("[API] Serving pdfjs from fallback path: %s", pdfjsPath)
-			r.Static("/help/pdfjs", pdfjsPath)
-		} else {
-			log.Println("[API] pdfjs directory not found anywhere")
+			if pdfjsPath == "" {
+				if cwd, err := os.Getwd(); err == nil {
+					if _, err := os.Stat(filepath.Join(cwd, "pdfjs")); err == nil {
+						pdfjsPath = filepath.Join(cwd, "pdfjs")
+					}
+				}
+			}
+			if pdfjsPath != "" {
+				log.Printf("[API] Serving pdfjs from fallback path: %s", pdfjsPath)
+				r.Static("/help/pdfjs", pdfjsPath)
+			} else {
+				log.Println("[API] pdfjs directory not found anywhere")
+			}
 		}
 	}
 
