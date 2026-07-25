@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -681,12 +682,56 @@ type cliOverrides struct {
 	LauncherPort *int
 }
 
+func tokenizeArgs(args []string) []string {
+	var tokens []string
+	for _, arg := range args {
+		arg = strings.TrimSpace(arg)
+		if arg == "" {
+			continue
+		}
+		var current strings.Builder
+		inQuotes := false
+		var quoteChar rune
+
+		for _, r := range arg {
+			switch r {
+			case '"', '\'':
+				if inQuotes && quoteChar == r {
+					inQuotes = false
+				} else if !inQuotes {
+					inQuotes = true
+					quoteChar = r
+				} else {
+					current.WriteRune(r)
+				}
+			case ' ', '\t':
+				if inQuotes {
+					current.WriteRune(r)
+				} else {
+					if current.Len() > 0 {
+						tokens = append(tokens, current.String())
+						current.Reset()
+					}
+				}
+			default:
+				current.WriteRune(r)
+			}
+		}
+		if current.Len() > 0 {
+			tokens = append(tokens, current.String())
+		}
+	}
+	return tokens
+}
+
 func parseCLIArgs(args []string) cliOverrides {
 	var ov cliOverrides
 	log.Printf("[CLI] Raw command line args received (%d): %v", len(args), args)
 
-	for i := 0; i < len(args); i++ {
-		raw := strings.TrimSpace(args[i])
+	tokens := tokenizeArgs(args)
+
+	for i := 0; i < len(tokens); i++ {
+		raw := strings.TrimSpace(tokens[i])
 		raw = strings.TrimRight(raw, ",;")
 
 		// Check if argument is a pure number (e.g. positional mandant argument: "3" or "2")
@@ -722,8 +767,8 @@ func parseCLIArgs(args []string) cliOverrides {
 			valStr = strings.TrimRight(strings.TrimSpace(parts[1]), ",;")
 		} else {
 			key = strings.ToLower(strings.TrimSpace(trimmed))
-			if i+1 < len(args) {
-				nextRaw := strings.TrimRight(strings.TrimSpace(args[i+1]), ",;")
+			if i+1 < len(tokens) {
+				nextRaw := strings.TrimRight(strings.TrimSpace(tokens[i+1]), ",;")
 				if !strings.HasPrefix(nextRaw, "-") && !strings.HasPrefix(nextRaw, "/") && !strings.Contains(nextRaw, "=") {
 					valStr = nextRaw
 					i++
@@ -737,21 +782,23 @@ func parseCLIArgs(args []string) cliOverrides {
 
 		switch key {
 		case "port", "p":
-			var pVal int
-			if _, err := fmt.Sscanf(valStr, "%d", &pVal); err == nil && pVal > 0 {
+			if pVal, err := strconv.Atoi(strings.TrimSpace(valStr)); err == nil && pVal > 0 {
 				ov.Port = &pVal
+				log.Printf("[CLI] Parsed Port: %d", pVal)
 			}
 		case "mandant", "m", "mandantennummer":
-			var mVal int
-			if _, err := fmt.Sscanf(valStr, "%d", &mVal); err == nil && mVal >= 0 {
+			if mVal, err := strconv.Atoi(strings.TrimSpace(valStr)); err == nil && mVal >= 0 {
 				ov.Mandant = &mVal
+				log.Printf("[CLI] Parsed Mandant: %d", mVal)
 			}
 		case "mode":
 			s := strings.ToLower(valStr)
 			ov.Mode = &s
+			log.Printf("[CLI] Parsed Mode: %s", s)
 		case "engine", "db_engine", "dbengine":
 			s := strings.ToLower(valStr)
 			ov.DBEngine = &s
+			log.Printf("[CLI] Parsed DBEngine: %s", s)
 		case "test":
 			var tVal int
 			if valStr == "1" || strings.ToLower(valStr) == "true" {
@@ -760,16 +807,21 @@ func parseCLIArgs(args []string) cliOverrides {
 			} else if valStr == "0" || strings.ToLower(valStr) == "false" {
 				tVal = 0
 				ov.Test = &tVal
-			} else if _, err := fmt.Sscanf(valStr, "%d", &tVal); err == nil {
+			} else if parsed, err := strconv.Atoi(strings.TrimSpace(valStr)); err == nil {
+				tVal = parsed
 				ov.Test = &tVal
+			}
+			if ov.Test != nil {
+				log.Printf("[CLI] Parsed Test: %d", *ov.Test)
 			}
 		case "waittime", "wait_time", "wait":
 			s := strings.TrimSpace(valStr)
 			ov.WaitTimeStr = &s
+			log.Printf("[CLI] Parsed WaitTime: %s", s)
 		case "launcher-port", "launcherport", "lport":
-			var lpVal int
-			if _, err := fmt.Sscanf(valStr, "%d", &lpVal); err == nil && lpVal > 0 {
+			if lpVal, err := strconv.Atoi(strings.TrimSpace(valStr)); err == nil && lpVal > 0 {
 				ov.LauncherPort = &lpVal
+				log.Printf("[CLI] Parsed LauncherPort: %d", lpVal)
 			}
 		}
 	}
