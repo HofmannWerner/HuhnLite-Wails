@@ -8,6 +8,7 @@ run_hdiutil() {
     sync
     until "$@" || [ $attempt -eq $max_attempts ]; do
         echo "⚠️ hdiutil failed (attempt $attempt/$max_attempts), retrying in 5 seconds..."
+        hdiutil detach "/Volumes/HuhnLite"* -force 2>/dev/null || true
         sleep 5
         sync
         attempt=$((attempt + 1))
@@ -226,19 +227,20 @@ ls -lh build/bin/*.json || true
 if [ "$(uname)" = "Darwin" ]; then
     echo "------------------------------------------"
     echo "📦 Erstelle macOS DMG-Dateien..."
+    hdiutil detach "/Volumes/HuhnLite"* -force 2>/dev/null || true
     if [ -d "build/bin/HuhnLite-Local.app" ]; then
-        run_hdiutil hdiutil create -volname "HuhnLite Local" -srcfolder "build/bin/HuhnLite-Local.app" -ov -format UDZO "build/bin/HuhnLite-Local.dmg"
+        run_hdiutil hdiutil create -volname "HuhnLite Local" -srcfolder "build/bin/HuhnLite-Local.app" -size 500m -ov -format UDZO "build/bin/HuhnLite-Local.dmg"
         sleep 3
     fi
     if [ -d "build/bin/HuhnLite-MariaDB.app" ]; then
-        run_hdiutil hdiutil create -volname "HuhnLite MariaDB" -srcfolder "build/bin/HuhnLite-MariaDB.app" -ov -format UDZO "build/bin/HuhnLite-MariaDB.dmg"
+        run_hdiutil hdiutil create -volname "HuhnLite MariaDB" -srcfolder "build/bin/HuhnLite-MariaDB.app" -size 500m -ov -format UDZO "build/bin/HuhnLite-MariaDB.dmg"
         sleep 3
     fi
     if [ -f "build/bin/HuhnLite-Server" ]; then
         mkdir -p build/bin/server-temp
         cp build/bin/HuhnLite-Server build/bin/server-temp/
         cp build/bin/settings_server.json build/bin/server-temp/settings_server.json
-        run_hdiutil hdiutil create -volname "HuhnLite Server" -srcfolder build/bin/server-temp -ov -format UDZO "build/bin/HuhnLite-Server.dmg"
+        run_hdiutil hdiutil create -volname "HuhnLite Server" -srcfolder build/bin/server-temp -size 300m -ov -format UDZO "build/bin/HuhnLite-Server.dmg"
         rm -rf build/bin/server-temp
         sleep 3
     fi
@@ -246,7 +248,7 @@ if [ "$(uname)" = "Darwin" ]; then
         mkdir -p build/bin/server-mariadb-temp
         cp build/bin/HuhnLite-Server-MariaDB build/bin/server-mariadb-temp/
         cp build/bin/settings_server_mariadb.json build/bin/server-mariadb-temp/settings_server_mariadb.json
-        run_hdiutil hdiutil create -volname "HuhnLite Server MariaDB" -srcfolder build/bin/server-mariadb-temp -ov -format UDZO "build/bin/HuhnLite-Server-MariaDB.dmg"
+        run_hdiutil hdiutil create -volname "HuhnLite Server MariaDB" -srcfolder build/bin/server-mariadb-temp -size 300m -ov -format UDZO "build/bin/HuhnLite-Server-MariaDB.dmg"
         rm -rf build/bin/server-mariadb-temp
         sleep 3
     fi
