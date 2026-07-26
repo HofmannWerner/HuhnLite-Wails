@@ -24,6 +24,8 @@ type Config struct {
 	BackupTimeStr      string `json:"backuptime"`    // e.g. "1200,20:00"
 	WaitTimeStr        string `json:"waittime"`      // e.g. "00:01" (hh:mm)
 	LauncherPort       int    `json:"launcher_port"`
+	Language           string `json:"language"`
+	HasCLILanguage     bool   `json:"-"`
 	ConfigFilePath     string `json:"-"`
 }
 
@@ -183,6 +185,7 @@ func LoadConfig() Config {
 		Test:               0,
 		Port:               8080,
 		LauncherPort:       8080,
+		Language:           "de",
 		System:             0,
 		AutoBackup:         -1,
 	}
@@ -432,6 +435,14 @@ func LoadConfig() Config {
 		cfg.LauncherPort = *ov.LauncherPort
 		log.Printf("[CLI] Overriding LauncherPort: %d", cfg.LauncherPort)
 	}
+	if ov.Language != nil {
+		cfg.Language = *ov.Language
+		cfg.HasCLILanguage = true
+		log.Printf("[CLI] Overriding Language: %s", cfg.Language)
+	}
+	if cfg.Language == "" {
+		cfg.Language = "de"
+	}
 
 	if ov.Mandant != nil {
 		settingsDir := filepath.Dir(cfg.ConfigFilePath)
@@ -673,13 +684,14 @@ func copyFile(src, dst string) error {
 }
 
 type cliOverrides struct {
-	Port        *int
-	Mandant     *int
-	Mode        *string
-	DBEngine    *string
+	Port         *int
+	Mandant      *int
+	Mode         *string
+	DBEngine     *string
 	Test         *int
 	WaitTimeStr  *string
 	LauncherPort *int
+	Language     *string
 }
 
 func tokenizeArgs(args []string) []string {
@@ -822,6 +834,13 @@ func parseCLIArgs(args []string) cliOverrides {
 			if lpVal, err := strconv.Atoi(strings.TrimSpace(valStr)); err == nil && lpVal > 0 {
 				ov.LauncherPort = &lpVal
 				log.Printf("[CLI] Parsed LauncherPort: %d", lpVal)
+			}
+		case "language", "lang", "sprache", "l":
+			s := strings.ToLower(strings.TrimSpace(valStr))
+			s = strings.Trim(s, " \t\r\n,;")
+			if s != "" {
+				ov.Language = &s
+				log.Printf("[CLI] Parsed Language: %s", s)
 			}
 		}
 	}

@@ -240,6 +240,22 @@ func (a *App) GetLauncherPort() int {
 	return 8080
 }
 
+// GetLanguage returns the language configured via CLI or settings
+func (a *App) GetLanguage() string {
+	if a.database != nil && a.database.Config.Language != "" {
+		return a.database.Config.Language
+	}
+	return "de"
+}
+
+// GetCLILanguage returns whether the language was explicitly specified via CLI argument
+func (a *App) GetCLILanguage() bool {
+	if a.database != nil {
+		return a.database.Config.HasCLILanguage
+	}
+	return false
+}
+
 // ToggleTestDB toggles between the production and test database
 func (a *App) ToggleTestDB(useTest bool) (string, error) {
 	if a.database == nil {

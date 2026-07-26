@@ -6,8 +6,16 @@ export function GetAPIPort() {
   return window['go']['main']['App']['GetAPIPort']();
 }
 
+export function GetCLILanguage() {
+  return window['go']['main']['App']['GetCLILanguage']();
+}
+
 export function GetDBStatus() {
   return window['go']['main']['App']['GetDBStatus']();
+}
+
+export function GetLanguage() {
+  return window['go']['main']['App']['GetLanguage']();
 }
 
 export function GetLauncherPort() {

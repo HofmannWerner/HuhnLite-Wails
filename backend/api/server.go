@@ -1298,8 +1298,10 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		database.Config = cfg // Update in-memory config
 
 		c.JSON(http.StatusOK, gin.H{
-			"auth_enabled": authEnabled,
+			"auth_enabled":        authEnabled,
 			"system_edit_enabled": cfg.System == 1,
+			"language":            cfg.Language,
+			"cli_language":        cfg.HasCLILanguage,
 		})
 	})
 

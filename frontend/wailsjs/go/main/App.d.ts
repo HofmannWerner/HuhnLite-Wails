@@ -4,7 +4,11 @@ import {context} from '../models';
 
 export function GetAPIPort():Promise<number>;
 
+export function GetCLILanguage():Promise<boolean>;
+
 export function GetDBStatus():Promise<Record<string, string>>;
+
+export function GetLanguage():Promise<string>;
 
 export function GetLauncherPort():Promise<number>;
 

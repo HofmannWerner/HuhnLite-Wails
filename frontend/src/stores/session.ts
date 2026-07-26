@@ -11,6 +11,7 @@ export const useSessionStore = defineStore('session', () => {
 
   const workingTimestamp = ref(`${initialDate} ${initialTime}`);
   const selectedLanguage = ref(localStorage.getItem('selectedLanguage') || 'de');
+  const isCliLanguageSet = ref(false);
   const darkMode = ref(localStorage.getItem('darkMode') === 'true');
 
   // Synchronisiere Quasar Dark Mode reaktiv mit dem Store-State
@@ -75,9 +76,12 @@ export const useSessionStore = defineStore('session', () => {
     workingTimestamp.value = val;
   }
 
-  function setLanguage(lang: string) {
+  function setLanguage(lang: string, fromCli = false) {
     selectedLanguage.value = lang;
     localStorage.setItem('selectedLanguage', lang);
+    if (fromCli) {
+      isCliLanguageSet.value = true;
+    }
     savePreference('selectedLanguage', lang);
   }
 
@@ -95,7 +99,7 @@ export const useSessionStore = defineStore('session', () => {
         api.get(`/api/user-state/darkMode?username=${username.value}`)
       ]);
 
-      if (langRes.data?.value) {
+      if (langRes.data?.value && !isCliLanguageSet.value) {
         selectedLanguage.value = langRes.data.value;
         localStorage.setItem('selectedLanguage', langRes.data.value);
       }
@@ -159,6 +163,7 @@ export const useSessionStore = defineStore('session', () => {
   return {
     workingTimestamp,
     selectedLanguage,
+    isCliLanguageSet,
     darkMode,
     username,
     userId,

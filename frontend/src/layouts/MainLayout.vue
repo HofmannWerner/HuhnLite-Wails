@@ -793,7 +793,11 @@ onMounted(async () => {
       const res = await api.get('/api/config');
       sessionStore.authEnabled = res.data.auth_enabled;
       sessionStore.systemEditEnabled = res.data.system_edit_enabled;
-      console.log('MainLayout: Config geladen:', { auth: sessionStore.authEnabled, system: sessionStore.systemEditEnabled });
+      if (res.data.language) {
+        const isCli = !!res.data.cli_language;
+        sessionStore.setLanguage(res.data.language, isCli);
+      }
+      console.log('MainLayout: Config geladen:', { auth: sessionStore.authEnabled, system: sessionStore.systemEditEnabled, language: res.data.language, cliLanguage: res.data.cli_language });
       
       if (!sessionStore.authEnabled) {
         sessionStore.setAdminSession();
