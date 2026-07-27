@@ -25,6 +25,7 @@ type Config struct {
 	WaitTimeStr        string `json:"waittime"`      // e.g. "00:01" (hh:mm)
 	LauncherPort       int    `json:"launcher_port"`
 	Language           string `json:"language"`
+	BackupPath         string `json:"backup_path"`
 	HasCLILanguage     bool   `json:"-"`
 	ConfigFilePath     string `json:"-"`
 }
@@ -355,6 +356,17 @@ func LoadConfig() Config {
 									cfg.BackupTimeStr = s
 								}
 							}
+
+							backupPathKey := fmt.Sprintf("backup_path_%d", cfg.Mandant)
+							if bpVal, ok := rawMap[backupPathKey]; ok {
+								if s, ok := bpVal.(string); ok {
+									cfg.BackupPath = s
+								}
+							} else if bpVal, ok := rawMap["backup_path"]; ok {
+								if s, ok := bpVal.(string); ok {
+									cfg.BackupPath = s
+								}
+							}
 						} else {
 							// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
 							if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
@@ -388,6 +400,12 @@ func LoadConfig() Config {
 							if btVal, ok := rawMap["backuptime"]; ok {
 								if s, ok := btVal.(string); ok {
 									cfg.BackupTimeStr = s
+								}
+							}
+
+							if bpVal, ok := rawMap["backup_path"]; ok {
+								if s, ok := bpVal.(string); ok {
+									cfg.BackupPath = s
 								}
 							}
 						}

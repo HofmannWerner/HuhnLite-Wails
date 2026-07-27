@@ -46,6 +46,10 @@ export function SaveWindowState(arg1, arg2) {
   return window['go']['main']['App']['SaveWindowState'](arg1, arg2);
 }
 
+export function SelectBackupDirectory(arg1) {
+  return window['go']['main']['App']['SelectBackupDirectory'](arg1);
+}
+
 export function ToggleTestDB(arg1) {
   return window['go']['main']['App']['ToggleTestDB'](arg1);
 }

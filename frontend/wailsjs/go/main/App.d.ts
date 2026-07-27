@@ -24,4 +24,6 @@ export function Quit():Promise<void>;
 
 export function SaveWindowState(arg1:context.Context,arg2:string):Promise<void>;
 
+export function SelectBackupDirectory(arg1:string):Promise<string>;
+
 export function ToggleTestDB(arg1:boolean):Promise<string>;

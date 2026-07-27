@@ -12,8 +12,10 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -5933,6 +5935,156 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		c.JSON(http.StatusOK, gin.H{
 			"active_mandant": activeMandant,
 			"tenants":        tenants,
+			"backup_path":    database.Config.BackupPath,
+		})
+	})
+
+	r.POST("/api/tenants/backup-path", func(c *gin.Context) {
+		var req struct {
+			BackupPath string `json:"backup_path"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		p := database.Config.ConfigFilePath
+		if p == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration file path not found"})
+			return
+		}
+
+		data, err := os.ReadFile(p)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(data, &configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		cleanPath := strings.TrimSpace(req.BackupPath)
+		configMap["backup_path"] = cleanPath
+
+		if err := saveSettingsMap(p, configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+			return
+		}
+
+		database.Config.BackupPath = cleanPath
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":      "success",
+			"backup_path": cleanPath,
+		})
+	})
+
+	type FolderItem struct {
+		Name string `json:"name"`
+		Path string `json:"path"`
+	}
+
+	r.POST("/api/system/browse-dirs", func(c *gin.Context) {
+		var req struct {
+			Path string `json:"path"`
+		}
+		_ = c.ShouldBindJSON(&req)
+
+		var drives []string
+		if runtime.GOOS == "windows" {
+			for _, letter := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+				dPath := string(letter) + ":\\"
+				if _, err := os.Stat(dPath); err == nil {
+					drives = append(drives, string(letter)+":")
+				}
+			}
+		} else {
+			drives = append(drives, "/")
+			if _, err := os.Stat("/Volumes"); err == nil {
+				drives = append(drives, "/Volumes")
+			}
+		}
+
+		targetPath := strings.TrimSpace(req.Path)
+		if targetPath == "" {
+			if database != nil && database.ActiveConnStr != "" {
+				targetPath = filepath.Dir(database.ActiveConnStr)
+			} else {
+				targetPath, _ = os.Getwd()
+			}
+		}
+
+		if runtime.GOOS == "windows" && len(targetPath) == 2 && targetPath[1] == ':' {
+			targetPath += "\\"
+		}
+
+		absPath, err := filepath.Abs(targetPath)
+		if err != nil {
+			absPath = targetPath
+		}
+
+		parentPath := filepath.Dir(absPath)
+		if parentPath == absPath {
+			parentPath = ""
+		}
+
+		var folders []FolderItem
+		entries, readErr := os.ReadDir(absPath)
+		if readErr == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					name := entry.Name()
+					if strings.HasPrefix(name, "$") || strings.EqualFold(name, "System Volume Information") || strings.HasPrefix(name, ".") {
+						continue
+					}
+					folders = append(folders, FolderItem{
+						Name: name,
+						Path: filepath.ToSlash(filepath.Join(absPath, name)),
+					})
+				}
+			}
+		}
+
+		sort.Slice(folders, func(i, j int) bool {
+			return strings.ToLower(folders[i].Name) < strings.ToLower(folders[j].Name)
+		})
+
+		errMsg := ""
+		if readErr != nil {
+			errMsg = readErr.Error()
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"current": filepath.ToSlash(absPath),
+			"parent":  filepath.ToSlash(parentPath),
+			"drives":  drives,
+			"folders": folders,
+			"error":   errMsg,
+		})
+	})
+
+	r.POST("/api/system/select-dir", func(c *gin.Context) {
+		var req struct {
+			Path string `json:"path"`
+		}
+		_ = c.ShouldBindJSON(&req)
+
+		selected, err := selectDirectoryNativeWindows(req.Path)
+		if err != nil || selected == "" {
+			c.JSON(http.StatusOK, gin.H{
+				"status": "fallback",
+				"path":   "",
+				"error":  func() string { if err != nil { return err.Error() }; return "" }(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status": "success",
+			"path":   filepath.ToSlash(selected),
 		})
 	})
 
@@ -6427,14 +6579,17 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 	r.GET("/api/db/list", func(c *gin.Context) {
 		var files []BackupFileInfo
 		activePath := database.ActiveConnStr
+		customBackupDir := GetBackupDir(database)
 		var dirs []string
 		if database.Config.Mandant > 0 {
 			dirs = []string{
+				customBackupDir,
 				filepath.Join(filepath.Dir(activePath), "Backups"),
 				filepath.Join(filepath.Dir(activePath), "backups"),
 			}
 		} else {
 			dirs = []string{
+				customBackupDir,
 				filepath.Dir(activePath),
 				filepath.Join(filepath.Dir(activePath), "Backups"),
 				filepath.Join(filepath.Dir(activePath), "backups"),
@@ -11203,6 +11358,60 @@ func syncDataFromSQLite(database *wailsdb.DB) {
 	}
 }
 
+func selectDirectoryNativeWindows(initialPath string) (string, error) {
+	if runtime.GOOS != "windows" {
+		return "", fmt.Errorf("native folder dialog only supported on Windows")
+	}
+
+	cleanPath := filepath.FromSlash(strings.TrimSpace(initialPath))
+	if cleanPath != "" {
+		if info, err := os.Stat(cleanPath); err != nil || !info.IsDir() {
+			cleanPath = ""
+		}
+	}
+
+	psScript := fmt.Sprintf(`[System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms') | Out-Null
+$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+$dialog.Description = 'Backup-Verzeichnis auswählen'
+$dialog.ShowNewFolderButton = $true
+if ('%s' -ne '') { $dialog.SelectedPath = '%s' }
+if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+    Write-Output $dialog.SelectedPath
+}`, cleanPath, cleanPath)
+
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func GetBackupDir(database *wailsdb.DB) string {
+	if database == nil {
+		return "Backups"
+	}
+	return GetBackupDirForMandant(database, database.Config.Mandant)
+}
+
+func GetBackupDirForMandant(database *wailsdb.DB, mandantID int) string {
+	if database == nil {
+		return "Backups"
+	}
+	bp := strings.TrimSpace(database.Config.BackupPath)
+	if bp != "" {
+		if mandantID > 0 {
+			return filepath.Join(bp, fmt.Sprintf("mandant_%d", mandantID), "Backups")
+		}
+		return filepath.Join(bp, "Backups")
+	}
+	activePath := database.ActiveConnStr
+	if activePath != "" {
+		return filepath.Join(filepath.Dir(activePath), "Backups")
+	}
+	return "Backups"
+}
+
 func PerformAutoBackup(database *wailsdb.DB, trigger string) (string, error) {
 	if database == nil || database.Engine == "mysql" {
 		return "", nil
@@ -11219,7 +11428,7 @@ func PerformAutoBackup(database *wailsdb.DB, trigger string) (string, error) {
 	ext := filepath.Ext(dbFilename)
 	baseName := strings.TrimSuffix(dbFilename, ext)
 
-	activeBackupDir := filepath.Join(filepath.Dir(activePath), "Backups")
+	activeBackupDir := GetBackupDir(database)
 	_ = os.MkdirAll(activeBackupDir, 0755)
 
 	var timestamp string

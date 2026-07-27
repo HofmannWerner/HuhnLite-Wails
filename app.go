@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	stdruntime "runtime"
+	"strings"
 
 	"huhnlite-wails/backend/api"
 	"huhnlite-wails/backend/config"
@@ -287,6 +288,24 @@ func (a *App) ToggleTestDB(useTest bool) (string, error) {
 	_ = config.SaveTestSetting(testVal, a.database.Engine)
 
 	return a.database.ActiveConnStr, nil
+}
+
+// SelectBackupDirectory opens a native directory picker dialog and returns the selected path
+func (a *App) SelectBackupDirectory(defaultPath string) (string, error) {
+	if defaultPath == "" && a.database != nil {
+		defaultPath = a.database.Config.BackupPath
+	}
+	cleanPath := filepath.FromSlash(strings.TrimSpace(defaultPath))
+	if cleanPath != "" {
+		if info, err := os.Stat(cleanPath); err != nil || !info.IsDir() {
+			cleanPath = ""
+		}
+	}
+	log.Printf("[Wails] OpenDirectoryDialog default path: '%s'", cleanPath)
+	return runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
+		Title:            "Backup-Verzeichnis auswählen",
+		DefaultDirectory: cleanPath,
+	})
 }
 
 // Quit closes the application
