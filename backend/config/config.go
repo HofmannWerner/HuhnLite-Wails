@@ -115,10 +115,11 @@ func LoadConfig() Config {
 		}
 	}
 
-	if isProgramFiles && appDataDir != "" {
+	isMacOSBundle := errExec == nil && filepath.Base(filepath.Dir(execPath)) == "MacOS" && filepath.Base(filepath.Dir(filepath.Dir(execPath))) == "Contents"
+	if (isProgramFiles || isMacOSBundle) && appDataDir != "" {
 		sourceDirForCopy := bundleDir
 		// If running in macOS bundle, copy from Contents/Resources
-		if errExec == nil && filepath.Base(filepath.Dir(execPath)) == "MacOS" && filepath.Base(filepath.Dir(filepath.Dir(execPath))) == "Contents" {
+		if isMacOSBundle {
 			sourceDirForCopy = filepath.Join(filepath.Dir(filepath.Dir(execPath)), "Resources")
 		}
 
@@ -197,15 +198,15 @@ func LoadConfig() Config {
 	if execPath != "" {
 		fullPath := strings.ToLower(execPath)
 		log.Printf("ExecPath: %s", execPath)
-		if strings.Contains(fullPath, "server") && strings.Contains(fullPath, "mariadb") {
-			configFiles = []string{"settings_server_mariadb.json", "settings.json"}
-			log.Printf("Server-MariaDB-Modus erkannt, priorisiere settings_server_mariadb.json")
+		if (strings.Contains(fullPath, "server") || strings.Contains(fullPath, "select")) && strings.Contains(fullPath, "mariadb") {
+			configFiles = []string{"settings_server_mariadb.json", "settings_mariadb.json", "settings.json"}
+			log.Printf("Server/Select-MariaDB-Modus erkannt, priorisiere settings_server_mariadb.json")
 		} else if strings.Contains(fullPath, "mariadb") {
 			configFiles = []string{"settings_mariadb.json", "settings.json"}
 			log.Printf("MariaDB-Modus erkannt, priorisiere settings_mariadb.json")
-		} else if strings.Contains(fullPath, "server") {
+		} else if strings.Contains(fullPath, "server") || strings.Contains(fullPath, "select") {
 			configFiles = []string{"settings_server.json", "settings.json"}
-			log.Printf("Server-Modus erkannt, priorisiere settings_server.json")
+			log.Printf("Server/Select-Modus erkannt, priorisiere settings_server.json")
 		}
 	}
 
@@ -367,6 +368,17 @@ func LoadConfig() Config {
 									cfg.BackupPath = s
 								}
 							}
+
+							waittimeKey := fmt.Sprintf("waittime_%d", cfg.Mandant)
+							if wtVal, ok := rawMap[waittimeKey]; ok {
+								if s, ok := wtVal.(string); ok {
+									cfg.WaitTimeStr = s
+								}
+							} else if wtVal, ok := rawMap["waittime"]; ok {
+								if s, ok := wtVal.(string); ok {
+									cfg.WaitTimeStr = s
+								}
+							}
 						} else {
 							// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
 							if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
@@ -406,6 +418,12 @@ func LoadConfig() Config {
 							if bpVal, ok := rawMap["backup_path"]; ok {
 								if s, ok := bpVal.(string); ok {
 									cfg.BackupPath = s
+								}
+							}
+
+							if wtVal, ok := rawMap["waittime"]; ok {
+								if s, ok := wtVal.(string); ok {
+									cfg.WaitTimeStr = s
 								}
 							}
 						}

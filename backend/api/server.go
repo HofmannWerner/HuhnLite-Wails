@@ -5856,6 +5856,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			Test       int    `json:"test"`
 			AutoBackup int    `json:"autobackup"`
 			BackupTime string `json:"backuptime"`
+			WaitTime   string `json:"waittime"`
 		}
 
 		var tenants []TenantInfo
@@ -5894,6 +5895,17 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 					}
 				}
 
+				waittime := ""
+				if wtVal, ok := configMap[fmt.Sprintf("waittime_%d", id)]; ok {
+					if s, ok := wtVal.(string); ok {
+						waittime = s
+					}
+				} else if wtVal, ok := configMap["waittime"]; ok {
+					if s, ok := wtVal.(string); ok {
+						waittime = s
+					}
+				}
+
 				tenants = append(tenants, TenantInfo{
 					ID:         id,
 					Name:       name,
@@ -5901,6 +5913,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 					Test:       test,
 					AutoBackup: autobackup,
 					BackupTime: backuptime,
+					WaitTime:   waittime,
 				})
 			}
 		}
@@ -5925,6 +5938,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 				Test:       database.Config.Test,
 				AutoBackup: database.Config.AutoBackup,
 				BackupTime: database.Config.BackupTimeStr,
+				WaitTime:   database.Config.WaitTimeStr,
 			})
 		}
 
@@ -5936,6 +5950,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			"active_mandant": activeMandant,
 			"tenants":        tenants,
 			"backup_path":    database.Config.BackupPath,
+			"waittime":       database.Config.WaitTimeStr,
 		})
 	})
 
@@ -6218,6 +6233,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		configMap[fmt.Sprintf("test_%d", n)] = 0
 		configMap[fmt.Sprintf("autobackup_%d", n)] = 1 // default to On Start
 		configMap[fmt.Sprintf("backuptime_%d", n)] = ""
+		configMap[fmt.Sprintf("waittime_%d", n)] = "00:01"
 
 		if database.Config.Mode != "server" {
 			configMap["mandant"] = n
@@ -6252,6 +6268,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			Test       int    `json:"test"`
 			AutoBackup int    `json:"autobackup"`
 			BackupTime string `json:"backuptime"`
+			WaitTime   string `json:"waittime"`
 		}
 		if err := c.ShouldBindJSON(&req); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -6306,6 +6323,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		configMap[fmt.Sprintf("test_%d", req.ID)] = req.Test
 		configMap[fmt.Sprintf("autobackup_%d", req.ID)] = req.AutoBackup
 		configMap[fmt.Sprintf("backuptime_%d", req.ID)] = req.BackupTime
+		configMap[fmt.Sprintf("waittime_%d", req.ID)] = strings.TrimSpace(req.WaitTime)
 
 		activeMandant := 0
 		if m, ok := configMap["mandant"].(float64); ok {
@@ -6313,6 +6331,9 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		}
 		if activeMandant == req.ID {
 			configMap["test"] = req.Test
+			if strings.TrimSpace(req.WaitTime) != "" {
+				configMap["waittime"] = strings.TrimSpace(req.WaitTime)
+			}
 		}
 
 		if err := saveSettingsMap(p, configMap); err != nil {

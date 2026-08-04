@@ -71,6 +71,7 @@
               </div>
               <div class="text-caption text-grey-7">
                 Auto-Backup: {{ getAutoBackupLabel(props.row.autobackup) }}<span v-if="props.row.backuptime"> (um {{ props.row.backuptime }})</span>
+                <span v-if="props.row.waittime"> • WaitTime: {{ props.row.waittime }}</span>
               </div>
             </q-td>
           </template>
@@ -243,10 +244,18 @@
           <q-input
             v-model="editTenantBackupTime"
             label="Backup Uhrzeiten (z.B. 12:00, 20:00)"
-            placeholder="Kommasepariert z.B. 1200, 20:00"
+            placeholder="Kommasepariert z.B. 12:00, 20:00"
             outlined
             class="q-mt-md"
             hint="Mehrere Zeiten mit Komma trennen (z.B. 12:00, 20:00)"
+          />
+          <q-input
+            v-model="editTenantWaitTime"
+            label="Server WaitTime (z.B. 00:01 oder 45)"
+            placeholder="00:01"
+            outlined
+            class="q-mt-md"
+            hint="Timeout für Inaktivität / Auto-Shutdown des Servers (z.B. 00:01 für 1 Min, 45 für 45 Sek)"
           />
         </q-card-section>
 
@@ -379,6 +388,7 @@ interface Tenant {
   test: number;
   autobackup: number;
   backuptime: string;
+  waittime?: string;
 }
 
 const tenants = ref<Tenant[]>([]);
@@ -414,6 +424,7 @@ const editTenantSystem = ref(0);
 const editTenantTest = ref(0);
 const editTenantAutoBackup = ref(0);
 const editTenantBackupTime = ref('');
+const editTenantWaitTime = ref('00:01');
 
 const autoBackupOptions = [
   { label: 'Deaktiviert (kein Backup)', value: 0 },
@@ -616,6 +627,7 @@ function editTenant(tenant: Tenant) {
   editTenantTest.value = tenant.test;
   editTenantAutoBackup.value = tenant.autobackup || 0;
   editTenantBackupTime.value = tenant.backuptime || '';
+  editTenantWaitTime.value = tenant.waittime || '00:01';
   showEditDialog.value = true;
 }
 
@@ -628,11 +640,12 @@ async function saveTenantName() {
       system: editTenantSystem.value,
       test: editTenantTest.value,
       autobackup: editTenantAutoBackup.value,
-      backuptime: editTenantBackupTime.value.trim()
+      backuptime: editTenantBackupTime.value.trim(),
+      waittime: editTenantWaitTime.value.trim()
     });
     $q.notify({
       type: 'positive',
-      message: 'Mandantenname erfolgreich aktualisiert.'
+      message: 'Mandant erfolgreich aktualisiert.'
     });
     showEditDialog.value = false;
     
@@ -655,7 +668,10 @@ async function updateTenant(tenant: Tenant) {
       id: tenant.id,
       name: tenant.name,
       system: tenant.system,
-      test: tenant.test
+      test: tenant.test,
+      autobackup: tenant.autobackup || 0,
+      backuptime: tenant.backuptime || '',
+      waittime: tenant.waittime || '00:01'
     });
     $q.notify({
       type: 'positive',

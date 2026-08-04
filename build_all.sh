@@ -75,6 +75,8 @@ mkdir -p build/bin/mandant_1 build/bin/mandant_2
 if [ -d "build/bin/HuhnLite-Local.app" ]; then
     echo "📋 Copying help files and config into HuhnLite-Local.app..."
     cp settings.json build/bin/HuhnLite-Local.app/Contents/Resources/settings.json
+    [ -f settings_server.json ] && cp settings_server.json build/bin/HuhnLite-Local.app/Contents/Resources/settings_server.json
+    [ -f settings_server_mariadb.json ] && cp settings_server_mariadb.json build/bin/HuhnLite-Local.app/Contents/Resources/settings_server_mariadb.json
     [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite.db
     [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite_test.db
     [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/HuhnLite-Local.app/Contents/Resources/HuhnLite_prod.db
@@ -126,6 +128,8 @@ cp settings_mariadb.json build/bin/settings_mariadb.json
 if [ -d "build/bin/HuhnLite-MariaDB.app" ]; then
     echo "📋 Copying help files and config into HuhnLite-MariaDB.app..."
     cp settings_mariadb.json build/bin/HuhnLite-MariaDB.app/Contents/Resources/settings_mariadb.json
+    [ -f settings_server.json ] && cp settings_server.json build/bin/HuhnLite-MariaDB.app/Contents/Resources/settings_server.json
+    [ -f settings_server_mariadb.json ] && cp settings_server_mariadb.json build/bin/HuhnLite-MariaDB.app/Contents/Resources/settings_server_mariadb.json
     
     # Copy PDF help files to MariaDB macOS bundle (from root or local_temp backup)
     for f in HuhnLite_*.PDF HuhnLite_*.pdf build/local_temp/HuhnLite_*.PDF build/local_temp/HuhnLite_*.pdf; do
@@ -240,6 +244,25 @@ if [ "$(uname)" = "Darwin" ]; then
         mkdir -p build/bin/server-temp
         cp build/bin/HuhnLite-Server build/bin/server-temp/
         cp build/bin/settings_server.json build/bin/server-temp/settings_server.json
+        [ -f HuhnLite.db ] && cp HuhnLite.db build/bin/server-temp/
+        [ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/server-temp/
+        [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/server-temp/
+
+        cat << 'EOF' > build/bin/server-temp/install.command
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+TARGET_DIR="$HOME/Library/Application Support/HuhnLite"
+mkdir -p "$TARGET_DIR"
+cp "$DIR/settings_server.json" "$TARGET_DIR/settings_server.json" 2>/dev/null || true
+[ -f "$DIR/HuhnLite.db" ] && cp -n "$DIR/HuhnLite.db" "$TARGET_DIR/HuhnLite.db"
+[ -f "$DIR/HuhnLite_test.db" ] && cp -n "$DIR/HuhnLite_test.db" "$TARGET_DIR/HuhnLite_test.db"
+[ -f "$DIR/HuhnLite_prod.db" ] && cp -n "$DIR/HuhnLite_prod.db" "$TARGET_DIR/HuhnLite_prod.db"
+echo "✅ HuhnLite-Server-Dateien nach $TARGET_DIR installiert."
+echo "Starte HuhnLite-Server..."
+"$DIR/HuhnLite-Server"
+EOF
+        chmod +x build/bin/server-temp/install.command
+
         run_hdiutil hdiutil create -volname "HuhnLite Server" -srcfolder build/bin/server-temp -size 300m -ov -format UDZO "build/bin/HuhnLite-Server.dmg"
         rm -rf build/bin/server-temp
         sleep 3
@@ -248,6 +271,19 @@ if [ "$(uname)" = "Darwin" ]; then
         mkdir -p build/bin/server-mariadb-temp
         cp build/bin/HuhnLite-Server-MariaDB build/bin/server-mariadb-temp/
         cp build/bin/settings_server_mariadb.json build/bin/server-mariadb-temp/settings_server_mariadb.json
+
+        cat << 'EOF' > build/bin/server-mariadb-temp/install.command
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+TARGET_DIR="$HOME/Library/Application Support/HuhnLite"
+mkdir -p "$TARGET_DIR"
+cp "$DIR/settings_server_mariadb.json" "$TARGET_DIR/settings_server_mariadb.json" 2>/dev/null || true
+echo "✅ HuhnLite-Server-MariaDB-Dateien nach $TARGET_DIR installiert."
+echo "Starte HuhnLite-Server-MariaDB..."
+"$DIR/HuhnLite-Server-MariaDB"
+EOF
+        chmod +x build/bin/server-mariadb-temp/install.command
+
         run_hdiutil hdiutil create -volname "HuhnLite Server MariaDB" -srcfolder build/bin/server-mariadb-temp -size 300m -ov -format UDZO "build/bin/HuhnLite-Server-MariaDB.dmg"
         rm -rf build/bin/server-mariadb-temp
         sleep 3
