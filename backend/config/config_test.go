@@ -210,4 +210,13 @@ func TestMandantConfigSimulation(t *testing.T) {
 	}
 }
 
+func TestExchangePath(t *testing.T) {
+	cfg := Config{
+		ExchangePath: "g:/Meine Ablage/Huhnlite",
+	}
+	if cfg.ExchangePath != "g:/Meine Ablage/Huhnlite" {
+		t.Errorf("expected ExchangePath to be 'g:/Meine Ablage/Huhnlite', got %q", cfg.ExchangePath)
+	}
+}
+
 

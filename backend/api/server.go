@@ -5829,6 +5829,50 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		c.JSON(http.StatusOK, gin.H{"status": "success", "filename": filepath.Base(destPath), "path": destPath})
 	})
 
+	// Helper for exchange directories
+	getExchangeDirsForMandant := func(database *wailsdb.DB, mandantID int, configMap map[string]interface{}) (exportDir, importDir string) {
+		exchangePath := ""
+		if configMap != nil {
+			if val, ok := configMap[fmt.Sprintf("exchange_path_%d", mandantID)].(string); ok && strings.TrimSpace(val) != "" {
+				exchangePath = strings.TrimSpace(val)
+			} else if val, ok := configMap["exchange_path"].(string); ok && strings.TrimSpace(val) != "" {
+				exchangePath = strings.TrimSpace(val)
+			}
+		}
+		if exchangePath == "" && database != nil {
+			exchangePath = strings.TrimSpace(database.Config.ExchangePath)
+		}
+
+		if exchangePath != "" {
+			mandantFolder := fmt.Sprintf("Mandant-%d", mandantID)
+			tenantExchangeDir := filepath.Join(exchangePath, mandantFolder)
+			exportDir = filepath.Join(tenantExchangeDir, "Export")
+			importDir = filepath.Join(tenantExchangeDir, "Import")
+			return exportDir, importDir
+		}
+
+		// Fallback to local settingsDir
+		settingsDir := ""
+		if database != nil && database.Config.ConfigFilePath != "" {
+			settingsDir = filepath.Dir(database.Config.ConfigFilePath)
+		}
+		if settingsDir == "" || settingsDir == "." {
+			settingsDir, _ = os.Getwd()
+		}
+		tenantDirName := fmt.Sprintf("mandant_%d", mandantID)
+		tenantDir := filepath.Join(settingsDir, tenantDirName)
+		if _, err := os.Stat(tenantDir); os.IsNotExist(err) {
+			altTenantDirName := fmt.Sprintf("Mandant_%d", mandantID)
+			altTenantDir := filepath.Join(settingsDir, altTenantDirName)
+			if _, errAlt := os.Stat(altTenantDir); errAlt == nil {
+				tenantDir = altTenantDir
+			}
+		}
+		exportDir = filepath.Join(tenantDir, "DatenAustausch", "Export")
+		importDir = filepath.Join(tenantDir, "DatenAustausch", "Import")
+		return exportDir, importDir
+	}
+
 	// Tenant management APIs
 	r.GET("/api/tenants", func(c *gin.Context) {
 		var configMap map[string]interface{}
@@ -5950,6 +5994,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			"active_mandant": activeMandant,
 			"tenants":        tenants,
 			"backup_path":    database.Config.BackupPath,
+			"exchange_path":  database.Config.ExchangePath,
 			"waittime":       database.Config.WaitTimeStr,
 			"db_engine":      database.Config.DBEngine,
 		})
@@ -5995,6 +6040,63 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		c.JSON(http.StatusOK, gin.H{
 			"status":      "success",
 			"backup_path": cleanPath,
+		})
+	})
+
+	r.POST("/api/tenants/exchange-path", func(c *gin.Context) {
+		var req struct {
+			ExchangePath string `json:"exchange_path"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+			return
+		}
+
+		p := database.Config.ConfigFilePath
+		if p == "" {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Configuration file path not found"})
+			return
+		}
+
+		data, err := os.ReadFile(p)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		var configMap map[string]interface{}
+		if err := json.Unmarshal(data, &configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		cleanPath := strings.TrimSpace(req.ExchangePath)
+		configMap["exchange_path"] = cleanPath
+
+		if err := saveSettingsMap(p, configMap); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings: " + err.Error()})
+			return
+		}
+
+		database.Config.ExchangePath = cleanPath
+
+		// Pre-create Mandant-n/Export and Mandant-n/Import for all configured tenants if exchangePath is set
+		if cleanPath != "" {
+			for k := range configMap {
+				if strings.HasPrefix(k, "mandant_") {
+					var id int
+					if _, err := fmt.Sscanf(k, "mandant_%d", &id); err == nil && id > 0 {
+						expDir, impDir := getExchangeDirsForMandant(database, id, configMap)
+						_ = os.MkdirAll(expDir, 0755)
+						_ = os.MkdirAll(impDir, 0755)
+					}
+				}
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":        "success",
+			"exchange_path": cleanPath,
 		})
 	})
 
@@ -6237,6 +6339,13 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		configMap[fmt.Sprintf("autobackup_%d", n)] = 1 // default to On Start
 		configMap[fmt.Sprintf("backuptime_%d", n)] = ""
 		configMap[fmt.Sprintf("waittime_%d", n)] = "00:01"
+
+		// Pre-create exchange directories for the new tenant if exchange path is set
+		expDir, impDir := getExchangeDirsForMandant(database, n, configMap)
+		if strings.TrimSpace(database.Config.ExchangePath) != "" {
+			_ = os.MkdirAll(expDir, 0755)
+			_ = os.MkdirAll(impDir, 0755)
+		}
 
 		if database.Config.Mode != "server" {
 			configMap["mandant"] = n
@@ -6579,11 +6688,13 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			verlustgruendeExport = append(verlustgruendeExport, v)
 		}
 
-		exchangeDir := filepath.Join(tenantDir, "DatenAustausch")
-		if err := os.MkdirAll(exchangeDir, 0755); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Erstellen des Verzeichnisses DatenAustausch: " + err.Error()})
+		exportDir, importDir := getExchangeDirsForMandant(database, req.ID, configMap)
+		log.Printf("[Export PWA] Mandant %d -> ExportDir: %s, ImportDir: %s", req.ID, exportDir, importDir)
+		if err := os.MkdirAll(exportDir, 0755); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Erstellen des Export-Verzeichnisses: " + err.Error()})
 			return
 		}
+		_ = os.MkdirAll(importDir, 0755)
 
 		herdenJson, err := json.MarshalIndent(herdenExport, "", "  ")
 		if err != nil {
@@ -6597,13 +6708,13 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			return
 		}
 
-		herdenFile := filepath.Join(exchangeDir, "Herden.json")
+		herdenFile := filepath.Join(exportDir, "Herden.json")
 		if err := os.WriteFile(herdenFile, herdenJson, 0644); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Schreiben von Herden.json: " + err.Error()})
 			return
 		}
 
-		verlustFile := filepath.Join(exchangeDir, "Verlustgrund.json")
+		verlustFile := filepath.Join(exportDir, "Verlustgrund.json")
 		if err := os.WriteFile(verlustFile, verlustJson, 0644); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Schreiben von Verlustgrund.json: " + err.Error()})
 			return
@@ -6611,9 +6722,11 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 
 		c.JSON(http.StatusOK, gin.H{
 			"status":       "success",
-			"message":      fmt.Sprintf("Export für Mandant %d erfolgreich abgeschlossen.", req.ID),
+			"message":      fmt.Sprintf("Export für Mandant %d erfolgreich nach %s exportiert.", req.ID, exportDir),
 			"herden_path":  filepath.ToSlash(herdenFile),
 			"verlust_path": filepath.ToSlash(verlustFile),
+			"export_dir":   filepath.ToSlash(exportDir),
+			"import_dir":   filepath.ToSlash(importDir),
 		})
 	})
 

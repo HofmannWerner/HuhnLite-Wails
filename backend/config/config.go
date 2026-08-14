@@ -28,6 +28,7 @@ type Config struct {
 	LauncherPort       int    `json:"launcher_port"`
 	Language           string `json:"language"`
 	BackupPath         string `json:"backup_path"`
+	ExchangePath       string `json:"exchange_path"`
 	HasCLILanguage     bool   `json:"-"`
 	ConfigFilePath     string `json:"-"`
 }
@@ -455,6 +456,17 @@ func LoadConfig() Config {
 								}
 							}
 
+							exchangePathKey := fmt.Sprintf("exchange_path_%d", cfg.Mandant)
+							if epVal, ok := rawMap[exchangePathKey]; ok {
+								if s, ok := epVal.(string); ok {
+									cfg.ExchangePath = s
+								}
+							} else if epVal, ok := rawMap["exchange_path"]; ok {
+								if s, ok := epVal.(string); ok {
+									cfg.ExchangePath = s
+								}
+							}
+
 							waittimeKey := fmt.Sprintf("waittime_%d", cfg.Mandant)
 							if wtVal, ok := rawMap[waittimeKey]; ok {
 								if s, ok := wtVal.(string); ok {
@@ -675,6 +687,28 @@ func LoadConfig() Config {
 			if btVal, ok := rawMap[backuptimeKey]; ok {
 				if s, ok := btVal.(string); ok {
 					cfg.BackupTimeStr = s
+				}
+			}
+
+			backupPathKey := fmt.Sprintf("backup_path_%d", cfg.Mandant)
+			if bpVal, ok := rawMap[backupPathKey]; ok {
+				if s, ok := bpVal.(string); ok {
+					cfg.BackupPath = s
+				}
+			} else if bpVal, ok := rawMap["backup_path"]; ok {
+				if s, ok := bpVal.(string); ok {
+					cfg.BackupPath = s
+				}
+			}
+
+			exchangePathKey := fmt.Sprintf("exchange_path_%d", cfg.Mandant)
+			if epVal, ok := rawMap[exchangePathKey]; ok {
+				if s, ok := epVal.(string); ok {
+					cfg.ExchangePath = s
+				}
+			} else if epVal, ok := rawMap["exchange_path"]; ok {
+				if s, ok := epVal.(string); ok {
+					cfg.ExchangePath = s
 				}
 			}
 		}

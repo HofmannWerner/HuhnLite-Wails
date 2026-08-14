@@ -154,7 +154,7 @@
                   dense
                   icon="folder_open"
                   color="primary"
-                  @click="browseFolder"
+                  @click="browseFolder('backup')"
                 >
                   <q-tooltip>Ordner über Explorer auswählen (Desktop)</q-tooltip>
                 </q-btn>
@@ -165,7 +165,66 @@
                   icon="dns"
                   color="secondary"
                   class="q-ml-xs"
-                  @click="openRemoteFolderBrowser"
+                  @click="openRemoteFolderBrowser('backup')"
+                >
+                  <q-tooltip>Server-Ordner durchsuchen (Web / Server)</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <!-- Exchange Path Configuration Card (Google Drive / iDrive / Cloud) -->
+    <q-card flat bordered class="rounded-borders shadow-2 q-mt-md">
+      <q-card-section>
+        <div class="row items-center justify-between">
+          <div class="row items-center">
+            <q-icon name="cloud_sync" size="sm" color="teal-7" class="q-mr-sm" />
+            <span class="text-h6 text-weight-bold">Startpunkt Datenaustausch (Google Drive / iDrive / Cloud)</span>
+          </div>
+          <q-btn
+            color="teal-7"
+            icon="save"
+            label="Pfad Speichern"
+            @click="saveExchangePath"
+            :loading="savingExchangePath"
+            unelevated
+          />
+        </div>
+        <div class="text-caption text-grey-7 q-mt-xs">
+          Geben Sie hier den übergeordneten Startpunkt für den Datenaustausch (z. B. <code>G:/Meine Ablage/Huhnlite</code>) an. Für jeden Mandanten werden darunter automatisch die Verzeichnisse <code>Mandant-n/Export/</code> und <code>Mandant-n/Import/</code> verwendet und bei Bedarf angelegt.
+        </div>
+        <div class="row items-center q-mt-md q-col-gutter-sm">
+          <div class="col">
+            <q-input
+              v-model="exchangePath"
+              label="Datenaustausch-Startpunkt (z.B. G:\Meine Ablage\Huhnlite)"
+              outlined
+              dense
+              clearable
+              placeholder="z.B. G:\Meine Ablage\Huhnlite"
+            >
+              <template v-slot:append>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="folder_open"
+                  color="teal-7"
+                  @click="browseFolder('exchange')"
+                >
+                  <q-tooltip>Ordner über Explorer auswählen (Desktop)</q-tooltip>
+                </q-btn>
+                <q-btn
+                  flat
+                  round
+                  dense
+                  icon="dns"
+                  color="secondary"
+                  class="q-ml-xs"
+                  @click="openRemoteFolderBrowser('exchange')"
                 >
                   <q-tooltip>Server-Ordner durchsuchen (Web / Server)</q-tooltip>
                 </q-btn>
@@ -404,6 +463,8 @@ const exportingId = ref<number | null>(null);
 
 const backupPath = ref('');
 const savingPath = ref(false);
+const exchangePath = ref('');
+const savingExchangePath = ref(false);
 
 interface FolderItem {
   name: string;
@@ -411,6 +472,7 @@ interface FolderItem {
 }
 
 const showRemoteFolderDialog = ref(false);
+const remoteFolderTarget = ref<'backup' | 'exchange'>('backup');
 const currentBrowsePath = ref('');
 const parentBrowsePath = ref('');
 const availableDrives = ref<string[]>([]);
@@ -462,6 +524,7 @@ async function loadTenants() {
     tenants.value = res.data.tenants || [];
     activeMandant.value = res.data.active_mandant;
     backupPath.value = res.data.backup_path || '';
+    exchangePath.value = res.data.exchange_path || '';
     dbEngine.value = res.data.db_engine || 'sqlite';
   } catch (err: any) {
     $q.notify({
@@ -488,6 +551,24 @@ async function saveBackupPath() {
     });
   } finally {
     savingPath.value = false;
+  }
+}
+
+async function saveExchangePath() {
+  savingExchangePath.value = true;
+  try {
+    await api.post('/api/tenants/exchange-path', { exchange_path: exchangePath.value.trim() });
+    $q.notify({
+      type: 'positive',
+      message: 'Datenaustausch-Startpunkt erfolgreich gespeichert.'
+    });
+  } catch (err: any) {
+    $q.notify({
+      type: 'negative',
+      message: 'Fehler beim Speichern des Datenaustausch-Pfads: ' + (err.response?.data?.error || err.message)
+    });
+  } finally {
+    savingExchangePath.value = false;
   }
 }
 
@@ -522,31 +603,41 @@ function onDriveChange(drive: string) {
   }
 }
 
-function openRemoteFolderBrowser() {
+function openRemoteFolderBrowser(target: 'backup' | 'exchange' = 'backup') {
+  remoteFolderTarget.value = target;
   showRemoteFolderDialog.value = true;
-  fetchRemoteDirs(backupPath.value);
+  fetchRemoteDirs(target === 'backup' ? backupPath.value : exchangePath.value);
 }
 
 function confirmRemoteFolder() {
   if (currentBrowsePath.value) {
-    backupPath.value = currentBrowsePath.value;
+    if (remoteFolderTarget.value === 'backup') {
+      backupPath.value = currentBrowsePath.value;
+    } else {
+      exchangePath.value = currentBrowsePath.value;
+    }
   }
   showRemoteFolderDialog.value = false;
 }
 
-async function browseFolder() {
+async function browseFolder(target: 'backup' | 'exchange' = 'backup') {
+  const currentVal = target === 'backup' ? backupPath.value : exchangePath.value;
   const isWailsDesktop = !!((window as any).go?.main?.App?.SelectBackupDirectory);
 
   if (isWailsDesktop) {
     try {
       let selected = '';
       if (typeof SelectBackupDirectory === 'function') {
-        selected = await SelectBackupDirectory(backupPath.value);
+        selected = await SelectBackupDirectory(currentVal);
       } else {
-        selected = await (window as any).go.main.App.SelectBackupDirectory(backupPath.value);
+        selected = await (window as any).go.main.App.SelectBackupDirectory(currentVal);
       }
       if (selected) {
-        backupPath.value = selected;
+        if (target === 'backup') {
+          backupPath.value = selected;
+        } else {
+          exchangePath.value = selected;
+        }
       }
       return;
     } catch (err: any) {
@@ -556,9 +647,13 @@ async function browseFolder() {
 
   // In Server Mode (Web Browser): Try backend REST API for native Explorer dialog on Server host
   try {
-    const res = await api.post('/api/system/select-dir', { path: backupPath.value });
+    const res = await api.post('/api/system/select-dir', { path: currentVal });
     if (res.data.status === 'success' && res.data.path) {
-      backupPath.value = res.data.path;
+      if (target === 'backup') {
+        backupPath.value = res.data.path;
+      } else {
+        exchangePath.value = res.data.path;
+      }
       return;
     }
   } catch (err: any) {
@@ -566,7 +661,7 @@ async function browseFolder() {
   }
 
   // Fallback to web server folder browser modal
-  openRemoteFolderBrowser();
+  openRemoteFolderBrowser(target);
 }
 
 async function switchTenant(id: number) {
@@ -708,8 +803,8 @@ async function exportToPWA(id: number) {
     $q.notify({
       type: 'positive',
       message: 'Export erfolgreich!',
-      caption: res.data.message || 'Dateien wurden in DatenAustausch erstellt.',
-      timeout: 5000,
+      caption: res.data.message || (res.data.export_dir ? `Exportiert nach: ${res.data.export_dir}` : 'Dateien wurden exportiert.'),
+      timeout: 6000,
       actions: [{ label: 'OK', color: 'white' }]
     });
   } catch (err: any) {

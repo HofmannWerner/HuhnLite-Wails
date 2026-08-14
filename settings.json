@@ -15,5 +15,6 @@
   "backuptime_2": "",
   "test": 0,
   "test_1": 0,
-  "test_2": 0
+  "test_2": 0,
+  "exchange_path": ""
 }
