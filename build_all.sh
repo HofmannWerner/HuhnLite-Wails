@@ -206,6 +206,27 @@ fi
 
 cp settings_server_mariadb.json build/bin/settings_server_mariadb.json
 
+echo "------------------------------------------"
+echo "🔨 Baue HuhnLite-Server-Postgres (Client-Server Postgres)..."
+if [ -n "$PLATFORM" ]; then
+    export GOOS="$TARGET_OS"
+    export GOARCH="$TARGET_ARCH"
+fi
+
+SERVER_POSTGRES_NAME="HuhnLite-Server-Postgres"
+if [ "$TARGET_OS" = "windows" ]; then
+    SERVER_POSTGRES_NAME="HuhnLite-Server-Postgres.exe"
+fi
+
+go build -ldflags="-w -s" -o "build/bin/$SERVER_POSTGRES_NAME" .
+
+if [ -n "$PLATFORM" ]; then
+    unset GOOS
+    unset GOARCH
+fi
+
+cp settings_server_postgres.json build/bin/settings_server_postgres.json
+
 echo "📋 Copying help files and SQL files to build/bin..."
 for f in HuhnLite_*.PDF HuhnLite_*.pdf build/local_temp/HuhnLite_*.PDF build/local_temp/HuhnLite_*.pdf; do
     [ -f "$f" ] && cp "$f" build/bin/
@@ -286,6 +307,27 @@ EOF
 
         run_hdiutil hdiutil create -volname "HuhnLite Server MariaDB" -srcfolder build/bin/server-mariadb-temp -size 300m -ov -format UDZO "build/bin/HuhnLite-Server-MariaDB.dmg"
         rm -rf build/bin/server-mariadb-temp
+        sleep 3
+    fi
+    if [ -f "build/bin/HuhnLite-Server-Postgres" ]; then
+        mkdir -p build/bin/server-postgres-temp
+        cp build/bin/HuhnLite-Server-Postgres build/bin/server-postgres-temp/
+        cp build/bin/settings_server_postgres.json build/bin/server-postgres-temp/settings_server_postgres.json
+
+        cat << 'EOF' > build/bin/server-postgres-temp/install.command
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+TARGET_DIR="$HOME/Library/Application Support/HuhnLite"
+mkdir -p "$TARGET_DIR"
+cp "$DIR/settings_server_postgres.json" "$TARGET_DIR/settings_server_postgres.json" 2>/dev/null || true
+echo "✅ HuhnLite-Server-Postgres-Dateien nach $TARGET_DIR installiert."
+echo "Starte HuhnLite-Server-Postgres..."
+"$DIR/HuhnLite-Server-Postgres"
+EOF
+        chmod +x build/bin/server-postgres-temp/install.command
+
+        run_hdiutil hdiutil create -volname "HuhnLite Server Postgres" -srcfolder build/bin/server-postgres-temp -size 300m -ov -format UDZO "build/bin/HuhnLite-Server-Postgres.dmg"
+        rm -rf build/bin/server-postgres-temp
         sleep 3
     fi
 fi

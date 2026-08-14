@@ -1,6 +1,5 @@
 <template>
   <q-page class="column items-center justify-center q-pa-lg">
-    <!-- Title -->
     <!-- Title Section -->
     <div class="text-center q-mb-xl" style="line-height: 1.1;">
       <div class="text-weight-bolder text-primary title-text">
@@ -101,15 +100,15 @@
       </div>
 
     </div>
-    
+
     <div class="q-mt-xl column items-center q-gutter-y-sm">
       <div class="row items-center q-gutter-md">
         <div class="text-grey-6 text-caption">
           Version vom {{ buildTime }}
         </div>
-        <q-badge v-if="dbStatus.engine" :color="dbStatus.engine === 'mysql' ? 'orange-9' : (dbStatus.engine === 'sqlite' ? 'blue-8' : 'negative')" class="q-pa-sm text-weight-bold">
+        <q-badge v-if="dbStatus.engine" :color="dbStatus.engine === 'postgres' ? 'indigo-7' : (dbStatus.engine === 'mysql' ? 'orange-9' : (dbStatus.engine === 'sqlite' ? 'blue-8' : 'negative'))" class="q-pa-sm text-weight-bold">
           <q-icon :name="dbStatus.engine === 'offline' ? 'link_off' : 'database'" class="q-mr-xs" />
-          {{ dbStatus.engine === 'mysql' ? 'MariaDB' : (dbStatus.engine === 'sqlite' ? 'SQLite' : 'Offline') }}
+          {{ dbStatus.engine === 'postgres' ? 'PostgreSQL' : (dbStatus.engine === 'mysql' ? 'MariaDB' : (dbStatus.engine === 'sqlite' ? 'SQLite' : 'Offline')) }}
           <q-tooltip>
             {{ dbStatus.engine === 'offline' ? 'FEHLER: ' + (dbStatus.error || 'Keine Verbindung') : 'Verbindung: ' + dbStatus.host }}
           </q-tooltip>
@@ -170,50 +169,33 @@ const buildTime = process.env.BUILD_TIME;
 
 <style scoped>
 .title-text {
-  font-size: 4rem;
-  font-family: 'Inter', 'Roboto', sans-serif;
-  letter-spacing: -2px;
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
-  line-height: 1;
-}
-.subtitle-text {
-  font-size: 2rem;
-  font-weight: 500;
-  letter-spacing: 1px;
-  margin-top: -0.2rem;
-}
-.hover-scale {
-  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border-radius: 16px;
-  overflow: hidden;
-}
-.hover-scale:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22) !important;
-}
-.bg-primary {
-  background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
-}
-.bg-secondary {
-  background: linear-gradient(135deg, #26A69A 0%, #00897B 100%);
-}
-.bg-info {
-  background: linear-gradient(135deg, #31CCEC 0%, #00ACC1 100%);
-}
-.bg-accent {
-  background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  letter-spacing: -1px;
 }
 
-.bg-auth {
-  background: linear-gradient(135deg, #FF5722 0%, #E64A19 100%);
+.subtitle-text {
+  font-size: clamp(1.1rem, 2vw, 1.6rem);
+}
+
+.hover-scale {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.hover-scale:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15) !important;
 }
 
 .hover-shadow-premium {
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .hover-shadow-premium:hover {
-  transform: scale(1.01);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2) !important;
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25) !important;
+}
+
+.bg-auth {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 </style>

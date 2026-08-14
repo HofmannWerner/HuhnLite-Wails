@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -28,6 +30,77 @@ type Config struct {
 	BackupPath         string `json:"backup_path"`
 	HasCLILanguage     bool   `json:"-"`
 	ConfigFilePath     string `json:"-"`
+}
+
+// ApplyMandantToDBConnection appends "-<mandantID>" to the database name in the connection string
+// for MySQL / MariaDB and PostgreSQL. For SQLite, it returns connStr unchanged.
+func ApplyMandantToDBConnection(engine string, connStr string, mandantID int) string {
+	if mandantID <= 0 || strings.TrimSpace(connStr) == "" {
+		return connStr
+	}
+
+	engine = strings.ToLower(strings.TrimSpace(engine))
+	if engine == "mysql" || engine == "mariadb" {
+		// MySQL DSN format: [user[:pass]@][proto(addr)]/dbname[?query]
+		query := ""
+		prefix := connStr
+		if qIdx := strings.Index(connStr, "?"); qIdx != -1 {
+			query = connStr[qIdx:]
+			prefix = connStr[:qIdx]
+		}
+		if slashIdx := strings.LastIndex(prefix, "/"); slashIdx != -1 {
+			baseDb := prefix[slashIdx+1:]
+			if baseDb != "" {
+				newDb := fmt.Sprintf("%s-%d", baseDb, mandantID)
+				return prefix[:slashIdx+1] + newDb + query
+			}
+		}
+		return connStr
+	}
+
+	if engine == "postgres" || engine == "postgresql" {
+		// 1. Check URL format (postgres:// or postgresql://)
+		if strings.HasPrefix(connStr, "postgres://") || strings.HasPrefix(connStr, "postgresql://") {
+			u, err := url.Parse(connStr)
+			if err == nil && u.Scheme != "" {
+				baseDb := strings.TrimPrefix(u.Path, "/")
+				if baseDb != "" {
+					u.Path = "/" + fmt.Sprintf("%s-%d", baseDb, mandantID)
+					return u.String()
+				}
+			}
+		}
+
+		// 2. Check key-value format with dbname=
+		reDbName := regexp.MustCompile(`\bdbname=([^\s]+)`)
+		if reDbName.MatchString(connStr) {
+			return reDbName.ReplaceAllStringFunc(connStr, func(match string) string {
+				parts := strings.SplitN(match, "=", 2)
+				if len(parts) == 2 {
+					return fmt.Sprintf("dbname=%s-%d", parts[1], mandantID)
+				}
+				return match
+			})
+		}
+
+		// 3. Fallback: slash-based replacement
+		query := ""
+		prefix := connStr
+		if qIdx := strings.Index(connStr, "?"); qIdx != -1 {
+			query = connStr[qIdx:]
+			prefix = connStr[:qIdx]
+		}
+		if slashIdx := strings.LastIndex(prefix, "/"); slashIdx != -1 {
+			baseDb := prefix[slashIdx+1:]
+			if baseDb != "" {
+				newDb := fmt.Sprintf("%s-%d", baseDb, mandantID)
+				return prefix[:slashIdx+1] + newDb + query
+			}
+		}
+		return connStr
+	}
+
+	return connStr
 }
 
 type safeWriter struct {
@@ -130,8 +203,10 @@ func LoadConfig() Config {
 			"HuhnLite_prod.db",
 			"settings.json",
 			"settings_mariadb.json",
+			"settings_postgres.json",
 			"settings_server.json",
 			"settings_server_mariadb.json",
+			"settings_server_postgres.json",
 		}
 		for _, f := range filesToCopy {
 			src := filepath.Join(sourceDirForCopy, f)
@@ -201,6 +276,12 @@ func LoadConfig() Config {
 		if (strings.Contains(fullPath, "server") || strings.Contains(fullPath, "select")) && strings.Contains(fullPath, "mariadb") {
 			configFiles = []string{"settings_server_mariadb.json", "settings_mariadb.json", "settings.json"}
 			log.Printf("Server/Select-MariaDB-Modus erkannt, priorisiere settings_server_mariadb.json")
+		} else if (strings.Contains(fullPath, "server") || strings.Contains(fullPath, "select")) && (strings.Contains(fullPath, "postgres") || strings.Contains(fullPath, "pg")) {
+			configFiles = []string{"settings_server_postgres.json", "settings_postgres.json", "settings.json"}
+			log.Printf("Server/Select-Postgres-Modus erkannt, priorisiere settings_server_postgres.json")
+		} else if strings.Contains(fullPath, "postgres") || strings.Contains(fullPath, "pg") {
+			configFiles = []string{"settings_postgres.json", "settings.json"}
+			log.Printf("Postgres-Modus erkannt, priorisiere settings_postgres.json")
 		} else if strings.Contains(fullPath, "mariadb") {
 			configFiles = []string{"settings_mariadb.json", "settings.json"}
 			log.Printf("MariaDB-Modus erkannt, priorisiere settings_mariadb.json")
@@ -255,23 +336,23 @@ func LoadConfig() Config {
 						}
 
 						if cfg.Mandant > 0 {
-							prodBase := "HuhnLite_prod.db"
-							if cfg.DBConnectionString != "" {
-								prodBase = filepath.Base(cfg.DBConnectionString)
-							}
-							testBase := "HuhnLite_test.db"
-							if cfg.DBConnectionTest != "" {
-								testBase = filepath.Base(cfg.DBConnectionTest)
-							}
-
-							settingsDir := filepath.Dir(p)
-							if isProgramFiles && appDataDir != "" {
-								settingsDir = appDataDir
-							}
-							cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
-							cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
-
 							if cfg.DBEngine == "sqlite" {
+								prodBase := "HuhnLite_prod.db"
+								if cfg.DBConnectionString != "" {
+									prodBase = filepath.Base(cfg.DBConnectionString)
+								}
+								testBase := "HuhnLite_test.db"
+								if cfg.DBConnectionTest != "" {
+									testBase = filepath.Base(cfg.DBConnectionTest)
+								}
+
+								settingsDir := filepath.Dir(p)
+								if isProgramFiles && appDataDir != "" {
+									settingsDir = appDataDir
+								}
+								cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
+								cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
+
 								mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
 								if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
 									mandantProdPath := filepath.Join(mandantDir, prodBase)
@@ -291,6 +372,11 @@ func LoadConfig() Config {
 											_ = copyFile(srcTest, mandantTestPath)
 										}
 									}
+								}
+							} else {
+								cfg.DBConnectionString = ApplyMandantToDBConnection(cfg.DBEngine, cfg.DBConnectionString, cfg.Mandant)
+								if cfg.DBConnectionTest != "" {
+									cfg.DBConnectionTest = ApplyMandantToDBConnection(cfg.DBEngine, cfg.DBConnectionTest, cfg.Mandant)
 								}
 							}
 
@@ -481,24 +567,24 @@ func LoadConfig() Config {
 	}
 
 	if ov.Mandant != nil {
-		settingsDir := filepath.Dir(cfg.ConfigFilePath)
-		if isProgramFiles && appDataDir != "" {
-			settingsDir = appDataDir
-		} else if cfg.ConfigFilePath == "" {
-			if bundleDir != "" && !isProgramFiles {
-				settingsDir = bundleDir
-			} else {
-				settingsDir = cwd
-			}
-		}
-
-		prodBase := "HuhnLite_prod.db"
-		testBase := "HuhnLite_test.db"
-
-		cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
-		cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
-
 		if cfg.DBEngine == "sqlite" {
+			settingsDir := filepath.Dir(cfg.ConfigFilePath)
+			if isProgramFiles && appDataDir != "" {
+				settingsDir = appDataDir
+			} else if cfg.ConfigFilePath == "" {
+				if bundleDir != "" && !isProgramFiles {
+					settingsDir = bundleDir
+				} else {
+					settingsDir = cwd
+				}
+			}
+
+			prodBase := "HuhnLite_prod.db"
+			testBase := "HuhnLite_test.db"
+
+			cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
+			cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
+
 			mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
 			if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
 				mandantProdPath := filepath.Join(mandantDir, prodBase)
@@ -518,6 +604,11 @@ func LoadConfig() Config {
 						_ = copyFile(srcTest, mandantTestPath)
 					}
 				}
+			}
+		} else {
+			cfg.DBConnectionString = ApplyMandantToDBConnection(cfg.DBEngine, cfg.DBConnectionString, cfg.Mandant)
+			if cfg.DBConnectionTest != "" {
+				cfg.DBConnectionTest = ApplyMandantToDBConnection(cfg.DBEngine, cfg.DBConnectionTest, cfg.Mandant)
 			}
 		}
 
@@ -596,6 +687,8 @@ func SaveTestSetting(testVal int, engine string) error {
 	configName := "settings.json"
 	if engine == "mysql" {
 		configName = "settings_mariadb.json"
+	} else if engine == "postgres" {
+		configName = "settings_postgres.json"
 	}
 
 	cwd, _ := os.Getwd()

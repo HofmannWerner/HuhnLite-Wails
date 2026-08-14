@@ -102,6 +102,7 @@ jobs:
             mv build/intel/HuhnLite-MariaDB.dmg HuhnLite-MariaDB-macOS-Intel.dmg
             mv build/intel/HuhnLite-Server.dmg HuhnLite-Server-macOS-Intel.dmg
             mv build/intel/HuhnLite-Server-MariaDB.dmg HuhnLite-Server-MariaDB-macOS-Intel.dmg
+            mv build/intel/HuhnLite-Server-Postgres.dmg HuhnLite-Server-Postgres-macOS-Intel.dmg 2>/dev/null || true
 
             # Build Silicon ZIP and move DMGs
             cd build/silicon
@@ -111,6 +112,7 @@ jobs:
             mv build/silicon/HuhnLite-MariaDB.dmg HuhnLite-MariaDB-macOS-Silicon.dmg
             mv build/silicon/HuhnLite-Server.dmg HuhnLite-Server-macOS-Silicon.dmg
             mv build/silicon/HuhnLite-Server-MariaDB.dmg HuhnLite-Server-MariaDB-macOS-Silicon.dmg
+            mv build/silicon/HuhnLite-Server-Postgres.dmg HuhnLite-Server-Postgres-macOS-Silicon.dmg 2>/dev/null || true
           else
             zip -r HuhnLite-Wails-${{ matrix.os }}.zip build/bin/
           fi

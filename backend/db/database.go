@@ -8,16 +8,19 @@ import (
 
 	_ "github.com/glebarez/go-sqlite"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 
 	"huhnlite-wails/backend/config"
 	"huhnlite-wails/backend/db/repo"
 	"huhnlite-wails/backend/db/repo_mysql"
+	"huhnlite-wails/backend/db/repo_postgres"
 )
 
 type DB struct {
 	SQL           *sql.DB
 	Repo          repo.Querier
 	RepoMySQL     *repo_mysql.Queries
+	RepoPostgres  *repo_postgres.Queries
 	Config        config.Config
 	Engine        string
 	ActiveConnStr string
@@ -37,6 +40,9 @@ func Connect(cfg config.Config) (*DB, error) {
 	} else if cfg.DBEngine == "mysql" {
 		// Expecting MariaDB/MySQL DSN
 		conn, err = sql.Open("mysql", connStr)
+	} else if cfg.DBEngine == "postgres" {
+		// Expecting PostgreSQL DSN or URI
+		conn, err = sql.Open("postgres", connStr)
 	} else {
 		return nil, fmt.Errorf("unsupported database engine: %s", cfg.DBEngine)
 	}
@@ -46,58 +52,10 @@ func Connect(cfg config.Config) (*DB, error) {
 		// Renaming SYSTEM to SYSTEM_KZ to avoid reserved word conflicts
 		tables := []string{"TEXTE", "TEXT_TYPEN"}
 		for _, table := range tables {
-			var hasOldColumn bool
-			if cfg.DBEngine == "sqlite" {
-				// Check for old column in SQLite
-				checkQuery := fmt.Sprintf("PRAGMA table_info(%s)", table)
-				rows, err := conn.Query(checkQuery)
-				if err == nil {
-					for rows.Next() {
-						var cid int
-						var name, dtype string
-						var notnull, pk int
-						var dflt_value interface{}
-						if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil {
-							if name == "SYSTEM" {
-								hasOldColumn = true
-							}
-						}
-					}
-					rows.Close()
-				}
-			} else {
-				// Check for old column in MariaDB/MySQL
-				checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE 'SYSTEM'", table)
-				var dummy string
-				err := conn.QueryRow(checkQuery).Scan(&dummy, &dummy, &dummy, &dummy, &dummy, &dummy)
-				if err == nil {
-					hasOldColumn = true
-				}
-			}
+			var hasOldColumn bool = hasTableColumn(conn, cfg.DBEngine, table, "SYSTEM")
 
 			if hasOldColumn {
-				// Check if SYSTEM_KZ also exists
-				hasNewColumn := false
-				if cfg.DBEngine == "sqlite" {
-					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
-						for rows.Next() {
-							var cid int
-							var name, dtype string
-							var notnull, pk int
-							var dflt_value interface{}
-							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == "SYSTEM_KZ" {
-								hasNewColumn = true
-							}
-						}
-						rows.Close()
-					}
-				} else {
-					var dummy string
-					err := conn.QueryRow(fmt.Sprintf("SHOW COLUMNS FROM %s LIKE 'SYSTEM_KZ'", table)).Scan(&dummy, &dummy, &dummy, &dummy, &dummy, &dummy)
-					if err == nil {
-						hasNewColumn = true
-					}
-				}
+				hasNewColumn := hasTableColumn(conn, cfg.DBEngine, table, "SYSTEM_KZ")
 
 				if hasNewColumn {
 					log.Printf("[DB] Both SYSTEM and SYSTEM_KZ exist in %s, dropping old SYSTEM column...", table)
@@ -123,9 +81,10 @@ func Connect(cfg config.Config) (*DB, error) {
 					}
 				}
 			} else {
-				// Try to add the new column SYSTEM_KZ if it doesn't exist
-				if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN SYSTEM_KZ INTEGER NOT NULL DEFAULT 0", table)); err == nil {
-					log.Printf("[DB] Successfully added SYSTEM_KZ column to %s (%s)", table, cfg.DBEngine)
+				if !hasTableColumn(conn, cfg.DBEngine, table, "SYSTEM_KZ") {
+					if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN SYSTEM_KZ INTEGER NOT NULL DEFAULT 0", table)); err == nil {
+						log.Printf("[DB] Successfully added SYSTEM_KZ column to %s (%s)", table, cfg.DBEngine)
+					}
 				}
 			}
 		}
@@ -147,31 +106,7 @@ func Connect(cfg config.Config) (*DB, error) {
 				{"BEMERKUNG", "TEXT"},
 			}
 			for _, col := range columns {
-				var hasColumn bool
-				if cfg.DBEngine == "sqlite" {
-					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
-						for rows.Next() {
-							var cid int
-							var name, dtype string
-							var notnull, pk int
-							var dflt_value interface{}
-							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
-								hasColumn = true
-							}
-						}
-						rows.Close()
-					}
-				} else {
-					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
-					// Scan columns (Field, Type, Null, Key, Default, Extra)
-					rows, err := conn.Query(checkQuery)
-					if err == nil {
-						if rows.Next() {
-							hasColumn = true
-						}
-						rows.Close()
-					}
-				}
+				var hasColumn bool = hasTableColumn(conn, cfg.DBEngine, table, col.name)
 				if !hasColumn {
 					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
 					spec := col.spec
@@ -197,30 +132,7 @@ func Connect(cfg config.Config) (*DB, error) {
 				{"ZEITSTEMPEL", "VARCHAR(50) DEFAULT '0001-01-01 00:00:00'"},
 			}
 			for _, col := range columns {
-				var hasColumn bool
-				if cfg.DBEngine == "sqlite" {
-					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
-						for rows.Next() {
-							var cid int
-							var name, dtype string
-							var notnull, pk int
-							var dflt_value interface{}
-							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
-								hasColumn = true
-							}
-						}
-						rows.Close()
-					}
-				} else {
-					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
-					rows, err := conn.Query(checkQuery)
-					if err == nil {
-						if rows.Next() {
-							hasColumn = true
-						}
-						rows.Close()
-					}
-				}
+				var hasColumn bool = hasTableColumn(conn, cfg.DBEngine, table, col.name)
 				if !hasColumn {
 					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
 					spec := col.spec
@@ -246,30 +158,7 @@ func Connect(cfg config.Config) (*DB, error) {
 				{"ZEITSTEMPEL", "VARCHAR(50) DEFAULT ''"},
 			}
 			for _, col := range columns {
-				var hasColumn bool
-				if cfg.DBEngine == "sqlite" {
-					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
-						for rows.Next() {
-							var cid int
-							var name, dtype string
-							var notnull, pk int
-							var dflt_value interface{}
-							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
-								hasColumn = true
-							}
-						}
-						rows.Close()
-					}
-				} else {
-					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
-					rows, err := conn.Query(checkQuery)
-					if err == nil {
-						if rows.Next() {
-							hasColumn = true
-						}
-						rows.Close()
-					}
-				}
+				var hasColumn bool = hasTableColumn(conn, cfg.DBEngine, table, col.name)
 				if !hasColumn {
 					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
 					spec := col.spec
@@ -295,30 +184,7 @@ func Connect(cfg config.Config) (*DB, error) {
 				{"FUTTERVERBRAUCHTIER", "INTEGER NOT NULL DEFAULT 0"},
 			}
 			for _, col := range columns {
-				var hasColumn bool
-				if cfg.DBEngine == "sqlite" {
-					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
-						for rows.Next() {
-							var cid int
-							var name, dtype string
-							var notnull, pk int
-							var dflt_value interface{}
-							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
-								hasColumn = true
-							}
-						}
-						rows.Close()
-					}
-				} else {
-					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
-					rows, err := conn.Query(checkQuery)
-					if err == nil {
-						if rows.Next() {
-							hasColumn = true
-						}
-						rows.Close()
-					}
-				}
+				var hasColumn bool = hasTableColumn(conn, cfg.DBEngine, table, col.name)
 				if !hasColumn {
 					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
 					spec := col.spec
@@ -346,30 +212,7 @@ func Connect(cfg config.Config) (*DB, error) {
 				{"FUTTERINVENTUR", "INTEGER NOT NULL DEFAULT 0"},
 			}
 			for _, col := range columns {
-				var hasColumn bool
-				if cfg.DBEngine == "sqlite" {
-					if rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table)); err == nil {
-						for rows.Next() {
-							var cid int
-							var name, dtype string
-							var notnull, pk int
-							var dflt_value interface{}
-							if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt_value, &pk); err == nil && name == col.name {
-								hasColumn = true
-							}
-						}
-						rows.Close()
-					}
-				} else {
-					checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, col.name)
-					rows, err := conn.Query(checkQuery)
-					if err == nil {
-						if rows.Next() {
-							hasColumn = true
-						}
-						rows.Close()
-					}
-				}
+				var hasColumn bool = hasTableColumn(conn, cfg.DBEngine, table, col.name)
 				if !hasColumn {
 					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
 					spec := col.spec
@@ -396,6 +239,29 @@ func Connect(cfg config.Config) (*DB, error) {
 				log.Printf("[DB] Successfully cleaned up any float FUTTERKTAG values in SQLite")
 			}
 		}
+
+		// Fix für EILAGER (KLASSE6 und KLASSE7 hinzufügen falls fehlend)
+		{
+			table := "EILAGER"
+			columns := []struct {
+				name string
+				spec string
+			}{
+				{"KLASSE6", "VARCHAR(20) DEFAULT ''"},
+				{"KLASSE7", "VARCHAR(20) DEFAULT ''"},
+			}
+			for _, col := range columns {
+				var hasColumn bool = hasTableColumn(conn, cfg.DBEngine, table, col.name)
+				if !hasColumn {
+					log.Printf("[DB] Adding missing column %s to %s (%s)...", col.name, table, cfg.DBEngine)
+					if _, err := conn.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, col.name, col.spec)); err == nil {
+						log.Printf("[DB] Successfully added %s to %s", col.name, table)
+					} else {
+						log.Printf("[DB] Error adding %s to %s: %v", col.name, table, err)
+					}
+				}
+			}
+		}
 	}
 
 	if err != nil {
@@ -411,6 +277,7 @@ func Connect(cfg config.Config) (*DB, error) {
 	d := &DB{
 		SQL:           conn,
 		RepoMySQL:     repo_mysql.New(conn),
+		RepoPostgres:  repo_postgres.New(conn),
 		Config:        cfg,
 		Engine:        cfg.DBEngine,
 		ActiveConnStr: connStr,
@@ -419,6 +286,8 @@ func Connect(cfg config.Config) (*DB, error) {
 
 	if cfg.DBEngine == "mysql" {
 		d.Repo = NewMySQLWrapper(repo.New(conn), d.RepoMySQL, conn)
+	} else if cfg.DBEngine == "postgres" {
+		d.Repo = NewPostgresWrapper(repo.New(conn), d.RepoPostgres, conn)
 	} else {
 		d.Repo = repo.New(conn)
 	}
@@ -434,6 +303,8 @@ func (d *DB) SwitchConnection(connString string, isTest bool) error {
 		conn, err = sql.Open("sqlite", connString)
 	} else if d.Engine == "mysql" {
 		conn, err = sql.Open("mysql", connString)
+	} else if d.Engine == "postgres" {
+		conn, err = sql.Open("postgres", connString)
 	} else {
 		return fmt.Errorf("unsupported database engine: %s", d.Engine)
 	}
@@ -453,8 +324,11 @@ func (d *DB) SwitchConnection(connString string, isTest bool) error {
 
 	d.SQL = conn
 	d.RepoMySQL = repo_mysql.New(conn)
+	d.RepoPostgres = repo_postgres.New(conn)
 	if d.Engine == "mysql" {
 		d.Repo = NewMySQLWrapper(repo.New(conn), d.RepoMySQL, conn)
+	} else if d.Engine == "postgres" {
+		d.Repo = NewPostgresWrapper(repo.New(conn), d.RepoPostgres, conn)
 	} else {
 		d.Repo = repo.New(conn)
 	}
@@ -464,4 +338,39 @@ func (d *DB) SwitchConnection(connString string, isTest bool) error {
 
 	log.Printf("Successfully switched database (TestMode: %v) to: %s", isTest, connString)
 	return nil
+}
+
+func hasTableColumn(conn *sql.DB, engine, table, colName string) bool {
+	if engine == "sqlite" {
+		rows, err := conn.Query(fmt.Sprintf("PRAGMA table_info(%s)", table))
+		if err != nil {
+			return false
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var cid int
+			var name, dtype string
+			var notnull, pk int
+			var dflt interface{}
+			if err := rows.Scan(&cid, &name, &dtype, &notnull, &dflt, &pk); err == nil {
+				if strings.EqualFold(name, colName) {
+					return true
+				}
+			}
+		}
+		return false
+	} else if engine == "postgres" {
+		checkQuery := fmt.Sprintf("SELECT column_name FROM information_schema.columns WHERE table_name = '%s' AND column_name = '%s'", strings.ToLower(table), strings.ToLower(colName))
+		var dummy string
+		err := conn.QueryRow(checkQuery).Scan(&dummy)
+		return err == nil
+	} else {
+		checkQuery := fmt.Sprintf("SHOW COLUMNS FROM %s LIKE '%s'", table, colName)
+		rows, err := conn.Query(checkQuery)
+		if err != nil {
+			return false
+		}
+		defer rows.Close()
+		return rows.Next()
+	}
 }

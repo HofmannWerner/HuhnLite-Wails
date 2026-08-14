@@ -121,6 +121,10 @@ Section
         File "..\..\..\settings_mariadb.json"
     settings_mariadb_exists:
 
+    IfFileExists "$INSTDIR\settings_postgres.json" settings_postgres_exists
+        File "..\..\..\settings_postgres.json"
+    settings_postgres_exists:
+
     IfFileExists "$INSTDIR\settings_server.json" settings_server_exists
         File "..\..\..\settings_server.json"
     settings_server_exists:
@@ -128,6 +132,10 @@ Section
     IfFileExists "$INSTDIR\settings_server_mariadb.json" settings_server_mariadb_exists
         File "..\..\..\settings_server_mariadb.json"
     settings_server_mariadb_exists:
+
+    IfFileExists "$INSTDIR\settings_server_postgres.json" settings_server_postgres_exists
+        File "..\..\..\settings_server_postgres.json"
+    settings_server_postgres_exists:
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
@@ -151,8 +159,10 @@ Section "uninstall"
     Delete "$INSTDIR\${PRODUCT_EXECUTABLE}"
     Delete "$INSTDIR\settings.json"
     Delete "$INSTDIR\settings_mariadb.json"
+    Delete "$INSTDIR\settings_postgres.json"
     Delete "$INSTDIR\settings_server.json"
     Delete "$INSTDIR\settings_server_mariadb.json"
+    Delete "$INSTDIR\settings_server_postgres.json"
 
 
     RMDir /r "$INSTDIR\pdfjs"

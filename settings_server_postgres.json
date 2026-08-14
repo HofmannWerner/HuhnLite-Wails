@@ -1,8 +1,8 @@
 {
   "mode": "server",
-  "db_engine": "mysql",
-  "db_connection": "root:studio@tcp(127.0.0.1:3307)/huhnlite?parseTime=true&allowNativePasswords=true",
-  "db_connection_test": "root:studio@tcp(127.0.0.1:3307)/huhnlite_test?parseTime=true&allowNativePasswords=true",
+  "db_engine": "postgres",
+  "db_connection": "postgres://postgres:post@192.168.178.28:5432/huhnlite-prod?sslmode=disable",
+  "db_connection_test": "postgres://postgres:post@192.168.178.28:5432/huhnlite-test?sslmode=disable",
   "mandant": 1,
   "mandant_1": "Otto Dotter",
   "mandant_2": "Gustav Hahn",

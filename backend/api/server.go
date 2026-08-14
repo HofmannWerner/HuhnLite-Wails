@@ -5951,6 +5951,7 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			"tenants":        tenants,
 			"backup_path":    database.Config.BackupPath,
 			"waittime":       database.Config.WaitTimeStr,
+			"db_engine":      database.Config.DBEngine,
 		})
 	})
 
@@ -6193,39 +6194,41 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			n++
 		}
 
-		settingsDir := filepath.Dir(p)
-		tenantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", n))
-		if err := os.MkdirAll(tenantDir, 0755); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory: " + err.Error()})
-			return
-		}
+		if database.Config.DBEngine == "sqlite" {
+			settingsDir := filepath.Dir(p)
+			tenantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", n))
+			if err := os.MkdirAll(tenantDir, 0755); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create directory: " + err.Error()})
+				return
+			}
 
-		refDbName := "HuhnLite.db"
-		if dbVal, ok := configMap["db_connection"].(string); ok && dbVal != "" {
-			refDbName = dbVal
-		}
-		refDbPath := filepath.Join(settingsDir, refDbName)
+			refDbName := "HuhnLite.db"
+			if dbVal, ok := configMap["db_connection"].(string); ok && dbVal != "" {
+				refDbName = dbVal
+			}
+			refDbPath := filepath.Join(settingsDir, refDbName)
 
-		if _, err := os.Stat(refDbPath); os.IsNotExist(err) {
-			refDbPath = filepath.Join(settingsDir, "HuhnLite.db")
 			if _, err := os.Stat(refDbPath); os.IsNotExist(err) {
-				refDbPath = filepath.Join(settingsDir, "HuhnLite_prod.db")
+				refDbPath = filepath.Join(settingsDir, "HuhnLite.db")
 				if _, err := os.Stat(refDbPath); os.IsNotExist(err) {
-					refDbPath = database.ActiveConnStr
+					refDbPath = filepath.Join(settingsDir, "HuhnLite_prod.db")
+					if _, err := os.Stat(refDbPath); os.IsNotExist(err) {
+						refDbPath = database.ActiveConnStr
+					}
 				}
 			}
-		}
 
-		prodDbPath := filepath.Join(tenantDir, "HuhnLite_prod.db")
-		testDbPath := filepath.Join(tenantDir, "HuhnLite_test.db")
+			prodDbPath := filepath.Join(tenantDir, "HuhnLite_prod.db")
+			testDbPath := filepath.Join(tenantDir, "HuhnLite_test.db")
 
-		if err := copyFile(refDbPath, prodDbPath); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy reference database (prod): " + err.Error()})
-			return
-		}
-		if err := copyFile(refDbPath, testDbPath); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy reference database (test): " + err.Error()})
-			return
+			if err := copyFile(refDbPath, prodDbPath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy reference database (prod): " + err.Error()})
+				return
+			}
+			if err := copyFile(refDbPath, testDbPath); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy reference database (test): " + err.Error()})
+				return
+			}
 		}
 
 		configMap[fmt.Sprintf("mandant_%d", n)] = req.Name
@@ -6401,23 +6404,49 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 			}
 		}
 
-		var dbFilename string
-		if isTest {
-			dbFilename = "HuhnLite_test.db"
+		var tenantDB *sql.DB
+		if database.Config.DBEngine == "sqlite" {
+			var dbFilename string
+			if isTest {
+				dbFilename = "HuhnLite_test.db"
+			} else {
+				dbFilename = "HuhnLite_prod.db"
+			}
+
+			dbPath := filepath.Join(tenantDir, dbFilename)
+			if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+				c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Datenbankdatei für Mandant %d nicht gefunden: %s", req.ID, dbPath)})
+				return
+			}
+
+			var errOpen error
+			tenantDB, errOpen = sql.Open("sqlite", dbPath)
+			if errOpen != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Öffnen der Mandanten-Datenbank: " + errOpen.Error()})
+				return
+			}
 		} else {
-			dbFilename = "HuhnLite_prod.db"
-		}
-
-		dbPath := filepath.Join(tenantDir, dbFilename)
-		if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Datenbankdatei für Mandant %d nicht gefunden: %s", req.ID, dbPath)})
-			return
-		}
-
-		tenantDB, err := sql.Open("sqlite", dbPath)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Öffnen der Mandanten-Datenbank: " + err.Error()})
-			return
+			baseConnStr := ""
+			if isTest {
+				if val, ok := configMap["db_connection_test"].(string); ok && val != "" {
+					baseConnStr = val
+				} else {
+					baseConnStr = database.Config.DBConnectionTest
+				}
+			} else {
+				if val, ok := configMap["db_connection"].(string); ok && val != "" {
+					baseConnStr = val
+				} else {
+					baseConnStr = database.Config.DBConnectionString
+				}
+			}
+			tenantConnStr := appconfig.ApplyMandantToDBConnection(database.Config.DBEngine, baseConnStr, req.ID)
+			var errOpen error
+			tenantDB, errOpen = sql.Open(database.Config.DBEngine, tenantConnStr)
+			if errOpen != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Fehler beim Verbinden zur Mandanten-Datenbank: " + errOpen.Error()})
+				return
+			}
 		}
 		defer tenantDB.Close()
 

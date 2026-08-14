@@ -134,6 +134,26 @@ if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
 }
 
 Write-Host "------------------------------------------" -ForegroundColor Cyan
+Write-Host "Baue HuhnLite-Postgres (PostgreSQL)..."
+Set-WailsName "HuhnLite-Postgres"
+& $WAILS $buildArgs
+
+if (Test-Path "settings_postgres.json") {
+    if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
+    Copy-Item "settings_postgres.json" "build\bin\settings_postgres.json" -Force
+    Write-Host "settings_postgres.json kopiert." -ForegroundColor Gray
+}
+
+if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
+    Write-Host "Erstelle NSIS Installer für HuhnLite-Postgres..." -ForegroundColor Cyan
+    Push-Location "build\windows\installer"
+    & $MAKENSIS /DARG_WAILS_AMD64_BINARY=..\..\bin\HuhnLite-Postgres.exe /DINFO_PROJECTNAME=HuhnLite-Postgres /DINFO_PRODUCTNAME="HuhnLite Postgres" /DPRODUCT_EXECUTABLE=HuhnLite-Postgres.exe project.nsi
+    Pop-Location
+} else {
+    Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Postgres." -ForegroundColor Yellow
+}
+
+Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "Baue HuhnLite-Server (Client-Server SQLite)..."
 $targetOS = "windows"
 if ($Platform) {
@@ -205,6 +225,40 @@ if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyCon
     Pop-Location
 } elseif ($targetOS -eq "windows") {
     Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Server-MariaDB." -ForegroundColor Yellow
+}
+
+Write-Host "------------------------------------------" -ForegroundColor Cyan
+Write-Host "Baue HuhnLite-Server-Postgres (Client-Server Postgres)..."
+if ($Platform) {
+    $env:GOOS = $targetOS
+    $env:GOARCH = $targetArch
+}
+
+$serverPostgresName = "HuhnLite-Server-Postgres"
+if ($targetOS -eq "windows") {
+    $serverPostgresName = "HuhnLite-Server-Postgres.exe"
+}
+
+go build -ldflags="-w -s" -o "build/bin/$serverPostgresName" .
+
+if ($Platform) {
+    $env:GOOS = $oldGOOS
+    $env:GOARCH = $oldGOARCH
+}
+
+if (Test-Path "settings_server_postgres.json") {
+    if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
+    Copy-Item "settings_server_postgres.json" "build\bin\settings_server_postgres.json" -Force
+    Write-Host "settings_server_postgres.json kopiert." -ForegroundColor Gray
+}
+
+if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {
+    Write-Host "Erstelle NSIS Installer für HuhnLite-Server-Postgres..." -ForegroundColor Cyan
+    Push-Location "build\windows\installer"
+    & $MAKENSIS /DARG_WAILS_AMD64_BINARY=..\..\bin\HuhnLite-Server-Postgres.exe /DINFO_PROJECTNAME=HuhnLite-Server-Postgres /DINFO_PRODUCTNAME="HuhnLite Server Postgres" /DPRODUCT_EXECUTABLE=HuhnLite-Server-Postgres.exe /DSETTINGS_FILE=settings_server_postgres.json server.nsi
+    Pop-Location
+} elseif ($targetOS -eq "windows") {
+    Write-Host "NSIS (makensis) nicht gefunden. Überspringe Installer-Build für HuhnLite-Server-Postgres." -ForegroundColor Yellow
 }
 
 Write-Host "Kopiere Hilfedateien und SQL-Dateien in build\bin\..." -ForegroundColor Cyan

@@ -195,8 +195,11 @@
             @keyup.enter="createTenant"
             :rules="[val => !!val || 'Name ist erforderlich']"
           />
-          <div class="text-caption text-grey-7 q-mt-xs">
+          <div class="text-caption text-grey-7 q-mt-xs" v-if="dbEngine === 'sqlite'">
             Ein neues Verzeichnis <code>mandant_n</code> wird angelegt, und die Referenz-Datenbank (HuhnLite.db) wird dorthin kopiert.
+          </div>
+          <div class="text-caption text-grey-7 q-mt-xs" v-else>
+            Die Datenbank für den neuen Mandanten (z. B. mit Suffix <code>-n</code> am Datenbanknamen) muss auf dem Server bereits existieren.
           </div>
         </q-card-section>
 
@@ -393,6 +396,7 @@ interface Tenant {
 
 const tenants = ref<Tenant[]>([]);
 const activeMandant = ref<number | null>(null);
+const dbEngine = ref('sqlite');
 const loading = ref(false);
 const creating = ref(false);
 const switchingId = ref<number | null>(null);
@@ -458,6 +462,7 @@ async function loadTenants() {
     tenants.value = res.data.tenants || [];
     activeMandant.value = res.data.active_mandant;
     backupPath.value = res.data.backup_path || '';
+    dbEngine.value = res.data.db_engine || 'sqlite';
   } catch (err: any) {
     $q.notify({
       type: 'negative',

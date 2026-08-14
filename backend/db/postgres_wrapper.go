@@ -3,50 +3,47 @@ package db
 import (
 	"context"
 	"database/sql"
-	"encoding/base64"
-	"fmt"
 	"huhnlite-wails/backend/db/repo"
-	"huhnlite-wails/backend/db/repo_mysql"
+	"huhnlite-wails/backend/db/repo_postgres"
 	"log"
-	"strconv"
 	"strings"
 )
 
-// MySQLWrapper implementiert das Querier-Interface, nutzt aber intern das MySQL-Repo
-type MySQLWrapper struct {
+// PostgresWrapper implementiert das Querier-Interface, nutzt aber intern das MySQL-Repo
+type PostgresWrapper struct {
 	*repo.Queries
-	mysql *repo_mysql.Queries
+	pg *repo_postgres.Queries
 	db    *sql.DB
 	tx    *sql.Tx
 }
 
-func NewMySQLWrapper(sqlite *repo.Queries, mysql *repo_mysql.Queries, db *sql.DB) *MySQLWrapper {
-	return &MySQLWrapper{
+func NewPostgresWrapper(sqlite *repo.Queries, pg *repo_postgres.Queries, db *sql.DB) *PostgresWrapper {
+	return &PostgresWrapper{
 		Queries: sqlite,
-		mysql:   mysql,
+		pg:      pg,
 		db:      db,
 	}
 }
 
-func (w *MySQLWrapper) WithTx(tx *sql.Tx) *MySQLWrapper {
-	return &MySQLWrapper{
+func (w *PostgresWrapper) WithTx(tx *sql.Tx) *PostgresWrapper {
+	return &PostgresWrapper{
 		Queries: w.Queries.WithTx(tx),
-		mysql:   w.mysql.WithTx(tx),
+		pg:   w.pg.WithTx(tx),
 		db:      w.db,
 		tx:      tx,
 	}
 }
 
-func (w *MySQLWrapper) queryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	log.Printf("[MARIADB-DEBUG] QueryRow: %s | Args: %v", strings.TrimSpace(query), args)
+func (w *PostgresWrapper) queryRow(ctx context.Context, query string, args ...interface{}) *sql.Row {
+	log.Printf("[POSTGRES-DEBUG] QueryRow: %s | Args: %v", strings.TrimSpace(query), args)
 	if w.tx != nil {
 		return w.tx.QueryRowContext(ctx, query, args...)
 	}
 	return w.db.QueryRowContext(ctx, query, args...)
 }
 
-func (w *MySQLWrapper) query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	log.Printf("[MARIADB-DEBUG] Query: %s | Args: %v", strings.TrimSpace(query), args)
+func (w *PostgresWrapper) query(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
+	log.Printf("[POSTGRES-DEBUG] Query: %s | Args: %v", strings.TrimSpace(query), args)
 	var rows *sql.Rows
 	var err error
 	if w.tx != nil {
@@ -55,218 +52,13 @@ func (w *MySQLWrapper) query(ctx context.Context, query string, args ...interfac
 		rows, err = w.db.QueryContext(ctx, query, args...)
 	}
 	if err != nil {
-		log.Printf("[MARIADB-DEBUG] Query Error: %v", err)
+		log.Printf("[POSTGRES-DEBUG] Query Error: %v", err)
 	}
 	return rows, err
 }
 
-// Hilfsfunktionen für Typ-Konvertierung
-func DecodeBase64IfNeeded(s string) string {
-	// Aggressives Dekodieren: Solange es wie Base64 aussieht und wir es dekodieren können, tun wir es.
-	// Das löst das Problem der doppelten Kodierung (ZUE9PQ== -> eA== -> x).
-	current := s
-	for len(current) >= 4 && (strings.HasSuffix(current, "=") || len(current)%4 == 0) {
-		data, err := base64.StdEncoding.DecodeString(current)
-		if err != nil || len(data) == 0 {
-			break
-		}
-		current = string(data)
-		// Wenn wir bei einem einzelnen Zeichen angekommen sind, stop.
-		if len(current) <= 1 {
-			break
-		}
-	}
-	return current
-}
-
-func SanitizeKZ(s string) string {
-	val := DecodeBase64IfNeeded(s)
-	if len(val) > 1 {
-		return val[:1]
-	}
-	if val == "" {
-		return "x"
-	}
-	return val
-}
-
-func toString(v interface{}) string {
-	if v == nil {
-		return ""
-	}
-	switch t := v.(type) {
-	case string:
-		return t
-	case []byte:
-		return string(t)
-	}
-	return fmt.Sprintf("%v", v)
-}
-
-func toFloat(v interface{}) float64 {
-	if v == nil {
-		return 0
-	}
-	switch t := v.(type) {
-	case float64:
-		return t
-	case float32:
-		return float64(t)
-	case int64:
-		return float64(t)
-	case int32:
-		return float64(t)
-	case int:
-		return float64(t)
-	case string:
-		f, _ := strconv.ParseFloat(t, 64)
-		return f
-	case []byte:
-		f, _ := strconv.ParseFloat(string(t), 64)
-		return f
-	}
-	return 0
-}
-func toInt32(v interface{}) int32 {
-	if v == nil {
-		return 0
-	}
-	switch t := v.(type) {
-	case int32:
-		return t
-	case int64:
-		return int32(t)
-	case int:
-		return int32(t)
-	case float64:
-		return int32(t)
-	case string:
-		var i int32
-		fmt.Sscanf(t, "%d", &i)
-		return i
-	case []byte:
-		var i int32
-		fmt.Sscanf(string(t), "%d", &i)
-		return i
-	}
-	return 0
-}
-
-func toInt64(v interface{}) int64 {
-	if v == nil {
-		return 0
-	}
-	switch t := v.(type) {
-	case int64:
-		return t
-	case int32:
-		return int64(t)
-	case int:
-		return int64(t)
-	case float64:
-		return int64(t)
-	case string:
-		var i int64
-		fmt.Sscanf(t, "%d", &i)
-		return i
-	case []byte:
-		var i int64
-		fmt.Sscanf(string(t), "%d", &i)
-		return i
-	}
-	return 0
-}
-func toNullFloat64(v interface{}) sql.NullFloat64 {
-	if v == nil {
-		return sql.NullFloat64{Valid: false}
-	}
-	switch t := v.(type) {
-	case float64:
-		return sql.NullFloat64{Float64: t, Valid: true}
-	case float32:
-		return sql.NullFloat64{Float64: float64(t), Valid: true}
-	case int64:
-		return sql.NullFloat64{Float64: float64(t), Valid: true}
-	case int32:
-		return sql.NullFloat64{Float64: float64(t), Valid: true}
-	case int:
-		return sql.NullFloat64{Float64: float64(t), Valid: true}
-	case []byte:
-		f, _ := strconv.ParseFloat(string(t), 64)
-		return sql.NullFloat64{Float64: f, Valid: true}
-	}
-	return sql.NullFloat64{Valid: false}
-}
-
-func toNullInt64(v interface{}) sql.NullInt64 {
-	if v == nil {
-		return sql.NullInt64{Valid: false}
-	}
-	switch t := v.(type) {
-	case int64:
-		return sql.NullInt64{Int64: t, Valid: true}
-	case int32:
-		return sql.NullInt64{Int64: int64(t), Valid: true}
-	case int:
-		return sql.NullInt64{Int64: int64(t), Valid: true}
-	case float64:
-		return sql.NullInt64{Int64: int64(t), Valid: true}
-	case sql.NullInt32:
-		return sql.NullInt64{Int64: int64(t.Int32), Valid: t.Valid}
-	case sql.NullInt64:
-		return t
-	case []byte:
-		var i int64
-		fmt.Sscanf(string(t), "%lld", &i)
-		return sql.NullInt64{Int64: i, Valid: true}
-	}
-	return sql.NullInt64{Valid: false}
-}
-func toNullInt32(v interface{}) sql.NullInt32 {
-	if v == nil {
-		return sql.NullInt32{Valid: false}
-	}
-	switch t := v.(type) {
-	case int32:
-		return sql.NullInt32{Int32: t, Valid: true}
-	case int64:
-		return sql.NullInt32{Int32: int32(t), Valid: true}
-	case int:
-		return sql.NullInt32{Int32: int32(t), Valid: true}
-	case sql.NullInt64:
-		return sql.NullInt32{Int32: int32(t.Int64), Valid: t.Valid}
-	case []byte:
-		var i int32
-		fmt.Sscanf(string(t), "%d", &i)
-		return sql.NullInt32{Int32: i, Valid: true}
-	}
-	return sql.NullInt32{Valid: false}
-}
-
-func toNullString(v interface{}) sql.NullString {
-	if v == nil {
-		return sql.NullString{Valid: false}
-	}
-	switch t := v.(type) {
-	case string:
-		return sql.NullString{String: t, Valid: true}
-	case sql.NullString:
-		return t
-	case []byte:
-		return sql.NullString{String: string(t), Valid: true}
-	case float64:
-		return sql.NullString{String: fmt.Sprintf("%.2f", t), Valid: true}
-	case sql.NullFloat64:
-		if !t.Valid {
-			return sql.NullString{Valid: false}
-		}
-		return sql.NullString{String: fmt.Sprintf("%.2f", t.Float64), Valid: true}
-	}
-	return sql.NullString{String: fmt.Sprint(v), Valid: true}
-}
-
 // --- Buchung (Leistung) Methoden ---
-func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenRow, error) {
+func (w *PostgresWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenRow, error) {
 	query := `
 		SELECT B.ID, B.ID_HERDEN, B.LW, B.HERDENNUMMER, B.BUCHUNGSDATUM, B.GEWICHTPROBE, B.KONTROLLGEWICHT, 
 		       B.KLASSEA, B.VERLUSTE, B.EIMASSE, B.SCHMUTZ, B.KNICKEIER, B.VOLLEI, B.BRUCHEIER, 
@@ -340,9 +132,9 @@ func (w *MySQLWrapper) ListBuchungen(ctx context.Context) ([]repo.ListBuchungenR
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListBuchungenWithHerde(ctx context.Context) ([]repo.ListBuchungenWithHerdeRow, error) {
+func (w *PostgresWrapper) ListBuchungenWithHerde(ctx context.Context) ([]repo.ListBuchungenWithHerdeRow, error) {
 	log.Printf("[DB] ListBuchungenWithHerde called")
-	res, err := w.mysql.ListBuchungenWithHerde(ctx)
+	res, err := w.pg.ListBuchungenWithHerde(ctx)
 	if err != nil {
 		log.Printf("[DB] ListBuchungenWithHerde Query Error: %v", err)
 		return nil, err
@@ -361,7 +153,7 @@ func (w *MySQLWrapper) ListBuchungenWithHerde(ctx context.Context) ([]repo.ListB
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetBuchung(ctx context.Context, id int64) (repo.Buchung, error) {
+func (w *PostgresWrapper) GetBuchung(ctx context.Context, id int64) (repo.Buchung, error) {
 	query := `
 		SELECT B.ID, B.ID_HERDEN, B.LW, B.HERDENNUMMER, B.BUCHUNGSDATUM, B.GEWICHTPROBE, B.KONTROLLGEWICHT, 
 		       B.KLASSEA, B.VERLUSTE, B.EIMASSE, B.SCHMUTZ, B.KNICKEIER, B.VOLLEI, B.BRUCHEIER, 
@@ -422,8 +214,8 @@ func (w *MySQLWrapper) GetBuchung(ctx context.Context, id int64) (repo.Buchung, 
 }
 
 
-func (w *MySQLWrapper) CreateBuchung(ctx context.Context, arg repo.CreateBuchungParams) (repo.Buchung, error) {
-	res, err := w.mysql.CreateBuchung(ctx, repo_mysql.CreateBuchungParams{
+func (w *PostgresWrapper) CreateBuchung(ctx context.Context, arg repo.CreateBuchungParams) (repo.Buchung, error) {
+	res, err := w.pg.CreateBuchung(ctx, repo_postgres.CreateBuchungParams{
 		IDHerden:        int32(arg.IDHerden),
 		Lw:              int32(arg.Lw),
 		Herdennummer:    int32(arg.Herdennummer),
@@ -457,12 +249,12 @@ func (w *MySQLWrapper) CreateBuchung(ctx context.Context, arg repo.CreateBuchung
 	if err != nil {
 		return repo.Buchung{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetBuchung(ctx, id)
 }
 
-func (w *MySQLWrapper) UpdateBuchung(ctx context.Context, arg repo.UpdateBuchungParams) (repo.Buchung, error) {
-	_, err := w.mysql.UpdateBuchung(ctx, repo_mysql.UpdateBuchungParams{
+func (w *PostgresWrapper) UpdateBuchung(ctx context.Context, arg repo.UpdateBuchungParams) (repo.Buchung, error) {
+	_, err := w.pg.UpdateBuchung(ctx, repo_postgres.UpdateBuchungParams{
 		Lw:              int32(arg.Lw),
 		Herdennummer:    int32(arg.Herdennummer),
 		Buchungsdatum:   arg.Buchungsdatum,
@@ -501,8 +293,8 @@ func (w *MySQLWrapper) UpdateBuchung(ctx context.Context, arg repo.UpdateBuchung
 
 // --- Herde Methoden ---
 
-func (w *MySQLWrapper) ListHerden(ctx context.Context) ([]repo.ListHerdenRow, error) {
-	res, err := w.mysql.ListHerden(ctx)
+func (w *PostgresWrapper) ListHerden(ctx context.Context) ([]repo.ListHerdenRow, error) {
+	res, err := w.pg.ListHerden(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -533,8 +325,8 @@ func (w *MySQLWrapper) ListHerden(ctx context.Context) ([]repo.ListHerdenRow, er
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetHerde(ctx context.Context, id int64) (repo.Herden, error) {
-	v, err := w.mysql.GetHerde(ctx, int32(id))
+func (w *PostgresWrapper) GetHerde(ctx context.Context, id int64) (repo.Herden, error) {
+	v, err := w.pg.GetHerde(ctx, int32(id))
 	if err != nil {
 		return repo.Herden{}, err
 	}
@@ -556,8 +348,8 @@ func (w *MySQLWrapper) GetHerde(ctx context.Context, id int64) (repo.Herden, err
 	}, nil
 }
 
-func (w *MySQLWrapper) CreateHerde(ctx context.Context, arg repo.CreateHerdeParams) (repo.Herden, error) {
-	res, err := w.mysql.CreateHerde(ctx, repo_mysql.CreateHerdeParams{
+func (w *PostgresWrapper) CreateHerde(ctx context.Context, arg repo.CreateHerdeParams) (repo.Herden, error) {
+	res, err := w.pg.CreateHerde(ctx, repo_postgres.CreateHerdeParams{
 		IDSilo:                int32(arg.IDSilo),
 		IDStall:               int32(arg.IDStall),
 		IDEilager:             int32(arg.IDEilager),
@@ -575,12 +367,12 @@ func (w *MySQLWrapper) CreateHerde(ctx context.Context, arg repo.CreateHerdePara
 	if err != nil {
 		return repo.Herden{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetHerde(ctx, id)
 }
 
-func (w *MySQLWrapper) UpdateHerde(ctx context.Context, arg repo.UpdateHerdeParams) (repo.Herden, error) {
-	_, err := w.mysql.UpdateHerde(ctx, repo_mysql.UpdateHerdeParams{
+func (w *PostgresWrapper) UpdateHerde(ctx context.Context, arg repo.UpdateHerdeParams) (repo.Herden, error) {
+	_, err := w.pg.UpdateHerde(ctx, repo_postgres.UpdateHerdeParams{
 		IDSilo:                int32(arg.IDSilo),
 		IDStall:               int32(arg.IDStall),
 		IDEilager:             int32(arg.IDEilager),
@@ -604,8 +396,8 @@ func (w *MySQLWrapper) UpdateHerde(ctx context.Context, arg repo.UpdateHerdePara
 
 // --- Statistik / Grafik Methoden ---
 
-func (w *MySQLWrapper) GetEggBookingYears(ctx context.Context, arg repo.GetEggBookingYearsParams) ([]interface{}, error) {
-	res, err := w.mysql.GetEggBookingYears(ctx, repo_mysql.GetEggBookingYearsParams{
+func (w *PostgresWrapper) GetEggBookingYears(ctx context.Context, arg repo.GetEggBookingYearsParams) ([]interface{}, error) {
+	res, err := w.pg.GetEggBookingYears(ctx, repo_postgres.GetEggBookingYearsParams{
 		IDHerden:   toInt32(arg.IDHerden),
 		OnlyActive: arg.OnlyActive,
 	})
@@ -619,8 +411,8 @@ func (w *MySQLWrapper) GetEggBookingYears(ctx context.Context, arg repo.GetEggBo
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetEggStatsByHerde(ctx context.Context, arg repo.GetEggStatsByHerdeParams) (repo.GetEggStatsByHerdeRow, error) {
-	res, err := w.mysql.GetEggStatsByHerde(ctx, repo_mysql.GetEggStatsByHerdeParams{
+func (w *PostgresWrapper) GetEggStatsByHerde(ctx context.Context, arg repo.GetEggStatsByHerdeParams) (repo.GetEggStatsByHerdeRow, error) {
+	res, err := w.pg.GetEggStatsByHerde(ctx, repo_postgres.GetEggStatsByHerdeParams{
 		ID:       toInt32(arg.ID),
 		IDHerden: toInt32(arg.IDHerden),
 	})
@@ -637,8 +429,8 @@ func (w *MySQLWrapper) GetEggStatsByHerde(ctx context.Context, arg repo.GetEggSt
 	}, nil
 }
 
-func (w *MySQLWrapper) GetEggStatsByHerdeFiltered(ctx context.Context, arg repo.GetEggStatsByHerdeFilteredParams) (repo.GetEggStatsByHerdeFilteredRow, error) {
-	res, err := w.mysql.GetEggStatsByHerdeFiltered(ctx, repo_mysql.GetEggStatsByHerdeFilteredParams{
+func (w *PostgresWrapper) GetEggStatsByHerdeFiltered(ctx context.Context, arg repo.GetEggStatsByHerdeFilteredParams) (repo.GetEggStatsByHerdeFilteredRow, error) {
+	res, err := w.pg.GetEggStatsByHerdeFiltered(ctx, repo_postgres.GetEggStatsByHerdeFilteredParams{
 		IDHerden:   toInt32(arg.IDHerden),
 		OnlyActive: arg.OnlyActive,
 		Year:       toString(arg.Year),
@@ -658,8 +450,8 @@ func (w *MySQLWrapper) GetEggStatsByHerdeFiltered(ctx context.Context, arg repo.
 	}, nil
 }
 
-func (w *MySQLWrapper) GetEggStatsWeeklyByHerde(ctx context.Context, idHerden int64) ([]repo.GetEggStatsWeeklyByHerdeRow, error) {
-	res, err := w.mysql.GetEggStatsWeeklyByHerde(ctx, int32(idHerden))
+func (w *PostgresWrapper) GetEggStatsWeeklyByHerde(ctx context.Context, idHerden int64) ([]repo.GetEggStatsWeeklyByHerdeRow, error) {
+	res, err := w.pg.GetEggStatsWeeklyByHerde(ctx, int32(idHerden))
 	if err != nil {
 		return nil, err
 	}
@@ -681,60 +473,45 @@ func (w *MySQLWrapper) GetEggStatsWeeklyByHerde(ctx context.Context, idHerden in
 
 // --- Eilager Methoden ---
 
-func (w *MySQLWrapper) ListEilager(ctx context.Context) ([]repo.ListEilagerRow, error) {
-	log.Printf("[DB] ListEilager called")
-	query := `SELECT id, lagernummer, kz, bezeichnung, letzte_buchung, jumbos, xl, large, medium, small, volleikg, aw, klasse6, klasse7 FROM EILAGER ORDER BY lagernummer`
-	rows, err := w.db.QueryContext(ctx, query)
+func (w *PostgresWrapper) ListEilager(ctx context.Context) ([]repo.ListEilagerRow, error) {
+	log.Printf("[DB] ListEilager called (Postgres)")
+	res, err := w.pg.ListEilager(ctx)
 	if err != nil {
 		log.Printf("[DB] ListEilager Query Error: %v", err)
 		return nil, err
 	}
-	defer rows.Close()
-
-	var items []repo.ListEilagerRow
-	for rows.Next() {
-		var i repo.ListEilagerRow
-		var id, ln, j, xl, l, m, s, aw, k6, k7 interface{}
-		var kz, bez, lb sql.NullString
-		var v interface{}
-		if err := rows.Scan(
-			&id, &ln, &kz, &bez, &lb,
-			&j, &xl, &l, &m, &s, &v,
-			&aw, &k6, &k7,
-		); err != nil {
-			log.Printf("[DB] ListEilager Scan Error: %v", err)
-			return nil, err
+	items := make([]repo.ListEilagerRow, len(res))
+	for idx, v := range res {
+		items[idx] = repo.ListEilagerRow{
+			ID:            int64(v.ID),
+			Lagernummer:   int64(v.Lagernummer),
+			Kz:            v.Kz,
+			Bezeichnung:   v.Bezeichnung,
+			LetzteBuchung: v.LetzteBuchung,
+			Jumbos:        int64(v.Jumbos),
+			Xl:            int64(v.Xl),
+			Large:         int64(v.Large),
+			Medium:        int64(v.Medium),
+			Small:         int64(v.Small),
+			Volleikg:      v.Volleikg,
+			Aw:            int64(v.Aw),
+			Klasse6:       v.Klasse6,
+			Klasse7:       v.Klasse7,
 		}
-		i.ID = toInt64(id)
-		i.Lagernummer = toInt64(ln)
-		i.Kz = kz.String
-		i.Bezeichnung = bez.String
-		i.LetzteBuchung = lb.String
-		i.Jumbos = toInt64(j)
-		i.Xl = toInt64(xl)
-		i.Large = toInt64(l)
-		i.Medium = toInt64(m)
-		i.Small = toInt64(s)
-		i.Volleikg = toFloat(v)
-		i.Aw = toInt64(aw)
-		i.Klasse6 = toString(k6)
-		i.Klasse7 = toString(k7)
-		items = append(items, i)
 	}
-	log.Printf("[DB] ListEilager found %d records", len(items))
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetEilager(ctx context.Context, id int64) (repo.Eilager, error) {
-	v, err := w.mysql.GetEilager(ctx, int32(id))
+func (w *PostgresWrapper) GetEilager(ctx context.Context, id int64) (repo.Eilager, error) {
+	v, err := w.pg.GetEilager(ctx, int32(id))
 	if err != nil {
 		return repo.Eilager{}, err
 	}
-	return convertEilager(v), nil
+	return convertPgEilager(v), nil
 }
 
-func (w *MySQLWrapper) CreateEilager(ctx context.Context, arg repo.CreateEilagerParams) (repo.Eilager, error) {
-	res, err := w.mysql.CreateEilager(ctx, repo_mysql.CreateEilagerParams{
+func (w *PostgresWrapper) CreateEilager(ctx context.Context, arg repo.CreateEilagerParams) (repo.Eilager, error) {
+	res, err := w.pg.CreateEilager(ctx, repo_postgres.CreateEilagerParams{
 		Lagernummer:   int32(arg.Lagernummer),
 		Kz:            toString(arg.Kz),
 		Bezeichnung:   arg.Bezeichnung,
@@ -743,12 +520,12 @@ func (w *MySQLWrapper) CreateEilager(ctx context.Context, arg repo.CreateEilager
 	if err != nil {
 		return repo.Eilager{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetEilager(ctx, id)
 }
 
-func (w *MySQLWrapper) UpdateEilager(ctx context.Context, arg repo.UpdateEilagerParams) (repo.Eilager, error) {
-	_, err := w.mysql.UpdateEilager(ctx, repo_mysql.UpdateEilagerParams{
+func (w *PostgresWrapper) UpdateEilager(ctx context.Context, arg repo.UpdateEilagerParams) (repo.Eilager, error) {
+	_, err := w.pg.UpdateEilager(ctx, repo_postgres.UpdateEilagerParams{
 		Lagernummer:   int32(arg.Lagernummer),
 		Kz:            toString(arg.Kz),
 		Bezeichnung:   arg.Bezeichnung,
@@ -762,11 +539,11 @@ func (w *MySQLWrapper) UpdateEilager(ctx context.Context, arg repo.UpdateEilager
 	return w.GetEilager(ctx, arg.ID)
 }
 
-func (w *MySQLWrapper) DeleteEilager(ctx context.Context, id int64) error {
-	return w.mysql.DeleteEilager(ctx, int32(id))
+func (w *PostgresWrapper) DeleteEilager(ctx context.Context, id int64) error {
+	return w.pg.DeleteEilager(ctx, int32(id))
 }
 
-func (w *MySQLWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBestandsuebersichtParams) ([]repo.GetBestandsuebersichtRow, error) {
+func (w *PostgresWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBestandsuebersichtParams) ([]repo.GetBestandsuebersichtRow, error) {
 	log.Printf("[DB] GetBestandsuebersicht called with IDEilager: %v", arg.IDEilager)
 	query := `
 		SELECT CHARGE,
@@ -864,7 +641,7 @@ func (w *MySQLWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.GetBe
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListEilagerBuchungenByKZ(ctx context.Context, kz interface{}) ([]repo.Eilagerbuchung, error) {
+func (w *PostgresWrapper) ListEilagerBuchungenByKZ(ctx context.Context, kz interface{}) ([]repo.Eilagerbuchung, error) {
 	kzStr := toString(kz)
 	log.Printf("[DB] ListEilagerBuchungenByKZ called for KZ: %s", kzStr)
 	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE kz_lager = ? ORDER BY buchungsdatum DESC`
@@ -912,7 +689,7 @@ func (w *MySQLWrapper) ListEilagerBuchungenByKZ(ctx context.Context, kz interfac
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListEilagerBuchungenByLager(ctx context.Context, idEilager int64) ([]repo.Eilagerbuchung, error) {
+func (w *PostgresWrapper) ListEilagerBuchungenByLager(ctx context.Context, idEilager int64) ([]repo.Eilagerbuchung, error) {
 	log.Printf("[DB] ListEilagerBuchungenByLager called for ID: %d", idEilager)
 	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE id_eilager = ? ORDER BY buchungsdatum DESC`
 	rows, err := w.db.QueryContext(ctx, query, idEilager)
@@ -959,26 +736,26 @@ func (w *MySQLWrapper) ListEilagerBuchungenByLager(ctx context.Context, idEilage
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetEilagerSumByBuchungID(ctx context.Context, idBuchung int64) (repo.GetEilagerSumByBuchungIDRow, error) {
-	v, err := w.mysql.GetEilagerSumByBuchungID(ctx, int32(idBuchung))
+func (w *PostgresWrapper) GetEilagerSumByBuchungID(ctx context.Context, idBuchung int64) (repo.GetEilagerSumByBuchungIDRow, error) {
+	v, err := w.pg.GetEilagerSumByBuchungID(ctx, int32(idBuchung))
 	if err != nil {
 		return repo.GetEilagerSumByBuchungIDRow{}, err
 	}
 	return repo.GetEilagerSumByBuchungIDRow{
-		Jumbos:    v.Jumbos,
-		Xl:        v.Xl,
-		Large:     v.Large,
-		Medium:    v.Medium,
-		Small:     v.Small,
-		Volleikg:  v.Volleikg,
-		Schmutz:   v.Schmutz,
-		Knickeier: v.Knickeier,
-		Brucheier: v.Brucheier,
+		Jumbos:    toInt64(v.Jumbos),
+		Xl:        toInt64(v.Xl),
+		Large:     toInt64(v.Large),
+		Medium:    toInt64(v.Medium),
+		Small:     toInt64(v.Small),
+		Volleikg:  toFloat(v.Volleikg),
+		Schmutz:   toInt64(v.Schmutz),
+		Knickeier: toInt64(v.Knickeier),
+		Brucheier: toInt64(v.Brucheier),
 	}, nil
 }
 
-func (w *MySQLWrapper) GetEilagerSumBySource(ctx context.Context, arg repo.GetEilagerSumBySourceParams) (repo.GetEilagerSumBySourceRow, error) {
-	v, err := w.mysql.GetEilagerSumBySource(ctx, repo_mysql.GetEilagerSumBySourceParams{
+func (w *PostgresWrapper) GetEilagerSumBySource(ctx context.Context, arg repo.GetEilagerSumBySourceParams) (repo.GetEilagerSumBySourceRow, error) {
+	v, err := w.pg.GetEilagerSumBySource(ctx, repo_postgres.GetEilagerSumBySourceParams{
 		IDBuchung:      toInt32(arg.IDBuchung),
 		IDFremdeslager: toInt32(arg.IDFremdeslager),
 	})
@@ -986,16 +763,16 @@ func (w *MySQLWrapper) GetEilagerSumBySource(ctx context.Context, arg repo.GetEi
 		return repo.GetEilagerSumBySourceRow{}, err
 	}
 	return repo.GetEilagerSumBySourceRow{
-		Jumbos:   v.Jumbos,
-		Xl:       v.Xl,
-		Large:    v.Large,
-		Medium:   v.Medium,
-		Small:    v.Small,
-		Volleikg: v.Volleikg,
+		Jumbos:   toInt64(v.Jumbos),
+		Xl:       toInt64(v.Xl),
+		Large:    toInt64(v.Large),
+		Medium:   toInt64(v.Medium),
+		Small:    toInt64(v.Small),
+		Volleikg: toFloat(v.Volleikg),
 	}, nil
 }
 
-func convertEilager(v repo_mysql.Eilager) repo.Eilager {
+func convertPgEilager(v repo_postgres.Eilager) repo.Eilager {
 	return repo.Eilager{
 		ID:            int64(v.ID),
 		Lagernummer:   int64(v.Lagernummer),
@@ -1014,7 +791,7 @@ func convertEilager(v repo_mysql.Eilager) repo.Eilager {
 	}
 }
 
-func convertEilagerbuchung(v repo_mysql.Eilagerbuchung) repo.Eilagerbuchung {
+func convertPgEilagerbuchung(v repo_postgres.Eilagerbuchung) repo.Eilagerbuchung {
 	return repo.Eilagerbuchung{
 		ID:              int64(v.ID),
 		IDFremdeslager:  int64(v.IDFremdeslager),
@@ -1038,15 +815,15 @@ func convertEilagerbuchung(v repo_mysql.Eilagerbuchung) repo.Eilagerbuchung {
 	}
 }
 
-func (w *MySQLWrapper) GetEierpreis(ctx context.Context, id int64) (repo.Eierpreise, error) {
-	v, err := w.mysql.GetEierpreis(ctx, int32(id))
+func (w *PostgresWrapper) GetEierpreis(ctx context.Context, id int64) (repo.Eierpreise, error) {
+	v, err := w.pg.GetEierpreis(ctx, int32(id))
 	if err != nil {
 		return repo.Eierpreise{}, err
 	}
-	return convertEierpreise(v), nil
+	return convertPgEierpreise(v), nil
 }
 
-func convertEierpreise(v repo_mysql.Eierpreise) repo.Eierpreise {
+func convertPgEierpreise(v repo_postgres.Eierpreise) repo.Eierpreise {
 	return repo.Eierpreise{
 		ID:            int64(v.ID),
 		KzHaltungstyp: v.KzHaltungstyp,
@@ -1060,8 +837,8 @@ func convertEierpreise(v repo_mysql.Eierpreise) repo.Eierpreise {
 
 // --- Silo Methoden ---
 
-func (w *MySQLWrapper) ListSilos(ctx context.Context) ([]repo.Silo, error) {
-	res, err := w.mysql.ListSilos(ctx)
+func (w *PostgresWrapper) ListSilos(ctx context.Context) ([]repo.Silo, error) {
+	res, err := w.pg.ListSilos(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1084,8 +861,8 @@ func (w *MySQLWrapper) ListSilos(ctx context.Context) ([]repo.Silo, error) {
 	return items, nil
 }
 
-func (w *MySQLWrapper) CreateSilo(ctx context.Context, arg repo.CreateSiloParams) (repo.Silo, error) {
-	res, err := w.mysql.CreateSilo(ctx, repo_mysql.CreateSiloParams{
+func (w *PostgresWrapper) CreateSilo(ctx context.Context, arg repo.CreateSiloParams) (repo.Silo, error) {
+	res, err := w.pg.CreateSilo(ctx, repo_postgres.CreateSiloParams{
 		Silonummer:         int32(arg.Silonummer),
 		Personennummer:     int32(arg.Personennummer),
 		Bezeichnung:        arg.Bezeichnung,
@@ -1099,12 +876,12 @@ func (w *MySQLWrapper) CreateSilo(ctx context.Context, arg repo.CreateSiloParams
 	if err != nil {
 		return repo.Silo{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetSilo(ctx, id)
 }
 
-func (w *MySQLWrapper) GetSilo(ctx context.Context, id int64) (repo.Silo, error) {
-	v, err := w.mysql.GetSilo(ctx, int32(id))
+func (w *PostgresWrapper) GetSilo(ctx context.Context, id int64) (repo.Silo, error) {
+	v, err := w.pg.GetSilo(ctx, int32(id))
 	if err != nil {
 		return repo.Silo{}, err
 	}
@@ -1125,16 +902,16 @@ func (w *MySQLWrapper) GetSilo(ctx context.Context, id int64) (repo.Silo, error)
 
 // --- Firmenparameter ---
 
-func (w *MySQLWrapper) GetGlobalFirmenparameter(ctx context.Context) (repo.Firmenparameter, error) {
-	v, err := w.mysql.GetGlobalFirmenparameter(ctx)
+func (w *PostgresWrapper) GetGlobalFirmenparameter(ctx context.Context) (repo.Firmenparameter, error) {
+	v, err := w.pg.GetGlobalFirmenparameter(ctx)
 	if err != nil {
 		return repo.Firmenparameter{}, err
 	}
-	return convertFirmenparameter(v), nil
+	return convertPgFirmenparameter(v), nil
 }
 
-func (w *MySQLWrapper) UpdateFirmenparameter(ctx context.Context, arg repo.UpdateFirmenparameterParams) (repo.Firmenparameter, error) {
-	_, err := w.mysql.UpdateFirmenparameter(ctx, repo_mysql.UpdateFirmenparameterParams{
+func (w *PostgresWrapper) UpdateFirmenparameter(ctx context.Context, arg repo.UpdateFirmenparameterParams) (repo.Firmenparameter, error) {
+	_, err := w.pg.UpdateFirmenparameter(ctx, repo_postgres.UpdateFirmenparameterParams{
 		IDHerden:                  int32(arg.IDHerden),
 		Kz:                        toString(arg.Kz),
 		Jumbos:                    int32(arg.Jumbos),
@@ -1187,15 +964,15 @@ func (w *MySQLWrapper) UpdateFirmenparameter(ctx context.Context, arg repo.Updat
 	return w.GetFirmenparameterByHerde(ctx, arg.IDHerden)
 }
 
-func (w *MySQLWrapper) GetFirmenparameterByHerde(ctx context.Context, idHerden int64) (repo.Firmenparameter, error) {
-	v, err := w.mysql.GetFirmenparameterByHerde(ctx, int32(idHerden))
+func (w *PostgresWrapper) GetFirmenparameterByHerde(ctx context.Context, idHerden int64) (repo.Firmenparameter, error) {
+	v, err := w.pg.GetFirmenparameterByHerde(ctx, int32(idHerden))
 	if err != nil {
 		return repo.Firmenparameter{}, err
 	}
-	return convertFirmenparameter(v), nil
+	return convertPgFirmenparameter(v), nil
 }
 
-func convertFirmenparameter(v repo_mysql.Firmenparameter) repo.Firmenparameter {
+func convertPgFirmenparameter(v repo_postgres.Firmenparameter) repo.Firmenparameter {
 	return repo.Firmenparameter{
 		ID:                        int64(v.ID),
 		IDHerden:                  int64(v.IDHerden),
@@ -1249,28 +1026,28 @@ func convertFirmenparameter(v repo_mysql.Firmenparameter) repo.Firmenparameter {
 
 // --- Person Methoden ---
 
-func (w *MySQLWrapper) ListPersonen(ctx context.Context) ([]repo.Person, error) {
-	res, err := w.mysql.ListPersonen(ctx)
+func (w *PostgresWrapper) ListPersonen(ctx context.Context) ([]repo.Person, error) {
+	res, err := w.pg.ListPersonen(ctx)
 	if err != nil {
 		return nil, err
 	}
 	items := make([]repo.Person, len(res))
 	for i, v := range res {
-		items[i] = convertPerson(v)
+		items[i] = convertPgPerson(v)
 	}
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetPerson(ctx context.Context, id int64) (repo.Person, error) {
-	v, err := w.mysql.GetPerson(ctx, int32(id))
+func (w *PostgresWrapper) GetPerson(ctx context.Context, id int64) (repo.Person, error) {
+	v, err := w.pg.GetPerson(ctx, int32(id))
 	if err != nil {
 		return repo.Person{}, err
 	}
-	return convertPerson(v), nil
+	return convertPgPerson(v), nil
 }
 
-func (w *MySQLWrapper) CreatePerson(ctx context.Context, arg repo.CreatePersonParams) (repo.Person, error) {
-	res, err := w.mysql.CreatePerson(ctx, repo_mysql.CreatePersonParams{
+func (w *PostgresWrapper) CreatePerson(ctx context.Context, arg repo.CreatePersonParams) (repo.Person, error) {
+	res, err := w.pg.CreatePerson(ctx, repo_postgres.CreatePersonParams{
 		IDTexte:        int32(arg.IDTexte),
 		IDAnrede:       int32(arg.IDAnrede),
 		Personennummer: int32(arg.Personennummer),
@@ -1285,17 +1062,17 @@ func (w *MySQLWrapper) CreatePerson(ctx context.Context, arg repo.CreatePersonPa
 		Mobiltelephon:  arg.Mobiltelephon,
 		Email:          arg.Email,
 		Email2:         arg.Email2,
-		Foto:           sql.NullString{String: string(arg.Foto), Valid: len(arg.Foto) > 0},
+		Foto:           arg.Foto,
 		Homepage:       arg.Homepage,
 	})
 	if err != nil {
 		return repo.Person{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetPerson(ctx, id)
 }
 
-func (w *MySQLWrapper) ListTabellenkopfByType(ctx context.Context, tabellentyp interface{}) ([]repo.Tabellenkopf, error) {
+func (w *PostgresWrapper) ListTabellenkopfByType(ctx context.Context, tabellentyp interface{}) ([]repo.Tabellenkopf, error) {
 	log.Printf("[MARIADB-FIX] ListTabellenkopfByType called: %v", tabellentyp)
 	rows, err := w.db.QueryContext(ctx, "SELECT id, tabellentyp, tabellennummer, bezeichnung, anlagedatum, datum FROM TABELLENKOPF WHERE tabellentyp = ?", tabellentyp)
 	if err != nil {
@@ -1315,10 +1092,10 @@ func (w *MySQLWrapper) ListTabellenkopfByType(ctx context.Context, tabellentyp i
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetGewichtByTabNumAndWeight(ctx context.Context, arg repo.GetGewichtByTabNumAndWeightParams) (repo.Gewichttabelle, error) {
-	v, err := w.mysql.GetGewichtByTabNumAndWeight(ctx, repo_mysql.GetGewichtByTabNumAndWeightParams{
+func (w *PostgresWrapper) GetGewichtByTabNumAndWeight(ctx context.Context, arg repo.GetGewichtByTabNumAndWeightParams) (repo.Gewichttabelle, error) {
+	v, err := w.pg.GetGewichtByTabNumAndWeight(ctx, repo_postgres.GetGewichtByTabNumAndWeightParams{
 		Tabellennummer: int32(arg.Tabellennummer),
-		ROUND:          arg.ROUND,
+		Round:          arg.ROUND,
 	})
 	if err != nil {
 		return repo.Gewichttabelle{}, err
@@ -1337,8 +1114,8 @@ func (w *MySQLWrapper) GetGewichtByTabNumAndWeight(ctx context.Context, arg repo
 	}, nil
 }
 
-func (w *MySQLWrapper) ListGewichtByTabNum(ctx context.Context, tabNum int64) ([]repo.Gewichttabelle, error) {
-	res, err := w.mysql.ListGewichtByTabNum(ctx, int32(tabNum))
+func (w *PostgresWrapper) ListGewichtByTabNum(ctx context.Context, tabNum int64) ([]repo.Gewichttabelle, error) {
+	res, err := w.pg.ListGewichtByTabNum(ctx, int32(tabNum))
 	if err != nil {
 		return nil, err
 	}
@@ -1360,8 +1137,8 @@ func (w *MySQLWrapper) ListGewichtByTabNum(ctx context.Context, tabNum int64) ([
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListEierpreise(ctx context.Context) ([]repo.Eierpreise, error) {
-	res, err := w.mysql.ListEierpreise(ctx)
+func (w *PostgresWrapper) ListEierpreise(ctx context.Context) ([]repo.Eierpreise, error) {
+	res, err := w.pg.ListEierpreise(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1380,7 +1157,7 @@ func (w *MySQLWrapper) ListEierpreise(ctx context.Context) ([]repo.Eierpreise, e
 	return items, nil
 }
 
-func convertPerson(v repo_mysql.Person) repo.Person {
+func convertPgPerson(v repo_postgres.Person) repo.Person {
 	return repo.Person{
 		ID:             int64(v.ID),
 		IDTexte:        int64(v.IDTexte),
@@ -1397,14 +1174,14 @@ func convertPerson(v repo_mysql.Person) repo.Person {
 		Mobiltelephon:  v.Mobiltelephon,
 		Email:          v.Email,
 		Email2:         v.Email2,
-		Foto:           []byte(v.Foto.String),
+		Foto:           v.Foto,
 		Homepage:       v.Homepage,
 	}
 }
 
 // --- Tierbewegungen Methoden ---
 
-func (w *MySQLWrapper) ListTierbewegungen(ctx context.Context, spracheKz string) ([]repo.ListTierbewegungenRow, error) {
+func (w *PostgresWrapper) ListTierbewegungen(ctx context.Context, spracheKz string) ([]repo.ListTierbewegungenRow, error) {
 	log.Printf("[DB] ListTierbewegungen called with spracheKz: %s", spracheKz)
 	query := `
 		SELECT t.id,
@@ -1473,7 +1250,7 @@ func (w *MySQLWrapper) ListTierbewegungen(ctx context.Context, spracheKz string)
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetTierbewegung(ctx context.Context, id int64) (repo.Tierbewegungen, error) {
+func (w *PostgresWrapper) GetTierbewegung(ctx context.Context, id int64) (repo.Tierbewegungen, error) {
 	query := `SELECT id, herdennummer, id_buchung, typ, id_texte, bewegungsdatum, bewegungen, id_herden_von, id_herden_nach, kosten FROM TIERBEWEGUNGEN WHERE id = ?`
 	row := w.db.QueryRowContext(ctx, query, id)
 	var t repo.Tierbewegungen
@@ -1494,8 +1271,8 @@ func (w *MySQLWrapper) GetTierbewegung(ctx context.Context, id int64) (repo.Tier
 	return t, nil
 }
 
-func (w *MySQLWrapper) CreateTierbewegung(ctx context.Context, arg repo.CreateTierbewegungParams) (repo.Tierbewegungen, error) {
-	res, err := w.mysql.CreateTierbewegung(ctx, repo_mysql.CreateTierbewegungParams{
+func (w *PostgresWrapper) CreateTierbewegung(ctx context.Context, arg repo.CreateTierbewegungParams) (repo.Tierbewegungen, error) {
+	res, err := w.pg.CreateTierbewegung(ctx, repo_postgres.CreateTierbewegungParams{
 		Herdennummer:   toNullInt32(arg.Herdennummer),
 		IDBuchung:      toNullInt32(arg.IDBuchung),
 		Typ:            toNullString(arg.Typ),
@@ -1504,17 +1281,17 @@ func (w *MySQLWrapper) CreateTierbewegung(ctx context.Context, arg repo.CreateTi
 		Bewegungen:     toNullInt32(arg.Bewegungen),
 		IDHerdenVon:    toNullInt32(arg.IDHerdenVon),
 		IDHerdenNach:   toNullInt32(arg.IDHerdenNach),
-		Kosten:         toNullString(arg.Kosten),
+		Kosten:         toNullFloat64(arg.Kosten),
 	})
 	if err != nil {
 		return repo.Tierbewegungen{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetTierbewegung(ctx, id)
 }
 
-func (w *MySQLWrapper) UpdateTierbewegung(ctx context.Context, arg repo.UpdateTierbewegungParams) (repo.Tierbewegungen, error) {
-	_, err := w.mysql.UpdateTierbewegung(ctx, repo_mysql.UpdateTierbewegungParams{
+func (w *PostgresWrapper) UpdateTierbewegung(ctx context.Context, arg repo.UpdateTierbewegungParams) (repo.Tierbewegungen, error) {
+	_, err := w.pg.UpdateTierbewegung(ctx, repo_postgres.UpdateTierbewegungParams{
 		Herdennummer:   toNullInt32(arg.Herdennummer),
 		IDBuchung:      toNullInt32(arg.IDBuchung),
 		Typ:            toNullString(arg.Typ),
@@ -1523,7 +1300,7 @@ func (w *MySQLWrapper) UpdateTierbewegung(ctx context.Context, arg repo.UpdateTi
 		Bewegungen:     toNullInt32(arg.Bewegungen),
 		IDHerdenVon:    toNullInt32(arg.IDHerdenVon),
 		IDHerdenNach:   toNullInt32(arg.IDHerdenNach),
-		Kosten:         toNullString(arg.Kosten),
+		Kosten:         toNullFloat64(arg.Kosten),
 		ID:             int32(arg.ID),
 	})
 	if err != nil {
@@ -1532,14 +1309,14 @@ func (w *MySQLWrapper) UpdateTierbewegung(ctx context.Context, arg repo.UpdateTi
 	return w.GetTierbewegung(ctx, arg.ID)
 }
 
-func (w *MySQLWrapper) DeleteTierbewegung(ctx context.Context, id int64) error {
-	return w.mysql.DeleteTierbewegung(ctx, int32(id))
+func (w *PostgresWrapper) DeleteTierbewegung(ctx context.Context, id int64) error {
+	return w.pg.DeleteTierbewegung(ctx, int32(id))
 }
 
 // --- Lookup & Liste Methoden ---
 
-func (w *MySQLWrapper) ListHerdenLookup(ctx context.Context) ([]repo.ListHerdenLookupRow, error) {
-	res, err := w.mysql.ListHerdenLookup(ctx)
+func (w *PostgresWrapper) ListHerdenLookup(ctx context.Context) ([]repo.ListHerdenLookupRow, error) {
+	res, err := w.pg.ListHerdenLookup(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1555,8 +1332,8 @@ func (w *MySQLWrapper) ListHerdenLookup(ctx context.Context) ([]repo.ListHerdenL
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListRassen(ctx context.Context) ([]repo.Rasse, error) {
-	res, err := w.mysql.ListRassen(ctx)
+func (w *PostgresWrapper) ListRassen(ctx context.Context) ([]repo.Rasse, error) {
+	res, err := w.pg.ListRassen(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1571,8 +1348,8 @@ func (w *MySQLWrapper) ListRassen(ctx context.Context) ([]repo.Rasse, error) {
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListStaelle(ctx context.Context) ([]repo.Stall, error) {
-	res, err := w.mysql.ListStaelle(ctx)
+func (w *PostgresWrapper) ListStaelle(ctx context.Context) ([]repo.Stall, error) {
+	res, err := w.pg.ListStaelle(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1588,26 +1365,26 @@ func (w *MySQLWrapper) ListStaelle(ctx context.Context) ([]repo.Stall, error) {
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListLieferanten(ctx context.Context) ([]repo.Person, error) {
-	res, err := w.mysql.ListLieferanten(ctx)
+func (w *PostgresWrapper) ListLieferanten(ctx context.Context) ([]repo.Person, error) {
+	res, err := w.pg.ListLieferanten(ctx)
 	if err != nil {
 		return nil, err
 	}
 	items := make([]repo.Person, len(res))
 	for i, v := range res {
-		items[i] = convertPerson(v)
+		items[i] = convertPgPerson(v)
 	}
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListZuechter(ctx context.Context) ([]repo.Person, error) {
-	res, err := w.mysql.ListZuechter(ctx)
+func (w *PostgresWrapper) ListZuechter(ctx context.Context) ([]repo.Person, error) {
+	res, err := w.pg.ListZuechter(ctx)
 	if err != nil {
 		return nil, err
 	}
 	items := make([]repo.Person, len(res))
 	for i, v := range res {
-		items[i] = convertPerson(v)
+		items[i] = convertPgPerson(v)
 	}
 	return items, nil
 }
@@ -1616,8 +1393,8 @@ func (w *MySQLWrapper) ListZuechter(ctx context.Context) ([]repo.Person, error) 
 
 // (Duplicate removed)
 
-func (w *MySQLWrapper) GetTranslatedText(ctx context.Context, arg repo.GetTranslatedTextParams) (repo.GetTranslatedTextRow, error) {
-	v, err := w.mysql.GetTranslatedText(ctx, repo_mysql.GetTranslatedTextParams{
+func (w *PostgresWrapper) GetTranslatedText(ctx context.Context, arg repo.GetTranslatedTextParams) (repo.GetTranslatedTextRow, error) {
+	v, err := w.pg.GetTranslatedText(ctx, repo_postgres.GetTranslatedTextParams{
 		SpracheKz: toString(arg.SpracheKz),
 		ID:        int32(arg.ID),
 	})
@@ -1633,8 +1410,8 @@ func (w *MySQLWrapper) GetTranslatedText(ctx context.Context, arg repo.GetTransl
 	}, nil
 }
 
-func (w *MySQLWrapper) ListFuttersorten(ctx context.Context) ([]repo.Futtersorten, error) {
-	res, err := w.mysql.ListFuttersorten(ctx)
+func (w *PostgresWrapper) ListFuttersorten(ctx context.Context) ([]repo.Futtersorten, error) {
+	res, err := w.pg.ListFuttersorten(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1648,8 +1425,8 @@ func (w *MySQLWrapper) ListFuttersorten(ctx context.Context) ([]repo.Futtersorte
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListLagerplaetze(ctx context.Context) ([]repo.ListLagerplaetzeRow, error) {
-	res, err := w.mysql.ListLagerplaetze(ctx)
+func (w *PostgresWrapper) ListLagerplaetze(ctx context.Context) ([]repo.ListLagerplaetzeRow, error) {
+	res, err := w.pg.ListLagerplaetze(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -1666,8 +1443,8 @@ func (w *MySQLWrapper) ListLagerplaetze(ctx context.Context) ([]repo.ListLagerpl
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListLagerplaetzeByEilager(ctx context.Context, idEilager int64) ([]repo.ListLagerplaetzeByEilagerRow, error) {
-	res, err := w.mysql.ListLagerplaetzeByEilager(ctx, int32(idEilager))
+func (w *PostgresWrapper) ListLagerplaetzeByEilager(ctx context.Context, idEilager int64) ([]repo.ListLagerplaetzeByEilagerRow, error) {
+	res, err := w.pg.ListLagerplaetzeByEilager(ctx, int32(idEilager))
 	if err != nil {
 		return nil, err
 	}
@@ -1681,8 +1458,8 @@ func (w *MySQLWrapper) ListLagerplaetzeByEilager(ctx context.Context, idEilager 
 	return items, nil
 }
 
-func (w *MySQLWrapper) UpdateEierpreis(ctx context.Context, arg repo.UpdateEierpreisParams) (repo.Eierpreise, error) {
-	_, err := w.mysql.UpdateEierpreis(ctx, repo_mysql.UpdateEierpreisParams{
+func (w *PostgresWrapper) UpdateEierpreis(ctx context.Context, arg repo.UpdateEierpreisParams) (repo.Eierpreise, error) {
+	_, err := w.pg.UpdateEierpreis(ctx, repo_postgres.UpdateEierpreisParams{
 		Eierklasse: arg.Eierklasse,
 		PreisVon:   toFloat(arg.PreisVon),
 		ID:         int32(arg.ID),
@@ -1693,7 +1470,7 @@ func (w *MySQLWrapper) UpdateEierpreis(ctx context.Context, arg repo.UpdateEierp
 	return w.GetEierpreis(ctx, arg.ID)
 }
 
-func (w *MySQLWrapper) ListVerkauf(ctx context.Context) ([]repo.Verkauf, error) {
+func (w *PostgresWrapper) ListVerkauf(ctx context.Context) ([]repo.Verkauf, error) {
 	log.Printf("[DB] ListVerkauf called")
 	query := `SELECT id, id_eilagerbuchung, id_buchung, buchungsdatum, mengesmall, mengemedium, mengelarge, mengexl, preissmall, preismedium, preislarge, preisxl, gesamtpreis, bio, verbucht, charge, rabattprozent FROM VERKAUF ORDER BY buchungsdatum DESC`
 	rows, err := w.db.QueryContext(ctx, query)
@@ -1736,16 +1513,16 @@ func (w *MySQLWrapper) ListVerkauf(ctx context.Context) ([]repo.Verkauf, error) 
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetVerkauf(ctx context.Context, id int64) (repo.Verkauf, error) {
-	v, err := w.mysql.GetVerkauf(ctx, int32(id))
+func (w *PostgresWrapper) GetVerkauf(ctx context.Context, id int64) (repo.Verkauf, error) {
+	v, err := w.pg.GetVerkauf(ctx, int32(id))
 	if err != nil {
 		return repo.Verkauf{}, err
 	}
-	return convertVerkauf(v), nil
+	return convertPgVerkauf(v), nil
 }
 
-func (w *MySQLWrapper) CreateVerkauf(ctx context.Context, arg repo.CreateVerkaufParams) (repo.Verkauf, error) {
-	res, err := w.mysql.CreateVerkauf(ctx, repo_mysql.CreateVerkaufParams{
+func (w *PostgresWrapper) CreateVerkauf(ctx context.Context, arg repo.CreateVerkaufParams) (repo.Verkauf, error) {
+	res, err := w.pg.CreateVerkauf(ctx, repo_postgres.CreateVerkaufParams{
 		IDEilagerbuchung: int32(arg.IDEilagerbuchung),
 		IDBuchung:        int32(arg.IDBuchung),
 		Buchungsdatum:    arg.Buchungsdatum,
@@ -1758,20 +1535,20 @@ func (w *MySQLWrapper) CreateVerkauf(ctx context.Context, arg repo.CreateVerkauf
 		Preislarge:       arg.Preislarge,
 		Preisxl:          arg.Preisxl,
 		Gesamtpreis:      arg.Gesamtpreis,
-		Bio:              arg.Bio,
-		Verbucht:         arg.Verbucht,
+		Bio:              toInt16(arg.Bio),
+		Verbucht:         toInt16(arg.Verbucht),
 		Charge:           toString(arg.Charge),
 		Rabattprozent:    toFloat(arg.Rabattprozent),
 	})
 	if err != nil {
 		return repo.Verkauf{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetVerkauf(ctx, id)
 }
 
-func (w *MySQLWrapper) UpdateVerkauf(ctx context.Context, arg repo.UpdateVerkaufParams) (repo.Verkauf, error) {
-	_, err := w.mysql.UpdateVerkauf(ctx, repo_mysql.UpdateVerkaufParams{
+func (w *PostgresWrapper) UpdateVerkauf(ctx context.Context, arg repo.UpdateVerkaufParams) (repo.Verkauf, error) {
+	_, err := w.pg.UpdateVerkauf(ctx, repo_postgres.UpdateVerkaufParams{
 		IDEilagerbuchung: int32(arg.IDEilagerbuchung),
 		IDBuchung:        int32(arg.IDBuchung),
 		Buchungsdatum:    arg.Buchungsdatum,
@@ -1784,8 +1561,8 @@ func (w *MySQLWrapper) UpdateVerkauf(ctx context.Context, arg repo.UpdateVerkauf
 		Preislarge:       arg.Preislarge,
 		Preisxl:          arg.Preisxl,
 		Gesamtpreis:      arg.Gesamtpreis,
-		Bio:              arg.Bio,
-		Verbucht:         arg.Verbucht,
+		Bio:              toInt16(arg.Bio),
+		Verbucht:         toInt16(arg.Verbucht),
 		Charge:           toString(arg.Charge),
 		Rabattprozent:    toFloat(arg.Rabattprozent),
 		ID:               int32(arg.ID),
@@ -1796,7 +1573,7 @@ func (w *MySQLWrapper) UpdateVerkauf(ctx context.Context, arg repo.UpdateVerkauf
 	return w.GetVerkauf(ctx, arg.ID)
 }
 
-func convertVerkauf(v repo_mysql.Verkauf) repo.Verkauf {
+func convertPgVerkauf(v repo_postgres.Verkauf) repo.Verkauf {
 	return repo.Verkauf{
 		ID:               int64(v.ID),
 		IDEilagerbuchung: int64(v.IDEilagerbuchung),
@@ -1811,13 +1588,13 @@ func convertVerkauf(v repo_mysql.Verkauf) repo.Verkauf {
 		Preislarge:       v.Preislarge,
 		Preisxl:          v.Preisxl,
 		Gesamtpreis:      v.Gesamtpreis,
-		Bio:              v.Bio,
-		Verbucht:         v.Verbucht,
+		Bio:              v.Bio != 0,
+		Verbucht:         v.Verbucht != 0,
 		Charge:           v.Charge,
 		Rabattprozent:    v.Rabattprozent,
 	}
 }
-func (w *MySQLWrapper) ListDynamischeSQL(ctx context.Context) ([]repo.ListDynamischeSQLRow, error) {
+func (w *PostgresWrapper) ListDynamischeSQL(ctx context.Context) ([]repo.ListDynamischeSQLRow, error) {
 	log.Printf("[MARIADB-FIX] ListDynamischeSQL called")
 	query := `SELECT id, beschreibung, sqlstatement, kategorie_kz, gruppen_kz, typ_kz, system_kz, template_name, param_def, detail_sql, link_logic, group_field, rows_per_page, page_orientation, show_master_grid, show_detail_grid, sqlstatement_native, detail_sql_native, root_kz, summenzeile, ist_summenzeile FROM DYNAMISCHE_SQL ORDER BY beschreibung`
 	rows, err := w.db.QueryContext(ctx, query)
@@ -1847,7 +1624,7 @@ func (w *MySQLWrapper) ListDynamischeSQL(ctx context.Context) ([]repo.ListDynami
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetDynamischeSQL(ctx context.Context, id int64) (repo.DynamischeSql, error) {
+func (w *PostgresWrapper) GetDynamischeSQL(ctx context.Context, id int64) (repo.DynamischeSql, error) {
 	log.Printf("[DB] GetDynamischeSQL called for ID: %d", id)
 	query := `SELECT id, beschreibung, sqlstatement, kategorie_kz, gruppen_kz, typ_kz, template_name, param_def, detail_sql, link_logic, group_field, rows_per_page, page_orientation, show_master_grid, show_detail_grid, system_kz, sqlstatement_native, detail_sql_native, root_kz, summenzeile, ist_summenzeile FROM DYNAMISCHE_SQL WHERE id = ?`
 	var i repo.DynamischeSql
@@ -1867,9 +1644,9 @@ func (w *MySQLWrapper) GetDynamischeSQL(ctx context.Context, id int64) (repo.Dyn
 	return i, nil
 }
 
-func (w *MySQLWrapper) CreateDynamischeSQL(ctx context.Context, arg repo.CreateDynamischeSQLParams) (repo.DynamischeSql, error) {
+func (w *PostgresWrapper) CreateDynamischeSQL(ctx context.Context, arg repo.CreateDynamischeSQLParams) (repo.DynamischeSql, error) {
 	log.Printf("[DB] CreateDynamischeSQL called for Beschreibung: %s", arg.Beschreibung)
-	res, err := w.mysql.CreateDynamischeSQL(ctx, repo_mysql.CreateDynamischeSQLParams{
+	res, err := w.pg.CreateDynamischeSQL(ctx, repo_postgres.CreateDynamischeSQLParams{
 		Beschreibung:       arg.Beschreibung,
 		Sqlstatement:       arg.Sqlstatement,
 		KategorieKz:        toString(arg.KategorieKz),
@@ -1895,13 +1672,13 @@ func (w *MySQLWrapper) CreateDynamischeSQL(ctx context.Context, arg repo.CreateD
 		log.Printf("[DB] CreateDynamischeSQL Error: %v", err)
 		return repo.DynamischeSql{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	return w.GetDynamischeSQL(ctx, id)
 }
 
-func (w *MySQLWrapper) UpdateDynamischeSQL(ctx context.Context, arg repo.UpdateDynamischeSQLParams) (repo.DynamischeSql, error) {
+func (w *PostgresWrapper) UpdateDynamischeSQL(ctx context.Context, arg repo.UpdateDynamischeSQLParams) (repo.DynamischeSql, error) {
 	log.Printf("[DB] UpdateDynamischeSQL called for ID: %d", arg.ID)
-	_, err := w.mysql.UpdateDynamischeSQL(ctx, repo_mysql.UpdateDynamischeSQLParams{
+	_, err := w.pg.UpdateDynamischeSQL(ctx, repo_postgres.UpdateDynamischeSQLParams{
 		Beschreibung:       arg.Beschreibung,
 		Sqlstatement:       arg.Sqlstatement,
 		KategorieKz:        toString(arg.KategorieKz),
@@ -1931,7 +1708,7 @@ func (w *MySQLWrapper) UpdateDynamischeSQL(ctx context.Context, arg repo.UpdateD
 	return w.GetDynamischeSQL(ctx, arg.ID)
 }
 
-func (w *MySQLWrapper) CreateTabellenkopf(ctx context.Context, arg repo.CreateTabellenkopfParams) (repo.Tabellenkopf, error) {
+func (w *PostgresWrapper) CreateTabellenkopf(ctx context.Context, arg repo.CreateTabellenkopfParams) (repo.Tabellenkopf, error) {
 	log.Printf("[DB] CreateTabellenkopf called for Typ: %s, Nr: %d", arg.Tabellentyp, arg.Tabellennummer)
 	query := `INSERT INTO TABELLENKOPF (TABELLENTYP, TABELLENNUMMER, BEZEICHNUNG, ANLAGEDATUM, DATUM) VALUES (?, ?, ?, ?, ?)`
 	res, err := w.db.ExecContext(ctx, query, arg.Tabellentyp, arg.Tabellennummer, arg.Bezeichnung, arg.Anlagedatum, arg.Datum)
@@ -1950,7 +1727,7 @@ func (w *MySQLWrapper) CreateTabellenkopf(ctx context.Context, arg repo.CreateTa
 	}, nil
 }
 
-func (w *MySQLWrapper) UpdateTabellenkopf(ctx context.Context, arg repo.UpdateTabellenkopfParams) (repo.Tabellenkopf, error) {
+func (w *PostgresWrapper) UpdateTabellenkopf(ctx context.Context, arg repo.UpdateTabellenkopfParams) (repo.Tabellenkopf, error) {
 	log.Printf("[DB] UpdateTabellenkopf called for ID: %d", arg.ID)
 	query := `UPDATE TABELLENKOPF SET TABELLENNUMMER = ?, BEZEICHNUNG = ?, ANLAGEDATUM = ?, DATUM = ? WHERE ID = ?`
 	_, err := w.db.ExecContext(ctx, query, arg.Tabellennummer, arg.Bezeichnung, arg.Anlagedatum, arg.Datum, arg.ID)
@@ -1968,7 +1745,7 @@ func (w *MySQLWrapper) UpdateTabellenkopf(ctx context.Context, arg repo.UpdateTa
 	return t, err
 }
 
-func (w *MySQLWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, error) {
+func (w *PostgresWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, error) {
 	log.Printf("[DB] ListTextTypen called")
 	rows, err := w.db.QueryContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS` FROM TEXT_TYPEN")
 	if err != nil {
@@ -1986,7 +1763,7 @@ func (w *MySQLWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, err
 	return items, nil
 }
 
-func (w *MySQLWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTypParams) (repo.TextTypen, error) {
+func (w *PostgresWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] CreateTextTyp called: %s", arg.Kz)
 	query := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS`) VALUES (?, ?, ?, ?)"
 	res, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.SystemKz, arg.Status)
@@ -2004,7 +1781,7 @@ func (w *MySQLWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTyp
 	}, nil
 }
 
-func (w *MySQLWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateTextTypParams) (repo.TextTypen, error) {
+func (w *PostgresWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] UpdateTextTyp called: %d", arg.ID)
 	query := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, `SYSTEM_KZ` = ?, `STATUS` = ? WHERE ID = ?"
 	_, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.SystemKz, arg.Status, arg.ID)
@@ -2019,7 +1796,7 @@ func (w *MySQLWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateTextTyp
 	return t, err
 }
 
-func (w *MySQLWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams) (repo.Texte, error) {
+func (w *PostgresWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] CreateText called for Typ: %s", arg.TextTypKz)
 	query := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM_KZ`, `STATUS`) VALUES (?, ?, ?, ?)"
 	res, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.SystemKz, arg.Status)
@@ -2037,7 +1814,7 @@ func (w *MySQLWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams
 	}, nil
 }
 
-func (w *MySQLWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextParams) (repo.Texte, error) {
+func (w *PostgresWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] UpdateText called: %d", arg.ID)
 	query := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, `SYSTEM_KZ` = ?, `STATUS` = ? WHERE ID = ?"
 	_, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.SystemKz, arg.Status, arg.ID)
@@ -2054,7 +1831,7 @@ func (w *MySQLWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextParams
 	return t, err
 }
 
-func (w *MySQLWrapper) CreateUebersetzung(ctx context.Context, arg repo.CreateUebersetzungParams) (repo.Uebersetzungen, error) {
+func (w *PostgresWrapper) CreateUebersetzung(ctx context.Context, arg repo.CreateUebersetzungParams) (repo.Uebersetzungen, error) {
 	log.Printf("[DB] CreateUebersetzung called for ID: %d, Lang: %s", arg.IDTexte, arg.SpracheKz)
 	query := "INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) VALUES (?, ?, ?, ?)"
 	_, err := w.db.ExecContext(ctx, query, arg.IDTexte, arg.SpracheKz, arg.Betreff, arg.Inhalt)
@@ -2070,7 +1847,7 @@ func (w *MySQLWrapper) CreateUebersetzung(ctx context.Context, arg repo.CreateUe
 	}, nil
 }
 
-func (w *MySQLWrapper) UpsertUebersetzung(ctx context.Context, arg repo.UpsertUebersetzungParams) (repo.Uebersetzungen, error) {
+func (w *PostgresWrapper) UpsertUebersetzung(ctx context.Context, arg repo.UpsertUebersetzungParams) (repo.Uebersetzungen, error) {
 	log.Printf("[DB] UpsertUebersetzung called for ID: %d, Lang: %s", arg.IDTexte, arg.SpracheKz)
 	query := `INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) 
               VALUES (?, ?, ?, ?) 
@@ -2088,7 +1865,7 @@ func (w *MySQLWrapper) UpsertUebersetzung(ctx context.Context, arg repo.UpsertUe
 	}, nil
 }
 
-func (w *MySQLWrapper) ListTexte(ctx context.Context, spracheKz string) ([]repo.ListTexteRow, error) {
+func (w *PostgresWrapper) ListTexte(ctx context.Context, spracheKz string) ([]repo.ListTexteRow, error) {
 	log.Printf("[DB] ListTexte called for Lang: %s", spracheKz)
 	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM_KZ`" + `, T.` + "`STATUS`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
               FROM TEXTE T 
@@ -2111,7 +1888,7 @@ func (w *MySQLWrapper) ListTexte(ctx context.Context, spracheKz string) ([]repo.
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListTexteByType(ctx context.Context, arg repo.ListTexteByTypeParams) ([]repo.ListTexteByTypeRow, error) {
+func (w *PostgresWrapper) ListTexteByType(ctx context.Context, arg repo.ListTexteByTypeParams) ([]repo.ListTexteByTypeRow, error) {
 	log.Printf("[DB] ListTexteByType called for Typ: %s, Lang: %s", arg.TextTypKz, arg.SpracheKz)
 	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM_KZ`" + `, T.` + "`STATUS`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
               FROM TEXTE T 
@@ -2135,7 +1912,7 @@ func (w *MySQLWrapper) ListTexteByType(ctx context.Context, arg repo.ListTexteBy
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListBenutzerProfile(ctx context.Context) ([]repo.Benutzerprofile, error) {
+func (w *PostgresWrapper) ListBenutzerProfile(ctx context.Context) ([]repo.Benutzerprofile, error) {
 	log.Printf("[MARIADB-FIX] ListBenutzerProfile called")
 	rows, err := w.db.QueryContext(ctx, "SELECT id, profil_kz, beschreibung, f_dashboard, f_herden_verwalten, f_einrichtungen_verwalten, f_personen_verwalten, f_buchungen_erfassen, f_auswertungen_anzeigen, f_sql_struktur_verwalten, f_benutzer_profile, f_parameter_editieren, f_kosten_verwalten, f_tabellen_anzeigen, f_texte_verwalten, f_system_verwaltung, f_backup_erstellen FROM BENUTZERPROFILE")
 	if err != nil {
@@ -2156,7 +1933,7 @@ func (w *MySQLWrapper) ListBenutzerProfile(ctx context.Context) ([]repo.Benutzer
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetBenutzerProfilByID(ctx context.Context, id int64) (repo.Benutzerprofile, error) {
+func (w *PostgresWrapper) GetBenutzerProfilByID(ctx context.Context, id int64) (repo.Benutzerprofile, error) {
 	log.Printf("[MARIADB-FIX] GetBenutzerProfilByID called: %d", id)
 	var i repo.Benutzerprofile
 	var pkz interface{}
@@ -2167,7 +1944,7 @@ func (w *MySQLWrapper) GetBenutzerProfilByID(ctx context.Context, id int64) (rep
 	return i, err
 }
 
-func (w *MySQLWrapper) GetBenutzerProfilByKZ(ctx context.Context, pkz interface{}) (repo.Benutzerprofile, error) {
+func (w *PostgresWrapper) GetBenutzerProfilByKZ(ctx context.Context, pkz interface{}) (repo.Benutzerprofile, error) {
 	log.Printf("[MARIADB-FIX] GetBenutzerProfilByKZ called: %v", pkz)
 	var i repo.Benutzerprofile
 	var pkzResult interface{}
@@ -2178,7 +1955,7 @@ func (w *MySQLWrapper) GetBenutzerProfilByKZ(ctx context.Context, pkz interface{
 	return i, err
 }
 
-func (w *MySQLWrapper) ListBenutzer(ctx context.Context) ([]repo.ListBenutzerRow, error) {
+func (w *PostgresWrapper) ListBenutzer(ctx context.Context) ([]repo.ListBenutzerRow, error) {
 	log.Printf("[MARIADB-FIX] ListBenutzer called")
 	query := `SELECT B.ID, B.USERNAME, B.PASSWORT, B.KLARNAME, B.ID_BENUTZER_PROFILE, P.PROFIL_KZ 
               FROM BENUTZER B 
@@ -2201,7 +1978,7 @@ func (w *MySQLWrapper) ListBenutzer(ctx context.Context) ([]repo.ListBenutzerRow
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListShowTV(ctx context.Context) ([]repo.Showtv, error) {
+func (w *PostgresWrapper) ListShowTV(ctx context.Context) ([]repo.Showtv, error) {
 	log.Printf("[MARIADB-FIX] ListShowTV called")
 	rows, err := w.db.QueryContext(ctx, "SELECT id, tvname, showit FROM SHOWTV")
 	if err != nil {
@@ -2221,8 +1998,8 @@ func (w *MySQLWrapper) ListShowTV(ctx context.Context) ([]repo.Showtv, error) {
 	return items, nil
 }
 
-func (w *MySQLWrapper) ListAktionen(ctx context.Context, arg repo.ListAktionenParams) ([]repo.ListAktionenRow, error) {
-	res, err := w.mysql.ListAktionen(ctx, repo_mysql.ListAktionenParams{
+func (w *PostgresWrapper) ListAktionen(ctx context.Context, arg repo.ListAktionenParams) ([]repo.ListAktionenRow, error) {
+	res, err := w.pg.ListAktionen(ctx, repo_postgres.ListAktionenParams{
 		IDUser:    toInt32(arg.IDUser),
 		StartDate: arg.StartDate,
 		EndDate:   arg.EndDate,
@@ -2234,22 +2011,22 @@ func (w *MySQLWrapper) ListAktionen(ctx context.Context, arg repo.ListAktionenPa
 	}
 	items := make([]repo.ListAktionenRow, len(res))
 	for i, v := range res {
-		items[i] = convertListAktionenRow(v)
+		items[i] = convertPgListAktionenRow(v)
 	}
 	return items, nil
 }
 
-func (w *MySQLWrapper) GetAktion(ctx context.Context, id int64) (repo.Aktionen, error) {
-	v, err := w.mysql.GetAktion(ctx, int32(id))
+func (w *PostgresWrapper) GetAktion(ctx context.Context, id int64) (repo.Aktionen, error) {
+	v, err := w.pg.GetAktion(ctx, int32(id))
 	if err != nil {
 		return repo.Aktionen{}, err
 	}
-	return convertAktion(v), nil
+	return convertPgAktion(v), nil
 }
 
-func (w *MySQLWrapper) CreateAktion(ctx context.Context, arg repo.CreateAktionParams) (repo.Aktionen, error) {
+func (w *PostgresWrapper) CreateAktion(ctx context.Context, arg repo.CreateAktionParams) (repo.Aktionen, error) {
 	log.Printf("[DB] CreateAktion called for: %v", arg.Bezeichnung)
-	res, err := w.mysql.CreateAktion(ctx, repo_mysql.CreateAktionParams{
+	res, err := w.pg.CreateAktion(ctx, repo_postgres.CreateAktionParams{
 		AktionenKz:       toNullString(arg.AktionenKz),
 		IDUser:           toNullInt32(arg.IDUser),
 		Aktionsdatum:     arg.Aktionsdatum,
@@ -2265,14 +2042,14 @@ func (w *MySQLWrapper) CreateAktion(ctx context.Context, arg repo.CreateAktionPa
 		log.Printf("[DB] CreateAktion ERROR: %v", err)
 		return repo.Aktionen{}, err
 	}
-	id, _ := res.LastInsertId()
+	id := int64(res.ID)
 	log.Printf("[DB] CreateAktion SUCCESS, new ID: %d", id)
 	return w.GetAktion(ctx, id)
 }
 
-func (w *MySQLWrapper) UpdateAktion(ctx context.Context, arg repo.UpdateAktionParams) (repo.Aktionen, error) {
+func (w *PostgresWrapper) UpdateAktion(ctx context.Context, arg repo.UpdateAktionParams) (repo.Aktionen, error) {
 	log.Printf("[DB] UpdateAktion called for ID: %d", arg.ID)
-	err := w.mysql.UpdateAktion(ctx, repo_mysql.UpdateAktionParams{
+	_, err := w.pg.UpdateAktion(ctx, repo_postgres.UpdateAktionParams{
 		AktionenKz:       toNullString(arg.AktionenKz),
 		IDUser:           toNullInt32(arg.IDUser),
 		Aktionsdatum:     arg.Aktionsdatum,
@@ -2293,11 +2070,11 @@ func (w *MySQLWrapper) UpdateAktion(ctx context.Context, arg repo.UpdateAktionPa
 	return w.GetAktion(ctx, arg.ID)
 }
 
-func (w *MySQLWrapper) DeleteAktion(ctx context.Context, id int64) error {
-	return w.mysql.DeleteAktion(ctx, int32(id))
+func (w *PostgresWrapper) DeleteAktion(ctx context.Context, id int64) error {
+	return w.pg.DeleteAktion(ctx, int32(id))
 }
 
-func convertAktion(v repo_mysql.Aktionen) repo.Aktionen {
+func convertPgAktion(v repo_postgres.Aktionen) repo.Aktionen {
 	return repo.Aktionen{
 		ID:               int64(v.ID),
 		AktionenKz:       v.AktionenKz,
@@ -2313,17 +2090,17 @@ func convertAktion(v repo_mysql.Aktionen) repo.Aktionen {
 	}
 }
 
-func convertListAktionenRow(v repo_mysql.ListAktionenRow) repo.ListAktionenRow {
+func convertPgListAktionenRow(v repo_postgres.ListAktionenRow) repo.ListAktionenRow {
 	return repo.ListAktionenRow{
 		ID:               int64(v.ID),
 		AktionenKz:       v.AktionenKz,
-		IDUser:           v.IDUser,
+		IDUser:           toNullInt64(v.IDUser),
 		Aktionsdatum:     v.Aktionsdatum,
 		Bezeichnung:      v.Bezeichnung,
-		IntervallTage:    v.IntervallTage,
-		AnzahlIntervalle: v.AnzahlIntervalle,
-		Erledigt:         v.Erledigt,
-		IDUserErledigt:   v.IDUserErledigt,
+		IntervallTage:    toNullInt64(v.IntervallTage),
+		AnzahlIntervalle: toNullInt64(v.AnzahlIntervalle),
+		Erledigt:         toNullInt64(v.Erledigt),
+		IDUserErledigt:   toNullInt64(v.IDUserErledigt),
 		ErledigtAm:       v.ErledigtAm,
 		Bemerkung:        v.Bemerkung,
 		Username:         v.Username,
