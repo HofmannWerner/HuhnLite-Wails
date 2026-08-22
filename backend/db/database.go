@@ -2,8 +2,10 @@ package db
 
 import (
 	"database/sql"
+	_ "embed"
 	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	_ "github.com/glebarez/go-sqlite"
@@ -15,6 +17,9 @@ import (
 	"huhnlite-wails/backend/db/repo_mysql"
 	"huhnlite-wails/backend/db/repo_postgres"
 )
+
+//go:embed schema_sqlite.sql
+var sqliteSchemaSQL string
 
 type DB struct {
 	SQL           *sql.DB
@@ -36,7 +41,16 @@ func Connect(cfg config.Config) (*DB, error) {
 	}
 
 	if cfg.DBEngine == "sqlite" {
+		if st, errStat := os.Stat(connStr); os.IsNotExist(errStat) || (errStat == nil && st.IsDir()) {
+			return nil, fmt.Errorf("SQLite-Datenbankdatei nicht gefunden: %s", connStr)
+		}
 		conn, err = sql.Open("sqlite", connStr)
+		if err == nil {
+			if !hasTable(conn, "sqlite", "BUCHUNG") {
+				conn.Close()
+				return nil, fmt.Errorf("SQLite-Datenbankdatei '%s' enthält keine gültige Tabellenstruktur (Tabelle BUCHUNG fehlt)", connStr)
+			}
+		}
 	} else if cfg.DBEngine == "mysql" {
 		// Expecting MariaDB/MySQL DSN
 		conn, err = sql.Open("mysql", connStr)
@@ -52,6 +66,9 @@ func Connect(cfg config.Config) (*DB, error) {
 		// Renaming SYSTEM to SYSTEM_KZ to avoid reserved word conflicts
 		tables := []string{"TEXTE", "TEXT_TYPEN"}
 		for _, table := range tables {
+			if !hasTable(conn, cfg.DBEngine, table) {
+				continue
+			}
 			var hasOldColumn bool = hasTableColumn(conn, cfg.DBEngine, table, "SYSTEM")
 
 			if hasOldColumn {
@@ -88,14 +105,9 @@ func Connect(cfg config.Config) (*DB, error) {
 				}
 			}
 		}
-	} else {
-		return nil, fmt.Errorf("unsupported database engine: %s", cfg.DBEngine)
-	}
 
-	if err == nil {
 		// Fix für AKTIONEN (ERLEDIGT_AM und ID_USER_ERLEDIGT hinzufügen falls fehlend)
-		// Muss AUSSERHALB der TEXTE-Schleife liegen
-		{
+		if hasTable(conn, cfg.DBEngine, "AKTIONEN") {
 			table := "AKTIONEN"
 			columns := []struct {
 				name string
@@ -123,7 +135,7 @@ func Connect(cfg config.Config) (*DB, error) {
 		}
 
 		// Fix für FUTTER (ZEITSTEMPEL hinzufügen falls fehlend)
-		{
+		if hasTable(conn, cfg.DBEngine, "FUTTER") {
 			table := "FUTTER"
 			columns := []struct {
 				name string
@@ -149,7 +161,7 @@ func Connect(cfg config.Config) (*DB, error) {
 		}
 
 		// Fix für HERDEN (ZEITSTEMPEL hinzufügen falls fehlend)
-		{
+		if hasTable(conn, cfg.DBEngine, "HERDEN") {
 			table := "HERDEN"
 			columns := []struct {
 				name string
@@ -175,7 +187,7 @@ func Connect(cfg config.Config) (*DB, error) {
 		}
 
 		// Fix für BUCHUNG (FUTTERVERBRAUCHTIER hinzufügen falls fehlend)
-		{
+		if hasTable(conn, cfg.DBEngine, "BUCHUNG") {
 			table := "BUCHUNG"
 			columns := []struct {
 				name string
@@ -203,7 +215,7 @@ func Connect(cfg config.Config) (*DB, error) {
 		}
 
 		// Fix für FIRMENPARAMETER (FUTTERINVENTUR hinzufügen falls fehlend)
-		{
+		if hasTable(conn, cfg.DBEngine, "FIRMENPARAMETER") {
 			table := "FIRMENPARAMETER"
 			columns := []struct {
 				name string
@@ -231,9 +243,8 @@ func Connect(cfg config.Config) (*DB, error) {
 		}
 
 		// Fix for existing float values in FUTTERKTAG in SQLite
-		if cfg.DBEngine == "sqlite" {
-			_, err = conn.Exec("UPDATE BUCHUNG SET FUTTERKTAG = CAST(ROUND(FUTTERKTAG) AS INTEGER) WHERE typeof(FUTTERKTAG) = 'real'")
-			if err != nil {
+		if cfg.DBEngine == "sqlite" && hasTable(conn, "sqlite", "BUCHUNG") {
+			if _, err := conn.Exec("UPDATE BUCHUNG SET FUTTERKTAG = CAST(ROUND(FUTTERKTAG) AS INTEGER) WHERE typeof(FUTTERKTAG) = 'real'"); err != nil {
 				log.Printf("[DB] Error cleaning up FUTTERKTAG floats: %v", err)
 			} else {
 				log.Printf("[DB] Successfully cleaned up any float FUTTERKTAG values in SQLite")
@@ -241,7 +252,7 @@ func Connect(cfg config.Config) (*DB, error) {
 		}
 
 		// Fix für EILAGER (KLASSE6 und KLASSE7 hinzufügen falls fehlend)
-		{
+		if hasTable(conn, cfg.DBEngine, "EILAGER") {
 			table := "EILAGER"
 			columns := []struct {
 				name string
@@ -300,7 +311,14 @@ func (d *DB) SwitchConnection(connString string, isTest bool) error {
 	var err error
 
 	if d.Engine == "sqlite" {
+		if st, errStat := os.Stat(connString); os.IsNotExist(errStat) || (errStat == nil && st.IsDir()) {
+			return fmt.Errorf("SQLite-Datenbankdatei nicht gefunden: %s", connString)
+		}
 		conn, err = sql.Open("sqlite", connString)
+		if err == nil && !hasTable(conn, "sqlite", "BUCHUNG") {
+			conn.Close()
+			return fmt.Errorf("SQLite-Datenbankdatei '%s' enthält keine gültige Tabellenstruktur", connString)
+		}
 	} else if d.Engine == "mysql" {
 		conn, err = sql.Open("mysql", connString)
 	} else if d.Engine == "postgres" {
@@ -374,3 +392,20 @@ func hasTableColumn(conn *sql.DB, engine, table, colName string) bool {
 		return rows.Next()
 	}
 }
+
+func hasTable(conn *sql.DB, engine, table string) bool {
+	if engine == "sqlite" {
+		var name string
+		err := conn.QueryRow("SELECT name FROM sqlite_master WHERE type='table' AND LOWER(name) = LOWER(?)", table).Scan(&name)
+		return err == nil && name != ""
+	} else if engine == "postgres" {
+		var dummy string
+		err := conn.QueryRow("SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND LOWER(table_name) = LOWER($1)", table).Scan(&dummy)
+		return err == nil && dummy != ""
+	} else {
+		var dummy string
+		err := conn.QueryRow("SELECT TABLE_NAME FROM information_schema.TABLES WHERE LOWER(TABLE_NAME) = LOWER(?) AND TABLE_SCHEMA = DATABASE()", table).Scan(&dummy)
+		return err == nil && dummy != ""
+	}
+}
+

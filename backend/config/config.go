@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -26,6 +27,7 @@ type Config struct {
 	BackupTimeStr      string `json:"backuptime"`    // e.g. "1200,20:00"
 	WaitTimeStr        string `json:"waittime"`      // e.g. "00:01" (hh:mm)
 	LauncherPort       int    `json:"launcher_port"`
+	BaseLink           string `json:"base_link"`
 	Language           string `json:"language"`
 	BackupPath         string `json:"backup_path"`
 	ExchangePath       string `json:"exchange_path"`
@@ -110,6 +112,9 @@ type safeWriter struct {
 
 func (sw *safeWriter) Write(p []byte) (n int, err error) {
 	n, _ = sw.w.Write(p)
+	if f, ok := sw.w.(*os.File); ok {
+		_ = f.Sync()
+	}
 	return n, nil
 }
 
@@ -164,19 +169,25 @@ func LoadConfig() Config {
 	writers = append(writers, &safeWriter{w: os.Stdout})
 	
 	if logFile != nil {
-		writers = append(writers, logFile)
+		writers = append(writers, &safeWriter{w: logFile})
 	}
 	if logFileLocal != nil {
-		writers = append(writers, logFileLocal)
+		writers = append(writers, &safeWriter{w: logFileLocal})
 	}
 	
 	var multiWriter io.Writer = io.MultiWriter(writers...)
 	log.SetOutput(multiWriter)
-	log.Printf("--- App gestartet (PID: %d) ---", os.Getpid())
+	log.Printf("==================================================")
+	log.Printf("--- App gestartet (PID: %d, Time: %s) ---", os.Getpid(), time.Now().Format("2006-01-02 15:04:05"))
+	log.Printf("Executable: %s", execPath)
+	log.Printf("BundleDir: %s | CWD: %s", bundleDir, cwd)
 	if logPath != "" {
 		log.Printf("Log-Datei AppData: %s", logPath)
 	}
-	log.Printf("Log-Datei Lokal: %s", localLogPath)
+	if logFileLocal != nil {
+		log.Printf("Log-Datei Lokal: %s", localLogPath)
+	}
+	log.Printf("==================================================")
 
 	parent := filepath.Dir(cwd)
 
@@ -199,7 +210,6 @@ func LoadConfig() Config {
 
 		// Files to copy from sourceDirForCopy to appDataDir if they don't exist in appDataDir
 		filesToCopy := []string{
-			"HuhnLite.db",
 			"HuhnLite_test.db",
 			"HuhnLite_prod.db",
 			"settings.json",
@@ -224,14 +234,14 @@ func LoadConfig() Config {
 	}
 
 	// 1. Fallback: Application Support Verzeichnis
-	defaultDB := "HuhnLite.db"
+	defaultDB := "HuhnLite_prod.db"
 	if appDataDir != "" {
-		defaultDB = filepath.Join(appDataDir, "HuhnLite.db")
+		defaultDB = filepath.Join(appDataDir, "HuhnLite_prod.db")
 	}
 
-	// 2. Bevorzuge eine bestehende HuhnLite.db neben der App (Portable Mode)
+	// 2. Bevorzuge eine bestehende HuhnLite_prod.db neben der App (Portable Mode)
 	if bundleDir != "" && !isProgramFiles {
-		fullPath := filepath.Join(bundleDir, "HuhnLite.db")
+		fullPath := filepath.Join(bundleDir, "HuhnLite_prod.db")
 		if _, err := os.Stat(fullPath); err == nil {
 			fmt.Printf("Found DB at BundleDir: %s\n", fullPath)
 			defaultDB = fullPath
@@ -239,9 +249,9 @@ func LoadConfig() Config {
 			fmt.Printf("DB NOT found at BundleDir: %s (%v)\n", fullPath, err)
 		}
 	}
-	// 3. Bevorzuge eine bestehende HuhnLite.db im aktuellen Terminal-Ordner (z.B. für wails dev)
+	// 3. Bevorzuge eine bestehende HuhnLite_prod.db im aktuellen Terminal-Ordner (z.B. für wails dev)
 	if cwd != "" && cwd != bundleDir {
-		fullPath := filepath.Join(cwd, "HuhnLite.db")
+		fullPath := filepath.Join(cwd, "HuhnLite_prod.db")
 		if _, err := os.Stat(fullPath); err == nil {
 			fmt.Printf("Found DB at CWD: %s\n", fullPath)
 			defaultDB = fullPath
@@ -296,23 +306,17 @@ func LoadConfig() Config {
 	var rawMap map[string]interface{}
 	for _, configName := range configFiles {
 		var paths []string
-		if isProgramFiles && appDataDir != "" {
-			paths = []string{
-				filepath.Join(appDataDir, configName),
-				filepath.Join(cwd, configName),
-				filepath.Join(parent, configName),
-			}
-		} else {
-			paths = []string{
-				filepath.Join(cwd, configName),
-				filepath.Join(parent, configName),
-			}
-			if appDataDir != "" {
-				paths = append(paths, filepath.Join(appDataDir, configName))
-			}
-			if bundleDir != "" && !isProgramFiles {
-				paths = append(paths, filepath.Join(bundleDir, configName))
-			}
+		if appDataDir != "" {
+			paths = append(paths, filepath.Join(appDataDir, configName))
+		}
+		if bundleDir != "" {
+			paths = append(paths, filepath.Join(bundleDir, configName))
+		}
+		if cwd != "" && cwd != bundleDir {
+			paths = append(paths, filepath.Join(cwd, configName))
+		}
+		if parent != "" && parent != cwd && parent != bundleDir {
+			paths = append(paths, filepath.Join(parent, configName))
 		}
 		if errExec == nil && filepath.Base(filepath.Dir(execPath)) == "MacOS" && filepath.Base(filepath.Dir(filepath.Dir(execPath))) == "Contents" {
 			resourcesDir := filepath.Join(filepath.Dir(filepath.Dir(execPath)), "Resources")
@@ -348,32 +352,16 @@ func LoadConfig() Config {
 								}
 
 								settingsDir := filepath.Dir(p)
-								if isProgramFiles && appDataDir != "" {
-									settingsDir = appDataDir
+								if appDataDir != "" {
+									mandantAppData := filepath.Join(appDataDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
+									if isProgramFiles {
+										settingsDir = appDataDir
+									} else if _, errStat := os.Stat(mandantAppData); errStat == nil {
+										settingsDir = appDataDir
+									}
 								}
 								cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
 								cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
-
-								mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
-								if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
-									mandantProdPath := filepath.Join(mandantDir, prodBase)
-									mandantTestPath := filepath.Join(mandantDir, testBase)
-									srcProd := filepath.Join(settingsDir, prodBase)
-									srcTest := filepath.Join(settingsDir, testBase)
-
-									if _, errStat := os.Stat(mandantProdPath); os.IsNotExist(errStat) {
-										if _, errSrc := os.Stat(srcProd); errSrc == nil {
-											log.Printf("[Config] Copying base prod DB to %s", mandantProdPath)
-											_ = copyFile(srcProd, mandantProdPath)
-										}
-									}
-									if _, errStat := os.Stat(mandantTestPath); os.IsNotExist(errStat) {
-										if _, errSrc := os.Stat(srcTest); errSrc == nil {
-											log.Printf("[Config] Copying base test DB to %s", mandantTestPath)
-											_ = copyFile(srcTest, mandantTestPath)
-										}
-									}
-								}
 							} else {
 								cfg.DBConnectionString = ApplyMandantToDBConnection(cfg.DBEngine, cfg.DBConnectionString, cfg.Mandant)
 								if cfg.DBConnectionTest != "" {
@@ -477,6 +465,14 @@ func LoadConfig() Config {
 									cfg.WaitTimeStr = s
 								}
 							}
+
+							if lp := extractLauncherPort(rawMap, cfg.Mandant); lp > 0 {
+								cfg.LauncherPort = lp
+							}
+
+							if bl := extractBaseLink(rawMap, cfg.Mandant); bl != "" {
+								cfg.BaseLink = bl
+							}
 						} else {
 							// Bei SQLite und relativem Pfad: Pfad relativ zur settings.json auflösen
 							if cfg.DBEngine == "sqlite" && !filepath.IsAbs(cfg.DBConnectionString) {
@@ -524,6 +520,14 @@ func LoadConfig() Config {
 									cfg.WaitTimeStr = s
 								}
 							}
+
+							if lp := extractLauncherPort(rawMap, 0); lp > 0 {
+								cfg.LauncherPort = lp
+							}
+
+							if bl := extractBaseLink(rawMap, 0); bl != "" {
+								cfg.BaseLink = bl
+							}
 						}
 						loaded = true
 						break
@@ -569,6 +573,10 @@ func LoadConfig() Config {
 		cfg.LauncherPort = *ov.LauncherPort
 		log.Printf("[CLI] Overriding LauncherPort: %d", cfg.LauncherPort)
 	}
+	if ov.BaseLink != nil {
+		cfg.BaseLink = *ov.BaseLink
+		log.Printf("[CLI] Overriding BaseLink: %s", cfg.BaseLink)
+	}
 	if ov.Language != nil {
 		cfg.Language = *ov.Language
 		cfg.HasCLILanguage = true
@@ -581,8 +589,13 @@ func LoadConfig() Config {
 	if ov.Mandant != nil {
 		if cfg.DBEngine == "sqlite" {
 			settingsDir := filepath.Dir(cfg.ConfigFilePath)
-			if isProgramFiles && appDataDir != "" {
-				settingsDir = appDataDir
+			if appDataDir != "" {
+				mandantAppData := filepath.Join(appDataDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
+				if isProgramFiles {
+					settingsDir = appDataDir
+				} else if _, errStat := os.Stat(mandantAppData); errStat == nil {
+					settingsDir = appDataDir
+				}
 			} else if cfg.ConfigFilePath == "" {
 				if bundleDir != "" && !isProgramFiles {
 					settingsDir = bundleDir
@@ -596,27 +609,6 @@ func LoadConfig() Config {
 
 			cfg.DBConnectionString = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), prodBase)
 			cfg.DBConnectionTest = filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant), testBase)
-
-			mandantDir := filepath.Join(settingsDir, fmt.Sprintf("mandant_%d", cfg.Mandant))
-			if errMk := os.MkdirAll(mandantDir, 0755); errMk == nil {
-				mandantProdPath := filepath.Join(mandantDir, prodBase)
-				mandantTestPath := filepath.Join(mandantDir, testBase)
-				srcProd := filepath.Join(settingsDir, prodBase)
-				srcTest := filepath.Join(settingsDir, testBase)
-
-				if _, errStat := os.Stat(mandantProdPath); os.IsNotExist(errStat) {
-					if _, errSrc := os.Stat(srcProd); errSrc == nil {
-						log.Printf("[Config] Copying base prod DB to %s", mandantProdPath)
-						_ = copyFile(srcProd, mandantProdPath)
-					}
-				}
-				if _, errStat := os.Stat(mandantTestPath); os.IsNotExist(errStat) {
-					if _, errSrc := os.Stat(srcTest); errSrc == nil {
-						log.Printf("[Config] Copying base test DB to %s", mandantTestPath)
-						_ = copyFile(srcTest, mandantTestPath)
-					}
-				}
-			}
 		} else {
 			cfg.DBConnectionString = ApplyMandantToDBConnection(cfg.DBEngine, cfg.DBConnectionString, cfg.Mandant)
 			if cfg.DBConnectionTest != "" {
@@ -711,6 +703,26 @@ func LoadConfig() Config {
 					cfg.ExchangePath = s
 				}
 			}
+
+			if lp := extractLauncherPort(rawMap, cfg.Mandant); lp > 0 && ov.LauncherPort == nil {
+				cfg.LauncherPort = lp
+			}
+
+			if bl := extractBaseLink(rawMap, cfg.Mandant); bl != "" && ov.BaseLink == nil {
+				cfg.BaseLink = bl
+			}
+		}
+	}
+
+	if execPath != "" && strings.Contains(strings.ToLower(execPath), "server") {
+		cfg.Mode = "server"
+		log.Printf("[Config] Executable name contains 'server', enforcing Mode='server'")
+	}
+	if (cfg.Mode == "server" || strings.Contains(strings.ToLower(execPath), "server")) && cfg.LauncherPort == 8080 && ov.LauncherPort == nil {
+		if lp := extractLauncherPort(rawMap, cfg.Mandant); lp > 0 {
+			cfg.LauncherPort = lp
+		} else {
+			cfg.LauncherPort = 9000
 		}
 	}
 
@@ -854,7 +866,94 @@ type cliOverrides struct {
 	Test         *int
 	WaitTimeStr  *string
 	LauncherPort *int
+	BaseLink     *string
 	Language     *string
+}
+
+func extractBaseLink(rawMap map[string]interface{}, mandant int) string {
+	if rawMap == nil {
+		return ""
+	}
+	if mandant > 0 {
+		for _, key := range []string{
+			fmt.Sprintf("baseLink_%d", mandant),
+			fmt.Sprintf("baselink_%d", mandant),
+			fmt.Sprintf("base_link_%d", mandant),
+		} {
+			if v, ok := rawMap[key].(string); ok && strings.TrimSpace(v) != "" {
+				return strings.TrimSpace(v)
+			}
+		}
+	}
+	for _, key := range []string{"baseLink", "baselink", "base_link"} {
+		if v, ok := rawMap[key].(string); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
+		}
+	}
+	return ""
+}
+
+func extractLauncherPort(rawMap map[string]interface{}, mandant int) int {
+	if rawMap == nil {
+		return 0
+	}
+	getInt := func(v interface{}) int {
+		if f, ok := v.(float64); ok {
+			return int(f)
+		}
+		if s, ok := v.(string); ok {
+			if p, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
+				return p
+			}
+		}
+		if i, ok := v.(int); ok {
+			return i
+		}
+		return 0
+	}
+
+	if mandant > 0 {
+		for _, key := range []string{
+			fmt.Sprintf("basePort_%d", mandant),
+			fmt.Sprintf("base_port_%d", mandant),
+			fmt.Sprintf("baseport_%d", mandant),
+			fmt.Sprintf("launcherPort_%d", mandant),
+			fmt.Sprintf("launcher_port_%d", mandant),
+			fmt.Sprintf("launcherport_%d", mandant),
+			fmt.Sprintf("lport_%d", mandant),
+		} {
+			if v, ok := rawMap[key]; ok {
+				if port := getInt(v); port > 0 {
+					return port
+				}
+			}
+		}
+	}
+
+	for _, key := range []string{
+		"basePort", "base_port", "baseport",
+		"launcherPort", "launcher_port", "launcherport", "lport",
+	} {
+		if v, ok := rawMap[key]; ok {
+			if port := getInt(v); port > 0 {
+				return port
+			}
+		}
+	}
+
+	// Fallback: Port aus baseLink ermitteln (z.B. "localhost:9000" -> 9000 oder "http://192.168.1.50:9000" -> 9000)
+	if bl := extractBaseLink(rawMap, mandant); bl != "" {
+		bl = strings.TrimSpace(bl)
+		if idx := strings.LastIndex(bl, ":"); idx != -1 {
+			portStr := bl[idx+1:]
+			portStr = strings.Trim(portStr, "/ \t\r\n")
+			if p, err := strconv.Atoi(portStr); err == nil && p > 0 {
+				return p
+			}
+		}
+	}
+
+	return 0
 }
 
 func tokenizeArgs(args []string) []string {
@@ -993,10 +1092,16 @@ func parseCLIArgs(args []string) cliOverrides {
 			s := strings.TrimSpace(valStr)
 			ov.WaitTimeStr = &s
 			log.Printf("[CLI] Parsed WaitTime: %s", s)
-		case "launcher-port", "launcherport", "lport":
+		case "launcher-port", "launcherport", "launcher_port", "lport", "baseport", "base-port", "base_port":
 			if lpVal, err := strconv.Atoi(strings.TrimSpace(valStr)); err == nil && lpVal > 0 {
 				ov.LauncherPort = &lpVal
-				log.Printf("[CLI] Parsed LauncherPort: %d", lpVal)
+				log.Printf("[CLI] Parsed LauncherPort / BasePort: %d", lpVal)
+			}
+		case "baselink", "base-link", "base_link", "link":
+			s := strings.TrimSpace(valStr)
+			if s != "" {
+				ov.BaseLink = &s
+				log.Printf("[CLI] Parsed BaseLink: %s", s)
 			}
 		case "language", "lang", "sprache", "l":
 			s := strings.ToLower(strings.TrimSpace(valStr))

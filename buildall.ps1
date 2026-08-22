@@ -54,42 +54,50 @@ Set-WailsName "HuhnLite-Local"
 
 if (Test-Path "settings.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "settings.json" "build\bin\settings.json" -Force
-    Write-Host "settings.json kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\settings.json")) {
+        Copy-Item "settings.json" "build\bin\settings.json"
+        Write-Host "settings.json kopiert." -ForegroundColor Gray
+    }
 }
 
 if (Test-Path "HuhnLite.db") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "HuhnLite.db" "build\bin\HuhnLite.db" -Force
-    Write-Host "HuhnLite.db kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\HuhnLite.db")) {
+        Copy-Item "HuhnLite.db" "build\bin\HuhnLite.db"
+        Write-Host "HuhnLite.db kopiert." -ForegroundColor Gray
+    }
 }
 
 if (Test-Path "HuhnLite_test.db") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "HuhnLite_test.db" "build\bin\HuhnLite_test.db" -Force
-    Write-Host "HuhnLite_test.db kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\HuhnLite_test.db")) {
+        Copy-Item "HuhnLite_test.db" "build\bin\HuhnLite_test.db"
+        Write-Host "HuhnLite_test.db kopiert." -ForegroundColor Gray
+    }
 }
 
 if (Test-Path "HuhnLite_prod.db") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "HuhnLite_prod.db" "build\bin\HuhnLite_prod.db" -Force
-    Write-Host "HuhnLite_prod.db kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\HuhnLite_prod.db")) {
+        Copy-Item "HuhnLite_prod.db" "build\bin\HuhnLite_prod.db"
+        Write-Host "HuhnLite_prod.db kopiert." -ForegroundColor Gray
+    }
 }
 
 # Erstelle Mandanten-Verzeichnisse in build\bin und kopiere Standard-DBs hinein
 if (!(Test-Path "build\bin\mandant_1")) { New-Item -ItemType Directory -Path "build\bin\mandant_1" -Force }
 if (!(Test-Path "build\bin\mandant_2")) { New-Item -ItemType Directory -Path "build\bin\mandant_2" -Force }
 if (Test-Path "HuhnLite.db") {
-    Copy-Item "HuhnLite.db" "build\bin\mandant_1\HuhnLite.db" -Force
-    Copy-Item "HuhnLite.db" "build\bin\mandant_2\HuhnLite.db" -Force
+    if (!(Test-Path "build\bin\mandant_1\HuhnLite.db")) { Copy-Item "HuhnLite.db" "build\bin\mandant_1\HuhnLite.db" }
+    if (!(Test-Path "build\bin\mandant_2\HuhnLite.db")) { Copy-Item "HuhnLite.db" "build\bin\mandant_2\HuhnLite.db" }
 }
 if (Test-Path "HuhnLite_test.db") {
-    Copy-Item "HuhnLite_test.db" "build\bin\mandant_1\HuhnLite_test.db" -Force
-    Copy-Item "HuhnLite_test.db" "build\bin\mandant_2\HuhnLite_test.db" -Force
+    if (!(Test-Path "build\bin\mandant_1\HuhnLite_test.db")) { Copy-Item "HuhnLite_test.db" "build\bin\mandant_1\HuhnLite_test.db" }
+    if (!(Test-Path "build\bin\mandant_2\HuhnLite_test.db")) { Copy-Item "HuhnLite_test.db" "build\bin\mandant_2\HuhnLite_test.db" }
 }
 if (Test-Path "HuhnLite_prod.db") {
-    Copy-Item "HuhnLite_prod.db" "build\bin\mandant_1\HuhnLite_prod.db" -Force
-    Copy-Item "HuhnLite_prod.db" "build\bin\mandant_2\HuhnLite_prod.db" -Force
+    if (!(Test-Path "build\bin\mandant_1\HuhnLite_prod.db")) { Copy-Item "HuhnLite_prod.db" "build\bin\mandant_1\HuhnLite_prod.db" }
+    if (!(Test-Path "build\bin\mandant_2\HuhnLite_prod.db")) { Copy-Item "HuhnLite_prod.db" "build\bin\mandant_2\HuhnLite_prod.db" }
 }
 
 Get-ChildItem -Path . -Filter "HuhnLite_*.PDF" -ErrorAction SilentlyContinue | Copy-Item -Destination "build\bin" -Force
@@ -120,8 +128,10 @@ Set-WailsName "HuhnLite-MariaDB"
 
 if (Test-Path "settings_mariadb.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "settings_mariadb.json" "build\bin\settings_mariadb.json" -Force
-    Write-Host "settings_mariadb.json kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\settings_mariadb.json")) {
+        Copy-Item "settings_mariadb.json" "build\bin\settings_mariadb.json"
+        Write-Host "settings_mariadb.json kopiert." -ForegroundColor Gray
+    }
 }
 
 if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
@@ -140,8 +150,10 @@ Set-WailsName "HuhnLite-Postgres"
 
 if (Test-Path "settings_postgres.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "settings_postgres.json" "build\bin\settings_postgres.json" -Force
-    Write-Host "settings_postgres.json kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\settings_postgres.json")) {
+        Copy-Item "settings_postgres.json" "build\bin\settings_postgres.json"
+        Write-Host "settings_postgres.json kopiert." -ForegroundColor Gray
+    }
 }
 
 if (Get-Command $MAKENSIS -ErrorAction SilentlyContinue) {
@@ -180,8 +192,10 @@ if ($Platform) {
 
 if (Test-Path "settings_server.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "settings_server.json" "build\bin\settings_server.json" -Force
-    Write-Host "settings_server.json kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\settings_server.json")) {
+        Copy-Item "settings_server.json" "build\bin\settings_server.json"
+        Write-Host "settings_server.json kopiert." -ForegroundColor Gray
+    }
 }
 
 if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {
@@ -214,8 +228,10 @@ if ($Platform) {
 
 if (Test-Path "settings_server_mariadb.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "settings_server_mariadb.json" "build\bin\settings_server_mariadb.json" -Force
-    Write-Host "settings_server_mariadb.json kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\settings_server_mariadb.json")) {
+        Copy-Item "settings_server_mariadb.json" "build\bin\settings_server_mariadb.json"
+        Write-Host "settings_server_mariadb.json kopiert." -ForegroundColor Gray
+    }
 }
 
 if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {
@@ -248,8 +264,10 @@ if ($Platform) {
 
 if (Test-Path "settings_server_postgres.json") {
     if (!(Test-Path "build\bin")) { New-Item -ItemType Directory -Path "build\bin" -Force }
-    Copy-Item "settings_server_postgres.json" "build\bin\settings_server_postgres.json" -Force
-    Write-Host "settings_server_postgres.json kopiert." -ForegroundColor Gray
+    if (!(Test-Path "build\bin\settings_server_postgres.json")) {
+        Copy-Item "settings_server_postgres.json" "build\bin\settings_server_postgres.json"
+        Write-Host "settings_server_postgres.json kopiert." -ForegroundColor Gray
+    }
 }
 
 if ($targetOS -eq "windows" -and (Get-Command $MAKENSIS -ErrorAction SilentlyContinue)) {

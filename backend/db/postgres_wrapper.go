@@ -160,7 +160,7 @@ func (w *PostgresWrapper) GetBuchung(ctx context.Context, id int64) (repo.Buchun
 		       B.TIERBESTAND, B.ID_EITABELLE, B.ID_DGEWICHTTAB, B.FUTTERKTAG, B.SILONR, B.KL6, 
 		       B.VERMITTELTAM, B.SMALL, B.LARGE, B.MEDIUM, B.XL, B.ZEITSTEMPEL, B.DGEWICHTEI, B.AW, B.VERMITTELT, B.FUTTERVERBRAUCHTIER
 		FROM BUCHUNG B
-		WHERE B.ID = ?
+		WHERE B.ID = $1
 	`
 	row := w.queryRow(ctx, query, id)
 	var idVal, idh, lw, hnr, ka, v, s, k, vo, b, tb, idet, idgt, sn, sm, l, m, xl, aw, fvt int32
@@ -397,79 +397,148 @@ func (w *PostgresWrapper) UpdateHerde(ctx context.Context, arg repo.UpdateHerdeP
 // --- Statistik / Grafik Methoden ---
 
 func (w *PostgresWrapper) GetEggBookingYears(ctx context.Context, arg repo.GetEggBookingYearsParams) ([]interface{}, error) {
-	res, err := w.pg.GetEggBookingYears(ctx, repo_postgres.GetEggBookingYearsParams{
-		IDHerden:   toInt32(arg.IDHerden),
-		OnlyActive: arg.OnlyActive,
-	})
+	query := `
+		SELECT DISTINCT SUBSTRING(BUCHUNGSDATUM FROM 1 FOR 4) as year
+		FROM BUCHUNG
+		WHERE ($1 = -1 OR ID_HERDEN = $1)
+		  AND ($2 = 0 OR EXISTS (SELECT 1 FROM HERDEN H WHERE H.ID = BUCHUNG.ID_HERDEN AND H.AKTIV = 1))
+		ORDER BY year DESC
+	`
+	idHerden := toInt64(arg.IDHerden)
+	onlyActive := toInt64(arg.OnlyActive)
+
+	rows, err := w.query(ctx, query, idHerden, onlyActive)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]interface{}, len(res))
-	for i, v := range res {
-		items[i] = v
+	defer rows.Close()
+
+	var items []interface{}
+	for rows.Next() {
+		var year sql.NullString
+		if err := rows.Scan(&year); err != nil {
+			return nil, err
+		}
+		if year.Valid && year.String != "" {
+			items = append(items, year.String)
+		}
 	}
 	return items, nil
 }
 
 func (w *PostgresWrapper) GetEggStatsByHerde(ctx context.Context, arg repo.GetEggStatsByHerdeParams) (repo.GetEggStatsByHerdeRow, error) {
-	res, err := w.pg.GetEggStatsByHerde(ctx, repo_postgres.GetEggStatsByHerdeParams{
-		ID:       toInt32(arg.ID),
-		IDHerden: toInt32(arg.IDHerden),
-	})
-	if err != nil {
-		return repo.GetEggStatsByHerdeRow{}, err
+	query := `
+		SELECT COALESCE(SUM(KLASSEA), 0)                                                               AS SUM_KLASSE_A,
+		       COALESCE(SUM(SMALL), 0)                                                                 AS SUM_SMALL,
+		       COALESCE(SUM(MEDIUM), 0)                                                                AS SUM_MEDIUM,
+		       COALESCE(SUM(LARGE), 0)                                                                 AS SUM_LARGE,
+		       COALESCE(SUM(XL), 0)                                                                    AS SUM_XL,
+		       COALESCE(SUM(VERLUSTE), 0) +
+		       COALESCE((SELECT SUM(T.BEWEGUNGEN)
+		                 FROM TIERBEWEGUNGEN T
+		                          JOIN HERDEN H ON T.HERDENNUMMER = H.HERDENNUMMER
+		                 WHERE H.ID = $1), 0) AS SUM_VERLUSTE
+		FROM BUCHUNG
+		WHERE BUCHUNG.ID_HERDEN = $2
+		  AND VERMITTELT IN ('N', 'V')
+	`
+	row := w.queryRow(ctx, query, arg.ID, arg.IDHerden)
+
+	var res repo.GetEggStatsByHerdeRow
+	var sumA, sumS, sumM, sumL, sumXL, sumV int64
+	if err := row.Scan(&sumA, &sumS, &sumM, &sumL, &sumXL, &sumV); err != nil {
+		return res, err
 	}
-	return repo.GetEggStatsByHerdeRow{
-		SumKlasseA:  res.SumKlasseA,
-		SumSmall:    res.SumSmall,
-		SumMedium:   res.SumMedium,
-		SumLarge:    res.SumLarge,
-		SumXl:       res.SumXl,
-		SumVerluste: int64(res.SumVerluste),
-	}, nil
+	res.SumKlasseA = sumA
+	res.SumSmall = sumS
+	res.SumMedium = sumM
+	res.SumLarge = sumL
+	res.SumXl = sumXL
+	res.SumVerluste = sumV
+	return res, nil
 }
 
 func (w *PostgresWrapper) GetEggStatsByHerdeFiltered(ctx context.Context, arg repo.GetEggStatsByHerdeFilteredParams) (repo.GetEggStatsByHerdeFilteredRow, error) {
-	res, err := w.pg.GetEggStatsByHerdeFiltered(ctx, repo_postgres.GetEggStatsByHerdeFilteredParams{
-		IDHerden:   toInt32(arg.IDHerden),
-		OnlyActive: arg.OnlyActive,
-		Year:       toString(arg.Year),
-		Quarter:    toString(arg.Quarter),
-		Month:      toString(arg.Month),
-	})
-	if err != nil {
-		return repo.GetEggStatsByHerdeFilteredRow{}, err
+	query := `
+		SELECT COALESCE(SUM(KLASSEA), 0)  AS SUM_KLASSE_A,
+		       COALESCE(SUM(SMALL), 0)    AS SUM_SMALL,
+		       COALESCE(SUM(MEDIUM), 0)   AS SUM_MEDIUM,
+		       COALESCE(SUM(LARGE), 0)    AS SUM_LARGE,
+		       COALESCE(SUM(XL), 0)       AS SUM_XL,
+		       COALESCE(SUM(VERLUSTE), 0) AS SUM_VERLUSTE
+		FROM BUCHUNG
+		WHERE ($1 = -1 OR BUCHUNG.ID_HERDEN = $1)
+		  AND ($2 = 0 OR EXISTS (SELECT 1 FROM HERDEN H WHERE H.ID = BUCHUNG.ID_HERDEN AND H.AKTIV = 1))
+		  AND ($3 = '' OR SUBSTRING(BUCHUNGSDATUM FROM 1 FOR 4) = $3)
+		  AND ($4 = 0 OR (CAST(SUBSTRING(BUCHUNGSDATUM FROM 6 FOR 2) AS INTEGER) + 2) / 3 = $4)
+		  AND ($5 = 0 OR CAST(SUBSTRING(BUCHUNGSDATUM FROM 6 FOR 2) AS INTEGER) = $5)
+		  AND VERMITTELT IN ('N', 'V')
+	`
+	idHerden := toInt64(arg.IDHerden)
+	onlyActive := toInt64(arg.OnlyActive)
+	yearStr := toString(arg.Year)
+	quarterInt := toInt64(arg.Quarter)
+	monthInt := toInt64(arg.Month)
+
+	row := w.queryRow(ctx, query, idHerden, onlyActive, yearStr, quarterInt, monthInt)
+
+	var res repo.GetEggStatsByHerdeFilteredRow
+	var sumA, sumS, sumM, sumL, sumXL, sumV int64
+	if err := row.Scan(&sumA, &sumS, &sumM, &sumL, &sumXL, &sumV); err != nil {
+		return res, err
 	}
-	return repo.GetEggStatsByHerdeFilteredRow{
-		SumKlasseA:  res.SumKlasseA,
-		SumSmall:    res.SumSmall,
-		SumMedium:   res.SumMedium,
-		SumLarge:    res.SumLarge,
-		SumXl:       res.SumXl,
-		SumVerluste: res.SumVerluste,
-	}, nil
+	res.SumKlasseA = sumA
+	res.SumSmall = sumS
+	res.SumMedium = sumM
+	res.SumLarge = sumL
+	res.SumXl = sumXL
+	res.SumVerluste = sumV
+	return res, nil
 }
 
 func (w *PostgresWrapper) GetEggStatsWeeklyByHerde(ctx context.Context, idHerden int64) ([]repo.GetEggStatsWeeklyByHerdeRow, error) {
-	res, err := w.pg.GetEggStatsWeeklyByHerde(ctx, int32(idHerden))
+	query := `
+		SELECT LW                         AS LEBENSWOCHE,
+		       MAX(BUCHUNGSDATUM)         AS LETZTES_DATUM,
+		       COALESCE(SUM(KLASSEA), 0)  AS SUM_KLASSE_A,
+		       COALESCE(SUM(SMALL), 0)    AS SUM_SMALL,
+		       COALESCE(SUM(MEDIUM), 0)   AS SUM_MEDIUM,
+		       COALESCE(SUM(LARGE), 0)    AS SUM_LARGE,
+		       COALESCE(SUM(XL), 0)       AS SUM_XL,
+		       COALESCE(SUM(VERLUSTE), 0) AS SUM_VERLUSTE
+		FROM BUCHUNG
+		WHERE ID_HERDEN = $1
+		  AND VERMITTELT IN ('N', 'V')
+		GROUP BY LW
+		ORDER BY LEBENSWOCHE DESC
+	`
+	rows, err := w.query(ctx, query, idHerden)
 	if err != nil {
 		return nil, err
 	}
-	items := make([]repo.GetEggStatsWeeklyByHerdeRow, len(res))
-	for i, v := range res {
-		items[i] = repo.GetEggStatsWeeklyByHerdeRow{
-			Lebenswoche:  int64(v.Lebenswoche),
-			LetztesDatum: v.LetztesDatum,
-			SumKlasseA:   v.SumKlasseA,
-			SumSmall:     v.SumSmall,
-			SumMedium:    v.SumMedium,
-			SumLarge:     v.SumLarge,
-			SumXl:        v.SumXl,
-			SumVerluste:  v.SumVerluste,
+	defer rows.Close()
+
+	var items []repo.GetEggStatsWeeklyByHerdeRow
+	for rows.Next() {
+		var i repo.GetEggStatsWeeklyByHerdeRow
+		var lw, sumA, sumS, sumM, sumL, sumXL, sumV int64
+		var datum sql.NullString
+		if err := rows.Scan(&lw, &datum, &sumA, &sumS, &sumM, &sumL, &sumXL, &sumV); err != nil {
+			return nil, err
 		}
+		i.Lebenswoche = lw
+		i.LetztesDatum = datum.String
+		i.SumKlasseA = sumA
+		i.SumSmall = sumS
+		i.SumMedium = sumM
+		i.SumLarge = sumL
+		i.SumXl = sumXL
+		i.SumVerluste = sumV
+		items = append(items, i)
 	}
 	return items, nil
 }
+
 
 // --- Eilager Methoden ---
 
@@ -575,7 +644,7 @@ func (w *PostgresWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.Ge
 		         FROM EILAGERBUCHUNG EB
 		                  LEFT JOIN EILAGER E ON EB.ID_EILAGER = E.ID
 		                  LEFT JOIN LAGERPLATZ LP ON EB.ID_LAGERPLATZ = LP.ID
-		         WHERE (? = 0 OR EB.ID_EILAGER = ?)
+		         WHERE ($1 = 0 OR EB.ID_EILAGER = $2)
 		
 		         UNION ALL
 		
@@ -594,7 +663,7 @@ func (w *PostgresWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.Ge
 		                -EB.VOLLEIKG
 		         FROM EILAGERBUCHUNG EB
 		                  LEFT JOIN EILAGER E ON EB.ID_FREMDESLAGER = E.ID
-		         WHERE EB.ID_FREMDESLAGER != 0 AND (? = 0 OR EB.ID_FREMDESLAGER = ?)
+		         WHERE EB.ID_FREMDESLAGER != 0 AND ($3 = 0 OR EB.ID_FREMDESLAGER = $4)
 		) t
 		GROUP BY CHARGE, LAGERPLATZ_ID, EILAGER_ID, EILAGER_KZ, EILAGER_BEZEICHNUNG
 		ORDER BY EILAGER_BEZEICHNUNG, CHARGE, LAGERPLATZ_BEZEICHNUNG
@@ -644,7 +713,7 @@ func (w *PostgresWrapper) GetBestandsuebersicht(ctx context.Context, arg repo.Ge
 func (w *PostgresWrapper) ListEilagerBuchungenByKZ(ctx context.Context, kz interface{}) ([]repo.Eilagerbuchung, error) {
 	kzStr := toString(kz)
 	log.Printf("[DB] ListEilagerBuchungenByKZ called for KZ: %s", kzStr)
-	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE kz_lager = ? ORDER BY buchungsdatum DESC`
+	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE kz_lager = $1 ORDER BY buchungsdatum DESC`
 	rows, err := w.db.QueryContext(ctx, query, kzStr)
 	if err != nil {
 		log.Printf("[DB] ListEilagerBuchungenByKZ Query Error: %v", err)
@@ -691,7 +760,7 @@ func (w *PostgresWrapper) ListEilagerBuchungenByKZ(ctx context.Context, kz inter
 
 func (w *PostgresWrapper) ListEilagerBuchungenByLager(ctx context.Context, idEilager int64) ([]repo.Eilagerbuchung, error) {
 	log.Printf("[DB] ListEilagerBuchungenByLager called for ID: %d", idEilager)
-	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE id_eilager = ? ORDER BY buchungsdatum DESC`
+	query := `SELECT id, id_fremdeslager, id_buchung, id_eilager, buchungsdatum, jumbos, xl, large, medium, small, volleikg, schmutz, knickeier, brucheier, buchungstyp, charge, kz_lager, id_fremdebuchung, verkauf FROM EILAGERBUCHUNG WHERE id_eilager = $1 ORDER BY buchungsdatum DESC`
 	rows, err := w.db.QueryContext(ctx, query, idEilager)
 	if err != nil {
 		log.Printf("[DB] ListEilagerBuchungenByLager Query Error: %v", err)
@@ -1074,7 +1143,7 @@ func (w *PostgresWrapper) CreatePerson(ctx context.Context, arg repo.CreatePerso
 
 func (w *PostgresWrapper) ListTabellenkopfByType(ctx context.Context, tabellentyp interface{}) ([]repo.Tabellenkopf, error) {
 	log.Printf("[MARIADB-FIX] ListTabellenkopfByType called: %v", tabellentyp)
-	rows, err := w.db.QueryContext(ctx, "SELECT id, tabellentyp, tabellennummer, bezeichnung, anlagedatum, datum FROM TABELLENKOPF WHERE tabellentyp = ?", tabellentyp)
+	rows, err := w.db.QueryContext(ctx, "SELECT id, tabellentyp, tabellennummer, bezeichnung, anlagedatum, datum FROM TABELLENKOPF WHERE tabellentyp = $1", tabellentyp)
 	if err != nil {
 		return nil, err
 	}
@@ -1201,7 +1270,7 @@ func (w *PostgresWrapper) ListTierbewegungen(ctx context.Context, spracheKz stri
 			   hn.bezeichnung                as herden_nach_bezeichnung
 		FROM TIERBEWEGUNGEN t
 				 LEFT JOIN TEXTE txt on t.id_texte = txt.id
-				 LEFT JOIN UEBERSETZUNGEN u on txt.id = u.id_texte and u.sprache_kz = ?
+				 LEFT JOIN UEBERSETZUNGEN u on txt.id = u.id_texte and u.sprache_kz = $1
 				 LEFT JOIN HERDEN h on t.herdennummer = h.herdennummer
 				 LEFT JOIN HERDEN hv on t.id_herden_von = hv.id
 				 LEFT JOIN HERDEN hn on t.id_herden_nach = hn.id
@@ -1251,7 +1320,7 @@ func (w *PostgresWrapper) ListTierbewegungen(ctx context.Context, spracheKz stri
 }
 
 func (w *PostgresWrapper) GetTierbewegung(ctx context.Context, id int64) (repo.Tierbewegungen, error) {
-	query := `SELECT id, herdennummer, id_buchung, typ, id_texte, bewegungsdatum, bewegungen, id_herden_von, id_herden_nach, kosten FROM TIERBEWEGUNGEN WHERE id = ?`
+	query := `SELECT id, herdennummer, id_buchung, typ, id_texte, bewegungsdatum, bewegungen, id_herden_von, id_herden_nach, kosten FROM TIERBEWEGUNGEN WHERE id = $1`
 	row := w.db.QueryRowContext(ctx, query, id)
 	var t repo.Tierbewegungen
 	var hnr, idb, idt, hvon, hnach int32
@@ -1626,7 +1695,7 @@ func (w *PostgresWrapper) ListDynamischeSQL(ctx context.Context) ([]repo.ListDyn
 
 func (w *PostgresWrapper) GetDynamischeSQL(ctx context.Context, id int64) (repo.DynamischeSql, error) {
 	log.Printf("[DB] GetDynamischeSQL called for ID: %d", id)
-	query := `SELECT id, beschreibung, sqlstatement, kategorie_kz, gruppen_kz, typ_kz, template_name, param_def, detail_sql, link_logic, group_field, rows_per_page, page_orientation, show_master_grid, show_detail_grid, system_kz, sqlstatement_native, detail_sql_native, root_kz, summenzeile, ist_summenzeile FROM DYNAMISCHE_SQL WHERE id = ?`
+	query := `SELECT id, beschreibung, sqlstatement, kategorie_kz, gruppen_kz, typ_kz, template_name, param_def, detail_sql, link_logic, group_field, rows_per_page, page_orientation, show_master_grid, show_detail_grid, system_kz, sqlstatement_native, detail_sql_native, root_kz, summenzeile, ist_summenzeile FROM DYNAMISCHE_SQL WHERE id = $1`
 	var i repo.DynamischeSql
 	var kat, grp, typ, sys, rkz interface{}
 	err := w.db.QueryRowContext(ctx, query, id).Scan(
@@ -1710,13 +1779,13 @@ func (w *PostgresWrapper) UpdateDynamischeSQL(ctx context.Context, arg repo.Upda
 
 func (w *PostgresWrapper) CreateTabellenkopf(ctx context.Context, arg repo.CreateTabellenkopfParams) (repo.Tabellenkopf, error) {
 	log.Printf("[DB] CreateTabellenkopf called for Typ: %s, Nr: %d", arg.Tabellentyp, arg.Tabellennummer)
-	query := `INSERT INTO TABELLENKOPF (TABELLENTYP, TABELLENNUMMER, BEZEICHNUNG, ANLAGEDATUM, DATUM) VALUES (?, ?, ?, ?, ?)`
-	res, err := w.db.ExecContext(ctx, query, arg.Tabellentyp, arg.Tabellennummer, arg.Bezeichnung, arg.Anlagedatum, arg.Datum)
+	query := `INSERT INTO TABELLENKOPF (TABELLENTYP, TABELLENNUMMER, BEZEICHNUNG, ANLAGEDATUM, DATUM) VALUES ($1, $2, $3, $4, $5)`
+	var id int64
+	err := w.db.QueryRowContext(ctx, query+" RETURNING ID", arg.Tabellentyp, arg.Tabellennummer, arg.Bezeichnung, arg.Anlagedatum, arg.Datum).Scan(&id)
 	if err != nil {
 		log.Printf("[DB] CreateTabellenkopf Error: %v", err)
 		return repo.Tabellenkopf{}, err
 	}
-	id, _ := res.LastInsertId()
 	return repo.Tabellenkopf{
 		ID:             id,
 		Tabellentyp:    toString(arg.Tabellentyp),
@@ -1729,7 +1798,7 @@ func (w *PostgresWrapper) CreateTabellenkopf(ctx context.Context, arg repo.Creat
 
 func (w *PostgresWrapper) UpdateTabellenkopf(ctx context.Context, arg repo.UpdateTabellenkopfParams) (repo.Tabellenkopf, error) {
 	log.Printf("[DB] UpdateTabellenkopf called for ID: %d", arg.ID)
-	query := `UPDATE TABELLENKOPF SET TABELLENNUMMER = ?, BEZEICHNUNG = ?, ANLAGEDATUM = ?, DATUM = ? WHERE ID = ?`
+	query := `UPDATE TABELLENKOPF SET TABELLENNUMMER = $1, BEZEICHNUNG = $2, ANLAGEDATUM = $3, DATUM = $4 WHERE ID = $5`
 	_, err := w.db.ExecContext(ctx, query, arg.Tabellennummer, arg.Bezeichnung, arg.Anlagedatum, arg.Datum, arg.ID)
 	if err != nil {
 		log.Printf("[DB] UpdateTabellenkopf Error: %v", err)
@@ -1738,7 +1807,7 @@ func (w *PostgresWrapper) UpdateTabellenkopf(ctx context.Context, arg repo.Updat
 	// Reload to get the full object including Tabellentyp which isn't in params
 	var t repo.Tabellenkopf
 	var ttyp interface{}
-	err = w.db.QueryRowContext(ctx, "SELECT ID, TABELLENTYP, TABELLENNUMMER, BEZEICHNUNG, ANLAGEDATUM, DATUM FROM TABELLENKOPF WHERE ID = ?", arg.ID).Scan(
+	err = w.db.QueryRowContext(ctx, "SELECT ID, TABELLENTYP, TABELLENNUMMER, BEZEICHNUNG, ANLAGEDATUM, DATUM FROM TABELLENKOPF WHERE ID = $1", arg.ID).Scan(
 		&t.ID, &ttyp, &t.Tabellennummer, &t.Bezeichnung, &t.Anlagedatum, &t.Datum,
 	)
 	t.Tabellentyp = toString(ttyp)
@@ -1747,7 +1816,7 @@ func (w *PostgresWrapper) UpdateTabellenkopf(ctx context.Context, arg repo.Updat
 
 func (w *PostgresWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, error) {
 	log.Printf("[DB] ListTextTypen called")
-	rows, err := w.db.QueryContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS` FROM TEXT_TYPEN")
+	rows, err := w.db.QueryContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, SYSTEM_KZ, STATUS FROM TEXT_TYPEN")
 	if err != nil {
 		return nil, err
 	}
@@ -1765,13 +1834,13 @@ func (w *PostgresWrapper) ListTextTypen(ctx context.Context) ([]repo.TextTypen, 
 
 func (w *PostgresWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] CreateTextTyp called: %s", arg.Kz)
-	query := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS`) VALUES (?, ?, ?, ?)"
-	res, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.SystemKz, arg.Status)
+	query := "INSERT INTO TEXT_TYPEN (KZ, BEZEICHNUNG, SYSTEM_KZ, STATUS) VALUES ($1, $2, $3, $4) RETURNING ID"
+	var id int64
+	err := w.db.QueryRowContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.SystemKz, arg.Status).Scan(&id)
 	if err != nil {
 		log.Printf("[DB] CreateTextTyp Error: %v", err)
 		return repo.TextTypen{}, err
 	}
-	id, _ := res.LastInsertId()
 	return repo.TextTypen{
 		ID:          id,
 		Kz:          arg.Kz,
@@ -1783,14 +1852,14 @@ func (w *PostgresWrapper) CreateTextTyp(ctx context.Context, arg repo.CreateText
 
 func (w *PostgresWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateTextTypParams) (repo.TextTypen, error) {
 	log.Printf("[DB] UpdateTextTyp called: %d", arg.ID)
-	query := "UPDATE TEXT_TYPEN SET KZ = ?, BEZEICHNUNG = ?, `SYSTEM_KZ` = ?, `STATUS` = ? WHERE ID = ?"
+	query := "UPDATE TEXT_TYPEN SET KZ = $1, BEZEICHNUNG = $2, SYSTEM_KZ = $3, STATUS = $4 WHERE ID = $5"
 	_, err := w.db.ExecContext(ctx, query, arg.Kz, arg.Bezeichnung, arg.SystemKz, arg.Status, arg.ID)
 	if err != nil {
 		log.Printf("[DB] UpdateTextTyp Error: %v", err)
 		return repo.TextTypen{}, err
 	}
 	var t repo.TextTypen
-	err = w.db.QueryRowContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, `SYSTEM_KZ`, `STATUS` FROM TEXT_TYPEN WHERE ID = ?", arg.ID).Scan(
+	err = w.db.QueryRowContext(ctx, "SELECT ID, KZ, BEZEICHNUNG, SYSTEM_KZ, STATUS FROM TEXT_TYPEN WHERE ID = $1", arg.ID).Scan(
 		&t.ID, &t.Kz, &t.Bezeichnung, &t.SystemKz, &t.Status,
 	)
 	return t, err
@@ -1798,13 +1867,13 @@ func (w *PostgresWrapper) UpdateTextTyp(ctx context.Context, arg repo.UpdateText
 
 func (w *PostgresWrapper) CreateText(ctx context.Context, arg repo.CreateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] CreateText called for Typ: %s", arg.TextTypKz)
-	query := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, `SYSTEM_KZ`, `STATUS`) VALUES (?, ?, ?, ?)"
-	res, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.SystemKz, arg.Status)
+	query := "INSERT INTO TEXTE (TEXT_TYP_KZ, KZ, SYSTEM_KZ, STATUS) VALUES ($1, $2, $3, $4) RETURNING ID"
+	var id int64
+	err := w.db.QueryRowContext(ctx, query, arg.TextTypKz, arg.Kz, arg.SystemKz, arg.Status).Scan(&id)
 	if err != nil {
 		log.Printf("[DB] CreateText Error: %v", err)
 		return repo.Texte{}, err
 	}
-	id, _ := res.LastInsertId()
 	return repo.Texte{
 		ID:        id,
 		TextTypKz: arg.TextTypKz,
@@ -1816,7 +1885,7 @@ func (w *PostgresWrapper) CreateText(ctx context.Context, arg repo.CreateTextPar
 
 func (w *PostgresWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextParams) (repo.Texte, error) {
 	log.Printf("[DB] UpdateText called: %d", arg.ID)
-	query := "UPDATE TEXTE SET TEXT_TYP_KZ = ?, KZ = ?, `SYSTEM_KZ` = ?, `STATUS` = ? WHERE ID = ?"
+	query := "UPDATE TEXTE SET TEXT_TYP_KZ = $1, KZ = $2, SYSTEM_KZ = $3, STATUS = $4 WHERE ID = $5"
 	_, err := w.db.ExecContext(ctx, query, arg.TextTypKz, arg.Kz, arg.SystemKz, arg.Status, arg.ID)
 	if err != nil {
 		log.Printf("[DB] UpdateText Error: %v", err)
@@ -1824,7 +1893,7 @@ func (w *PostgresWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextPar
 	}
 	var t repo.Texte
 	var kz interface{}
-	err = w.db.QueryRowContext(ctx, "SELECT ID, TEXT_TYP_KZ, KZ, `SYSTEM_KZ`, `STATUS` FROM TEXTE WHERE ID = ?", arg.ID).Scan(
+	err = w.db.QueryRowContext(ctx, "SELECT ID, TEXT_TYP_KZ, KZ, SYSTEM_KZ, STATUS FROM TEXTE WHERE ID = $1", arg.ID).Scan(
 		&t.ID, &t.TextTypKz, &kz, &t.SystemKz, &t.Status,
 	)
 	t.Kz = toString(kz)
@@ -1833,7 +1902,7 @@ func (w *PostgresWrapper) UpdateText(ctx context.Context, arg repo.UpdateTextPar
 
 func (w *PostgresWrapper) CreateUebersetzung(ctx context.Context, arg repo.CreateUebersetzungParams) (repo.Uebersetzungen, error) {
 	log.Printf("[DB] CreateUebersetzung called for ID: %d, Lang: %s", arg.IDTexte, arg.SpracheKz)
-	query := "INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) VALUES (?, ?, ?, ?)"
+	query := "INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) VALUES ($1, $2, $3, $4)"
 	_, err := w.db.ExecContext(ctx, query, arg.IDTexte, arg.SpracheKz, arg.Betreff, arg.Inhalt)
 	if err != nil {
 		log.Printf("[DB] CreateUebersetzung Error: %v", err)
@@ -1850,8 +1919,8 @@ func (w *PostgresWrapper) CreateUebersetzung(ctx context.Context, arg repo.Creat
 func (w *PostgresWrapper) UpsertUebersetzung(ctx context.Context, arg repo.UpsertUebersetzungParams) (repo.Uebersetzungen, error) {
 	log.Printf("[DB] UpsertUebersetzung called for ID: %d, Lang: %s", arg.IDTexte, arg.SpracheKz)
 	query := `INSERT INTO UEBERSETZUNGEN (ID_TEXTE, SPRACHE_KZ, BETREFF, INHALT) 
-              VALUES (?, ?, ?, ?) 
-              ON DUPLICATE KEY UPDATE BETREFF = VALUES(BETREFF), INHALT = VALUES(INHALT)`
+              VALUES ($1, $2, $3, $4) 
+              ON CONFLICT (ID_TEXTE, SPRACHE_KZ) DO UPDATE SET BETREFF = EXCLUDED.BETREFF, INHALT = EXCLUDED.INHALT`
 	_, err := w.db.ExecContext(ctx, query, arg.IDTexte, arg.SpracheKz, arg.Betreff, arg.Inhalt)
 	if err != nil {
 		log.Printf("[DB] UpsertUebersetzung Error: %v", err)
@@ -1867,9 +1936,9 @@ func (w *PostgresWrapper) UpsertUebersetzung(ctx context.Context, arg repo.Upser
 
 func (w *PostgresWrapper) ListTexte(ctx context.Context, spracheKz string) ([]repo.ListTexteRow, error) {
 	log.Printf("[DB] ListTexte called for Lang: %s", spracheKz)
-	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM_KZ`" + `, T.` + "`STATUS`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
+	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.SYSTEM_KZ, T.STATUS, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
               FROM TEXTE T 
-              LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ?`
+              LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = $1`
 	rows, err := w.db.QueryContext(ctx, query, spracheKz)
 	if err != nil {
 		return nil, err
@@ -1890,10 +1959,10 @@ func (w *PostgresWrapper) ListTexte(ctx context.Context, spracheKz string) ([]re
 
 func (w *PostgresWrapper) ListTexteByType(ctx context.Context, arg repo.ListTexteByTypeParams) ([]repo.ListTexteByTypeRow, error) {
 	log.Printf("[DB] ListTexteByType called for Typ: %s, Lang: %s", arg.TextTypKz, arg.SpracheKz)
-	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.` + "`SYSTEM_KZ`" + `, T.` + "`STATUS`" + `, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
+	query := `SELECT T.ID, T.TEXT_TYP_KZ, T.KZ, T.SYSTEM_KZ, T.STATUS, COALESCE(U.BETREFF, '') AS BETREFF, COALESCE(U.INHALT, '') AS INHALT 
               FROM TEXTE T 
-              LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = ? 
-              WHERE T.TEXT_TYP_KZ = ?`
+              LEFT JOIN UEBERSETZUNGEN U ON T.ID = U.ID_TEXTE AND U.SPRACHE_KZ = $1 
+              WHERE T.TEXT_TYP_KZ = $2`
 	rows, err := w.db.QueryContext(ctx, query, arg.SpracheKz, arg.TextTypKz)
 	if err != nil {
 		return nil, err
@@ -1937,7 +2006,7 @@ func (w *PostgresWrapper) GetBenutzerProfilByID(ctx context.Context, id int64) (
 	log.Printf("[MARIADB-FIX] GetBenutzerProfilByID called: %d", id)
 	var i repo.Benutzerprofile
 	var pkz interface{}
-	err := w.db.QueryRowContext(ctx, "SELECT id, profil_kz, beschreibung, f_dashboard, f_herden_verwalten, f_einrichtungen_verwalten, f_personen_verwalten, f_buchungen_erfassen, f_auswertungen_anzeigen, f_sql_struktur_verwalten, f_benutzer_profile, f_parameter_editieren, f_kosten_verwalten, f_tabellen_anzeigen, f_texte_verwalten, f_system_verwaltung, f_backup_erstellen FROM BENUTZERPROFILE WHERE id = ?", id).Scan(
+	err := w.db.QueryRowContext(ctx, "SELECT id, profil_kz, beschreibung, f_dashboard, f_herden_verwalten, f_einrichtungen_verwalten, f_personen_verwalten, f_buchungen_erfassen, f_auswertungen_anzeigen, f_sql_struktur_verwalten, f_benutzer_profile, f_parameter_editieren, f_kosten_verwalten, f_tabellen_anzeigen, f_texte_verwalten, f_system_verwaltung, f_backup_erstellen FROM BENUTZERPROFILE WHERE id = $1", id).Scan(
 		&i.ID, &pkz, &i.Beschreibung, &i.FDashboard, &i.FHerdenVerwalten, &i.FEinrichtungenVerwalten, &i.FPersonenVerwalten, &i.FBuchungenErfassen, &i.FAuswertungenAnzeigen, &i.FSqlStrukturVerwalten, &i.FBenutzerProfile, &i.FParameterEditieren, &i.FKostenVerwalten, &i.FTabellenAnzeigen, &i.FTexteVerwalten, &i.FSystemVerwaltung, &i.FBackupErstellen,
 	)
 	i.ProfilKz = toString(pkz)
@@ -1948,7 +2017,7 @@ func (w *PostgresWrapper) GetBenutzerProfilByKZ(ctx context.Context, pkz interfa
 	log.Printf("[MARIADB-FIX] GetBenutzerProfilByKZ called: %v", pkz)
 	var i repo.Benutzerprofile
 	var pkzResult interface{}
-	err := w.db.QueryRowContext(ctx, "SELECT id, profil_kz, beschreibung, f_dashboard, f_herden_verwalten, f_einrichtungen_verwalten, f_personen_verwalten, f_buchungen_erfassen, f_auswertungen_anzeigen, f_sql_struktur_verwalten, f_benutzer_profile, f_parameter_editieren, f_kosten_verwalten, f_tabellen_anzeigen, f_texte_verwalten, f_system_verwaltung, f_backup_erstellen FROM BENUTZERPROFILE WHERE profil_kz = ?", pkz).Scan(
+	err := w.db.QueryRowContext(ctx, "SELECT id, profil_kz, beschreibung, f_dashboard, f_herden_verwalten, f_einrichtungen_verwalten, f_personen_verwalten, f_buchungen_erfassen, f_auswertungen_anzeigen, f_sql_struktur_verwalten, f_benutzer_profile, f_parameter_editieren, f_kosten_verwalten, f_tabellen_anzeigen, f_texte_verwalten, f_system_verwaltung, f_backup_erstellen FROM BENUTZERPROFILE WHERE profil_kz = $1", pkz).Scan(
 		&i.ID, &pkzResult, &i.Beschreibung, &i.FDashboard, &i.FHerdenVerwalten, &i.FEinrichtungenVerwalten, &i.FPersonenVerwalten, &i.FBuchungenErfassen, &i.FAuswertungenAnzeigen, &i.FSqlStrukturVerwalten, &i.FBenutzerProfile, &i.FParameterEditieren, &i.FKostenVerwalten, &i.FTabellenAnzeigen, &i.FTexteVerwalten, &i.FSystemVerwaltung, &i.FBackupErstellen,
 	)
 	i.ProfilKz = toString(pkzResult)
@@ -2107,4 +2176,6 @@ func convertPgListAktionenRow(v repo_postgres.ListAktionenRow) repo.ListAktionen
 		UsernameErledigt: v.UsernameErledigt,
 	}
 }
+
+
 

@@ -1,4 +1,6 @@
-{
+{ "serverExec": "HuhnLite-Server-Postgres.exe",
+  "basePort": 9000,
+  "baseLink": "localhost:9000",
   "mode": "server",
   "db_engine": "postgres",
   "db_connection": "postgres://postgres:post@192.168.178.28:5432/huhnlite-prod?sslmode=disable",
@@ -6,7 +8,7 @@
   "mandant": 1,
   "mandant_1": "Otto Dotter",
   "mandant_2": "Gustav Hahn",
-  "port": 8080,
+  "port": 8082,
   "system_1": 1,
   "system_2": 1,
   "autobackup_1": 1,

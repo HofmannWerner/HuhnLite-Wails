@@ -38,22 +38,13 @@ func NewApp(database *db.DB) *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	fmt.Printf("[Wails] Entering app.startup. Is database nil? %v\n", a.database == nil)
-	file, _ := os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if file != nil {
-		file.WriteString("Entering app.startup\n")
-		file.Close()
-	}
+	log.Printf("[Wails] Entering app.startup. Is database nil? %v", a.database == nil)
 
 	// Start the API server synchronously binding the port to prevent frontend race conditions
 	if a.database != nil {
 		helpHandler := &HelpAssetHandler{database: a.database}
 		engine := api.StartServer(a.database, helpHandler)
-		file, _ = os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if file != nil {
-			file.WriteString(fmt.Sprintf("After StartServer, engine is %v\n", engine != nil))
-			file.Close()
-		}
+		log.Printf("[Wails] StartServer initialized successfully")
 		
 		port := 8080 // Default port
 		if a.database.Config.Port > 0 {
@@ -67,12 +58,6 @@ func (a *App) startup(ctx context.Context) {
 			log.Printf("Attempting to start API server on port %d", tryPort)
 			listener, err = net.Listen("tcp", fmt.Sprintf(":%d", tryPort))
 			
-			file, _ = os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-			if file != nil {
-				file.WriteString(fmt.Sprintf("net.Listen attempt port %d err=%v\n", tryPort, err))
-				file.Close()
-			}
-			
 			if err == nil {
 				a.database.Config.Port = tryPort
 				a.apiPort = tryPort
@@ -84,11 +69,7 @@ func (a *App) startup(ctx context.Context) {
 
 		if listener != nil {
 			go func() {
-				file, _ = os.OpenFile("C:\\Users\\hofma\\AppData\\Roaming\\HuhnLite\\debug.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-				if file != nil {
-					file.WriteString(fmt.Sprintf("Starting http.Serve on port %d\n", a.apiPort))
-					file.Close()
-				}
+				log.Printf("Starting http.Serve on port %d", a.apiPort)
 				if err := http.Serve(listener, engine); err != nil {
 					log.Printf("API server stopped: %v", err)
 				}
@@ -97,7 +78,7 @@ func (a *App) startup(ctx context.Context) {
 			log.Printf("Failed to bind API server on any port after 20 attempts")
 		}
 	} else {
-		log.Printf("Skipping API server startup: database is nil")
+		log.Printf("Skipping API server startup: database is nil (ConnectionError: %s)", a.ConnectionError)
 	}
 
 	// Autobackup on start
@@ -238,7 +219,15 @@ func (a *App) GetLauncherPort() int {
 	if a.database != nil && a.database.Config.LauncherPort > 0 {
 		return a.database.Config.LauncherPort
 	}
-	return 8080
+	return 9000
+}
+
+// GetBaseLink returns the configured base link from settings
+func (a *App) GetBaseLink() string {
+	if a.database != nil && a.database.Config.BaseLink != "" {
+		return a.database.Config.BaseLink
+	}
+	return ""
 }
 
 // GetLanguage returns the language configured via CLI or settings

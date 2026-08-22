@@ -4,6 +4,8 @@ import {context} from '../models';
 
 export function GetAPIPort():Promise<number>;
 
+export function GetBaseLink():Promise<string>;
+
 export function GetCLILanguage():Promise<boolean>;
 
 export function GetDBStatus():Promise<Record<string, string>>;

@@ -219,4 +219,88 @@ func TestExchangePath(t *testing.T) {
 	}
 }
 
+func TestBaseLinkExtraction(t *testing.T) {
+	rawMap := map[string]interface{}{
+		"baseLink":   "http://localhost:8080",
+		"baseLink_2": "http://192.168.1.50:9000",
+	}
+
+	gotGlobal := extractBaseLink(rawMap, 0)
+	if gotGlobal != "http://localhost:8080" {
+		t.Errorf("expected global baseLink 'http://localhost:8080', got %q", gotGlobal)
+	}
+
+	gotMandant1 := extractBaseLink(rawMap, 1)
+	if gotMandant1 != "http://localhost:8080" {
+		t.Errorf("expected mandant 1 fallback to 'http://localhost:8080', got %q", gotMandant1)
+	}
+
+	gotMandant2 := extractBaseLink(rawMap, 2)
+	if gotMandant2 != "http://192.168.1.50:9000" {
+		t.Errorf("expected mandant 2 baseLink 'http://192.168.1.50:9000', got %q", gotMandant2)
+	}
+}
+
+func TestBaseLinkCLIArgs(t *testing.T) {
+	ov := parseCLIArgs([]string{"-baseLink", "http://192.168.1.100:9000"})
+	if ov.BaseLink == nil || *ov.BaseLink != "http://192.168.1.100:9000" {
+		t.Errorf("expected BaseLink 'http://192.168.1.100:9000', got %v", ov.BaseLink)
+	}
+
+	ov2 := parseCLIArgs([]string{"--baselink=http://localhost:9000"})
+	if ov2.BaseLink == nil || *ov2.BaseLink != "http://localhost:9000" {
+		t.Errorf("expected BaseLink 'http://localhost:9000', got %v", ov2.BaseLink)
+	}
+}
+
+func TestLauncherPortExtraction(t *testing.T) {
+	rawMap := map[string]interface{}{
+		"basePort":   9000,
+		"basePort_2": 9005,
+	}
+
+	gotGlobal := extractLauncherPort(rawMap, 0)
+	if gotGlobal != 9000 {
+		t.Errorf("expected global launcher port 9000, got %d", gotGlobal)
+	}
+
+	gotMandant1 := extractLauncherPort(rawMap, 1)
+	if gotMandant1 != 9000 {
+		t.Errorf("expected mandant 1 fallback to 9000, got %d", gotMandant1)
+	}
+
+	gotMandant2 := extractLauncherPort(rawMap, 2)
+	if gotMandant2 != 9005 {
+		t.Errorf("expected mandant 2 launcher port 9005, got %d", gotMandant2)
+	}
+
+	// Test fallback from baseLink
+	rawMapLink := map[string]interface{}{
+		"baseLink": "http://192.168.1.100:9000",
+	}
+	gotFromLink := extractLauncherPort(rawMapLink, 0)
+	if gotFromLink != 9000 {
+		t.Errorf("expected port from baseLink to be 9000, got %d", gotFromLink)
+	}
+}
+
+func TestBasePortCLIArgs(t *testing.T) {
+	ov := parseCLIArgs([]string{"-basePort", "9000"})
+	if ov.LauncherPort == nil || *ov.LauncherPort != 9000 {
+		t.Errorf("expected LauncherPort 9000, got %v", ov.LauncherPort)
+	}
+
+	ov2 := parseCLIArgs([]string{"--base-port=9000"})
+	if ov2.LauncherPort == nil || *ov2.LauncherPort != 9000 {
+		t.Errorf("expected LauncherPort 9000, got %v", ov2.LauncherPort)
+	}
+
+	ov3 := parseCLIArgs([]string{"-launcher-port", "9000"})
+	if ov3.LauncherPort == nil || *ov3.LauncherPort != 9000 {
+		t.Errorf("expected LauncherPort 9000, got %v", ov3.LauncherPort)
+	}
+}
+
+
+
 

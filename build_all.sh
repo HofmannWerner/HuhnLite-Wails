@@ -62,14 +62,17 @@ cat wails.json
 $WAILS "${BUILD_ARGS[@]}"
 echo "DEBUG: build/bin content after Local build:"
 ls -la build/bin || true
-# Kopiere die passende settings.json daneben
-cp settings.json build/bin/settings.json
+# Kopiere die passende settings.json daneben falls noch nicht vorhanden
+[ ! -f build/bin/settings.json ] && cp settings.json build/bin/settings.json
 
-# Erstelle Mandanten-Verzeichnisse in build/bin und kopiere Standard-DBs hinein
+# Erstelle Mandanten-Verzeichnisse in build/bin und kopiere Standard-DBs hinein falls nicht vorhanden
 mkdir -p build/bin/mandant_1 build/bin/mandant_2
-[ -f HuhnLite.db ] && cp HuhnLite.db build/bin/mandant_1/HuhnLite.db && cp HuhnLite.db build/bin/mandant_2/HuhnLite.db
-[ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/mandant_1/HuhnLite_test.db && cp HuhnLite_test.db build/bin/mandant_2/HuhnLite_test.db
-[ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/mandant_1/HuhnLite_prod.db && cp HuhnLite_prod.db build/bin/mandant_2/HuhnLite_prod.db
+[ -f HuhnLite.db ] && [ ! -f build/bin/mandant_1/HuhnLite.db ] && cp HuhnLite.db build/bin/mandant_1/HuhnLite.db
+[ -f HuhnLite.db ] && [ ! -f build/bin/mandant_2/HuhnLite.db ] && cp HuhnLite.db build/bin/mandant_2/HuhnLite.db
+[ -f HuhnLite_test.db ] && [ ! -f build/bin/mandant_1/HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/mandant_1/HuhnLite_test.db
+[ -f HuhnLite_test.db ] && [ ! -f build/bin/mandant_2/HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/mandant_2/HuhnLite_test.db
+[ -f HuhnLite_prod.db ] && [ ! -f build/bin/mandant_1/HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/mandant_1/HuhnLite_prod.db
+[ -f HuhnLite_prod.db ] && [ ! -f build/bin/mandant_2/HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/mandant_2/HuhnLite_prod.db
 
 # Copy help files, settings and db into the macOS .app bundle if it exists
 if [ -d "build/bin/HuhnLite-Local.app" ]; then
@@ -99,7 +102,8 @@ if [ -d "build/bin/HuhnLite-Local.app" ]; then
     [ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_1/HuhnLite_prod.db && cp HuhnLite_prod.db build/bin/HuhnLite-Local.app/Contents/Resources/mandant_2/HuhnLite_prod.db
 fi
 
-# Sichern der HuhnLite-Local Build-Ergebnisse, da der nächste Wails-Build build/bin/ löscht
+# Vor dem nächsten Wails-Build die HuhnLite-Local Build-Ergebnisse temporär sichern,
+# da Wails bei jedem Build den Inhalt von build/bin/ leert!
 mkdir -p build/local_temp
 [ -d build/bin/HuhnLite-Local.app ] && mv build/bin/HuhnLite-Local.app build/local_temp/
 [ -f build/bin/settings.json ] && mv build/bin/settings.json build/local_temp/
@@ -121,8 +125,8 @@ cat wails.json
 $WAILS "${BUILD_ARGS[@]}"
 echo "DEBUG: build/bin content after MariaDB build:"
 ls -la build/bin || true
-# Kopiere die passende settings_mariadb.json daneben
-cp settings_mariadb.json build/bin/settings_mariadb.json
+# Kopiere die passende settings_mariadb.json daneben falls nicht vorhanden
+[ ! -f build/bin/settings_mariadb.json ] && cp settings_mariadb.json build/bin/settings_mariadb.json
 
 # Copy help files and config into the macOS .app bundle if it exists
 if [ -d "build/bin/HuhnLite-MariaDB.app" ]; then
@@ -183,7 +187,7 @@ if [ -n "$PLATFORM" ]; then
     unset GOARCH
 fi
 
-cp settings_server.json build/bin/settings_server.json
+[ ! -f build/bin/settings_server.json ] && cp settings_server.json build/bin/settings_server.json
 
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-Server-MariaDB (Client-Server MariaDB)..."
@@ -204,7 +208,7 @@ if [ -n "$PLATFORM" ]; then
     unset GOARCH
 fi
 
-cp settings_server_mariadb.json build/bin/settings_server_mariadb.json
+[ ! -f build/bin/settings_server_mariadb.json ] && cp settings_server_mariadb.json build/bin/settings_server_mariadb.json
 
 echo "------------------------------------------"
 echo "🔨 Baue HuhnLite-Server-Postgres (Client-Server Postgres)..."
@@ -225,7 +229,7 @@ if [ -n "$PLATFORM" ]; then
     unset GOARCH
 fi
 
-cp settings_server_postgres.json build/bin/settings_server_postgres.json
+[ ! -f build/bin/settings_server_postgres.json ] && cp settings_server_postgres.json build/bin/settings_server_postgres.json
 
 echo "📋 Copying help files and SQL files to build/bin..."
 for f in HuhnLite_*.PDF HuhnLite_*.pdf build/local_temp/HuhnLite_*.PDF build/local_temp/HuhnLite_*.pdf; do
@@ -235,9 +239,9 @@ if [ -d pdfjs ]; then
     mkdir -p build/bin/pdfjs
     cp -R pdfjs/* build/bin/pdfjs/
 fi
-[ -f HuhnLite.db ] && cp HuhnLite.db build/bin/
-[ -f HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/
-[ -f HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/
+[ -f HuhnLite.db ] && [ ! -f build/bin/HuhnLite.db ] && cp HuhnLite.db build/bin/
+[ -f HuhnLite_test.db ] && [ ! -f build/bin/HuhnLite_test.db ] && cp HuhnLite_test.db build/bin/
+[ -f HuhnLite_prod.db ] && [ ! -f build/bin/HuhnLite_prod.db ] && cp HuhnLite_prod.db build/bin/
 
 # Original-Zustand wiederherstellen
 set_wails_name "$ORIG_NAME"

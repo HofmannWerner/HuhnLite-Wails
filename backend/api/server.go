@@ -1218,7 +1218,23 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 		log.Printf("[API] Client Beenden/Shutdown aufgerufen von %s (ID: %s)", c.ClientIP(), getClientID(c))
 		unregisterClient(c)
 		checkAutoShutdown()
-		c.JSON(http.StatusOK, gin.H{"status": "ok", "message": "Shutdown acknowledged"})
+
+		baseLink := ""
+		port := 9000
+		if database != nil {
+			baseLink = database.Config.BaseLink
+			if database.Config.LauncherPort > 0 {
+				port = database.Config.LauncherPort
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "ok",
+			"message":   "Shutdown acknowledged",
+			"baseLink":  baseLink,
+			"base_link": baseLink,
+			"port":      port,
+		})
 	})
 
 	// Background AutoBackup Timer & Client-Heartbeat Check
@@ -3476,11 +3492,35 @@ func StartServer(database *wailsdb.DB, helpHandler ...http.Handler) *gin.Engine 
 	})
 
 	r.GET("/api/launcher-port", func(c *gin.Context) {
-		port := 8080
-		if database != nil && database.Config.LauncherPort > 0 {
-			port = database.Config.LauncherPort
+		port := 9000
+		baseLink := ""
+		if database != nil {
+			if database.Config.LauncherPort > 0 {
+				port = database.Config.LauncherPort
+			}
+			baseLink = database.Config.BaseLink
 		}
-		c.JSON(http.StatusOK, gin.H{"port": port})
+		c.JSON(http.StatusOK, gin.H{
+			"port":      port,
+			"baseLink":  baseLink,
+			"base_link": baseLink,
+		})
+	})
+
+	r.GET("/api/base-link", func(c *gin.Context) {
+		port := 9000
+		baseLink := ""
+		if database != nil {
+			if database.Config.LauncherPort > 0 {
+				port = database.Config.LauncherPort
+			}
+			baseLink = database.Config.BaseLink
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"port":      port,
+			"baseLink":  baseLink,
+			"base_link": baseLink,
+		})
 	})
 
 	r.GET("/api/health", func(c *gin.Context) {

@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"huhnlite-wails/backend/api"
 	"huhnlite-wails/backend/config"
 	"huhnlite-wails/backend/db"
+	"huhnlite-wails/backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/wailsapp/wails/v2"
@@ -62,7 +64,13 @@ func main() {
 		}
 
 		if err != nil {
-			log.Fatalf("Failed to connect to database: %v", err)
+			log.Printf("FEHLER: Datenbankverbindung fehlgeschlagen: %v", err)
+			log.Printf("Engine: %s | Connection: %s", cfg.DBEngine, cfg.DBConnectionString)
+			log.Printf("Bitte prüfen Sie, ob der Datenbank-Server erreichbar ist und die Einstellungen korrekt sind.")
+			fmt.Println("\nDrücken Sie EINGABE zum Beenden...")
+			var input string
+			fmt.Scanln(&input)
+			os.Exit(1)
 		}
 
 		helpHandler := &HelpAssetHandler{database: database}
@@ -96,9 +104,41 @@ func main() {
 		if cfg.Port > 0 {
 			port = cfg.Port
 		}
-		log.Printf("Starting HuhnLite Server on port %d (Mandant: %d, Engine: %s, DB: %s)", port, cfg.Mandant, cfg.DBEngine, cfg.DBConnectionString)
-		if err := http.ListenAndServe(fmt.Sprintf(":%d", port), engine); err != nil {
-			log.Fatalf("Server failed to start: %v", err)
+
+		var listener net.Listener
+		var listenErr error
+		actualPort := port
+
+		// Versuche den konfigurierten Port und danach Folge-Ports (+0 bis +9)
+		for p := port; p < port+10; p++ {
+			l, err := net.Listen("tcp", fmt.Sprintf(":%d", p))
+			if err == nil {
+				listener = l
+				actualPort = p
+				break
+			}
+			listenErr = err
+			log.Printf("Port %d bereits belegt (%v). Versuche nächsten Port...", p, err)
+		}
+
+		if listener == nil {
+			log.Printf("FEHLER: Konnte keinen freien Port von %d bis %d binden: %v", port, port+9, listenErr)
+			log.Printf("Bitte prüfen Sie, ob bereits ein HuhnLite Server auf diesem Port läuft.")
+			fmt.Println("\nDrücken Sie EINGABE zum Beenden...")
+			var input string
+			fmt.Scanln(&input)
+			os.Exit(1)
+		}
+
+		log.Printf("Starting HuhnLite Server on port %d (Mandant: %d, Engine: %s, DB: %s)", actualPort, cfg.Mandant, cfg.DBEngine, cfg.DBConnectionString)
+		utils.SetupServerConsole(fmt.Sprintf("HuhnLite Server (Port: %d, Mandant: %d, Engine: %s)", actualPort, cfg.Mandant, cfg.DBEngine), true, true)
+
+		if err := http.Serve(listener, engine); err != nil {
+			log.Printf("FEHLER: Server wurde unerwartet beendet: %v", err)
+			fmt.Println("\nDrücken Sie EINGABE zum Beenden...")
+			var input string
+			fmt.Scanln(&input)
+			os.Exit(1)
 		}
 		return
 	}
@@ -122,6 +162,7 @@ func main() {
 	app := NewApp(database)
 	if err != nil {
 		app.ConnectionError = err.Error()
+		log.Printf("[DB-ERROR] Datenbankverbindung fehlgeschlagen: %v (Engine: %s, ConnStr: %s, Mandant: %d)", err, cfg.DBEngine, cfg.DBConnectionString, cfg.Mandant)
 	}
 
 	// Fenstergröße aus DB laden

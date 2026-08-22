@@ -634,13 +634,6 @@ async function shutdownServer() {
         clearInterval(heartbeatTimer);
       }
 
-      // Backend informieren (für Logs etc.)
-      try {
-        await api.post('/api/system/shutdown');
-      } catch (e) {
-        // Safe fallback if server endpoint responds slowly or missing
-      }
-      
       $q.notify({
         type: 'warning',
         message: t('layout.closing'),
@@ -648,47 +641,63 @@ async function shutdownServer() {
         timeout: 1000
       });
 
-      // Sauber über Wails beenden oder zur Port 8080 verzweigen im Browser
-      if (window.go && window.go.main && window.go.main.App) {
-        setTimeout(async () => {
-          let launcherPort = 8080;
-          try {
-            const lportStr = await window.go.main.App.GetLauncherPort();
-            launcherPort = parseInt(lportStr) || 8080;
-          } catch (e) {
-            console.error('Failed to fetch launcher port via Wails:', e);
-          }
-          window.go.main.App.Quit();
-        }, 500);
-      } else {
-        const protocol = window.location.protocol || 'http:';
-        const hostname = window.location.hostname || 'localhost';
-        let launcherPort = 8080;
-        try {
-          // Use dynamic API endpoint from boot/api (axios) if available, or direct fetch
-          const res = await fetch(`${protocol}//${hostname}:${window.location.port}/api/launcher-port`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.port) {
-              launcherPort = data.port;
-            }
-          }
-        } catch (e) {
-          console.error('Failed to fetch launcher port:', e);
-        }
-        window.location.href = `${protocol}//${hostname}:${launcherPort}/`;
-      }
+      await exitSessionAndRedirect();
     } catch (err) {
       console.error('Shutdown error:', err);
       if (window.go && window.go.main && window.go.main.App) {
         window.go.main.App.Quit();
       } else {
-        const protocol = window.location.protocol || 'http:';
-        const hostname = window.location.hostname || 'localhost';
-        window.location.href = `${protocol}//${hostname}:8080/`;
+        const targetUrl = formatBasePortUrl(9000);
+        window.location.href = targetUrl;
       }
     }
   });
+}
+
+async function exitSessionAndRedirect() {
+  let launcherPort = 9000;
+  try {
+    const shutdownRes = await api.post('/api/system/shutdown');
+    if (shutdownRes && shutdownRes.data && shutdownRes.data.port) {
+      launcherPort = shutdownRes.data.port;
+    }
+  } catch (e) {
+    // Safe fallback if server endpoint responds slowly or missing
+  }
+
+  if (launcherPort === 8080 || launcherPort === 9000) {
+    try {
+      const protocol = window.location.protocol || 'http:';
+      const hostname = window.location.hostname || 'localhost';
+      const portPart = window.location.port ? `:${window.location.port}` : '';
+      const res = await fetch(`${protocol}//${hostname}${portPart}/api/launcher-port`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.port) {
+          launcherPort = data.port;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch launcher port:', e);
+    }
+  }
+
+  // Sauber über Wails beenden oder zur IP-Adresse mit Baseport verzweigen im Browser
+  if (window.go && window.go.main && window.go.main.App) {
+    setTimeout(() => {
+      window.go.main.App.Quit();
+    }, 500);
+  } else {
+    const targetUrl = formatBasePortUrl(launcherPort);
+    window.location.href = targetUrl;
+  }
+}
+
+function formatBasePortUrl(launcherPort: number): string {
+  const protocol = window.location.protocol || 'http:';
+  const hostname = window.location.hostname || 'localhost';
+  const port = launcherPort || 9000;
+  return `${protocol}//${hostname}:${port}/`;
 }
 
 const sessionDate = computed({
@@ -711,7 +720,32 @@ function toggleLeftDrawer () {
   leftDrawerOpen.value = !leftDrawerOpen.value;
 }
 const handleLogout = () => {
-  sessionStore.logout();
+  $q.dialog({
+    title: t('layout.logout') || 'Abmelden',
+    message: 'Möchten Sie die Sitzung beenden?',
+    cancel: {
+      label: t('layout.shutdownCancel') || 'Abbrechen',
+      flat: true
+    },
+    ok: {
+      label: t('layout.logout') || 'Abmelden',
+      color: 'primary',
+      unelevated: true
+    },
+    persistent: true
+  }).onOk(async () => {
+    sessionStore.logout();
+
+    if (isServerMode.value || !(window as any).go) {
+      $q.notify({
+        type: 'warning',
+        message: t('layout.closing') || 'Sitzung wird beendet...',
+        position: 'center',
+        timeout: 1000
+      });
+      await exitSessionAndRedirect();
+    }
+  });
 };
 
 async function loadHelp() {

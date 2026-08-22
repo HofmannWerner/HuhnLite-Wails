@@ -101,6 +101,17 @@
 
     </div>
 
+    <div v-if="dbStatus.engine === 'offline'" class="q-mt-lg full-width" style="max-width: 800px;">
+      <q-banner rounded class="bg-negative text-white q-pa-md shadow-3">
+        <template v-slot:avatar>
+          <q-icon name="error" color="white" size="md" />
+        </template>
+        <div class="text-subtitle1 text-weight-bold">Datenbankverbindung fehlgeschlagen (Offline)</div>
+        <div class="text-body2 q-mt-xs">{{ dbStatus.error || 'Es konnte keine Verbindung zur Datenbank hergestellt werden.' }}</div>
+        <div class="text-caption text-grey-2 q-mt-xs">Detaillierte Fehlerprotokolle finden Sie in der Log-Datei unter %APPDATA%\HuhnLite\app.log</div>
+      </q-banner>
+    </div>
+
     <div class="q-mt-xl column items-center q-gutter-y-sm">
       <div class="row items-center q-gutter-md">
         <div class="text-grey-6 text-caption">
@@ -158,7 +169,39 @@ const userDisplayName = computed(() => {
 
 const handleAuthClick = () => {
   if (session.isLoggedIn) {
-    session.logout();
+    $q.dialog({
+      title: 'Sitzung beenden',
+      message: 'Möchten Sie die aktuelle Sitzung wirklich beenden?',
+      cancel: {
+        label: 'Abbrechen',
+        flat: true
+      },
+      ok: {
+        label: 'Abmelden',
+        color: 'primary',
+        unelevated: true
+      },
+      persistent: true
+    }).onOk(async () => {
+      session.logout();
+      if (!(window as any).go) {
+        $q.notify({
+          type: 'warning',
+          message: 'Sitzung wird beendet...',
+          position: 'center',
+          timeout: 1000
+        });
+        try {
+          const res = await api.post('/api/system/shutdown');
+          let port = res?.data?.port || 9000;
+          const protocol = window.location.protocol || 'http:';
+          const hostname = window.location.hostname || 'localhost';
+          window.location.href = `${protocol}//${hostname}:${port}/`;
+        } catch (e) {
+          window.location.href = `${window.location.protocol || 'http:'}//${window.location.hostname || 'localhost'}:9000/`;
+        }
+      }
+    });
   } else {
     session.triggerLogin();
   }

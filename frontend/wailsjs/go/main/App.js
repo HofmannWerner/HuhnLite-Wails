@@ -6,6 +6,10 @@ export function GetAPIPort() {
   return window['go']['main']['App']['GetAPIPort']();
 }
 
+export function GetBaseLink() {
+  return window['go']['main']['App']['GetBaseLink']();
+}
+
 export function GetCLILanguage() {
   return window['go']['main']['App']['GetCLILanguage']();
 }
